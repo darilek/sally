@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Common.h>
@@ -20,14 +21,12 @@ AnsiString LicenseStr[2] = { "LICENSE", "LICENSE_PUTTY" };
 void __fastcall DoLicenseDialog(TLicense License)
 {
   TLicenseDialog * LicenseDialog = NULL;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete LicenseDialog;
+  });
     LicenseDialog = new TLicenseDialog(Application, License);
     LicenseDialog->ShowModal();
-  }
-  __finally
-  {
-    delete LicenseDialog;
   }
 }
 //---------------------------------------------------------------------------
@@ -37,16 +36,14 @@ __fastcall TLicenseDialog::TLicenseDialog(TComponent * Owner, TLicense License)
   UseSystemSettings(this);
 
   TStrings * LicenseList = new TStringList();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete LicenseList;
+  });
     LicenseList->Text = ReadResource(LicenseStr[License]);
     assert(LicenseList->Count > 0);
     Caption = FMTLOAD(LICENSE_CAPTION, (LicenseList->Strings[0]));
     LicenseList->Delete(0);
     LicenseMemo->Lines->Text = LicenseList->Text;
-  }
-  __finally
-  {
-    delete LicenseList;
   }
 }

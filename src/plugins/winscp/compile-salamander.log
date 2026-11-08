@@ -1,0 +1,53 @@
+Compiling module salamander 
+===== salamander\FileSystem.cpp 
+In file included from salamander\FileSystem.cpp:15:
+In file included from salamander\FileSystem.h:11:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+Warning W6640 salamander\FileSystem.cpp 1837(9): delete called on 'CPluginDataInterfaceAbstract' that is abstract but has non-virtual destructor [-Wdelete-abstract-non-virtual-dtor]
+ 1837 |         delete PluginData;
+      |         ^
+2 warnings generated.
+===== salamander\FileSystemInterface.cpp 
+In file included from salamander\FileSystemInterface.cpp:14:
+In file included from salamander\FileSystem.h:11:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+Warning W6640 salamander\FileSystemInterface.cpp 403(17): delete called on 'CPluginFSInterfaceAbstract' that is abstract but has non-virtual destructor [-Wdelete-abstract-non-virtual-dtor]
+  403 |                 delete FS;
+      |                 ^
+2 warnings generated.
+===== salamander\MenuInterface.cpp 
+In file included from salamander\MenuInterface.cpp:12:
+In file included from salamander\FileSystem.h:11:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+1 warning generated.
+===== salamander\Salamand.cpp 
+In file included from salamander\Salamand.cpp:14:
+In file included from salamander\FileSystem.h:11:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+1 warning generated.
+===== salamander\SalamandConfiguration.cpp 
+===== salamander\SalamanderPreferences.cpp 
+===== salamander\SalamandHelp.cpp 
+===== salamander\SalamandInterface.cpp 
+===== salamander\SalamandQueue.cpp 
+In file included from salamander\SalamandQueue.cpp:13:
+In file included from core\Queue.h:10:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+In file included from salamander\SalamandQueue.cpp:16:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+2 warnings generated.
+ 
+==== RESULT: 9 ok, 0 failed: 

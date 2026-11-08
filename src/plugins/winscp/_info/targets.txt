@@ -1,0 +1,6 @@
+CodeGear.Common.Targets
+CodeGear.Cpp.Targets
+CodeGear.Delphi.Targets
+CodeGear.Deployment.Targets
+CodeGear.Group.Targets
+CodeGear.Profiles.Targets

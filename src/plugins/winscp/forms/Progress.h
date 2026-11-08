@@ -2,16 +2,16 @@
 #ifndef ProgressH
 #define ProgressH
 //----------------------------------------------------------------------------
-#include <vcl\System.hpp>
-#include <vcl\Windows.hpp>
-#include <vcl\SysUtils.hpp>
-#include <vcl\Classes.hpp>
-#include <vcl\Graphics.hpp>
-#include <vcl\StdCtrls.hpp>
-#include <vcl\Forms.hpp>
-#include <vcl\Controls.hpp>
-#include <vcl\Buttons.hpp>
-#include <vcl\ExtCtrls.hpp>
+#include <System.hpp>
+#include <Windows.hpp>
+#include <SysUtils.hpp>
+#include <Classes.hpp>
+#include <Graphics.hpp>
+#include <StdCtrls.hpp>
+#include <Forms.hpp>
+#include <Controls.hpp>
+#include <Buttons.hpp>
+#include <ExtCtrls.hpp>
 #include <ComCtrls.hpp>
 #include <PathLabel.hpp>
 
@@ -55,7 +55,7 @@ __published:
   void __fastcall MinimizeButtonClick(TObject *Sender);
   void __fastcall SpeedComboExit(TObject *Sender);
   void __fastcall SpeedComboSelect(TObject *Sender);
-  void __fastcall SpeedComboKeyPress(TObject *Sender, char &Key);
+  void __fastcall SpeedComboKeyPress(TObject *Sender, System::WideChar &Key);
   void __fastcall OnceDoneOperationComboSelect(TObject *Sender);
   void __fastcall OnceDoneOperationComboCloseUp(TObject *Sender);
 private:

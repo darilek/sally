@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include "Common.h"
@@ -448,8 +449,13 @@ TTerminalQueueStatus * __fastcall TTerminalQueue::CreateStatus(TTerminalQueueSta
   TTerminalQueueStatus * Status = new TTerminalQueueStatus();
   try
   {
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      if (Current != NULL)
+      {
+        delete Current;
+      }
+    });
       TGuard Guard(FItemsSection);
 
       TQueueItem * Item;
@@ -476,13 +482,6 @@ TTerminalQueueStatus * __fastcall TTerminalQueue::CreateStatus(TTerminalQueueSta
         {
           Status->Add(new TQueueItemProxy(this, Item));
         }
-      }
-    }
-    __finally
-    {
-      if (Current != NULL)
-      {
-        delete Current;
       }
     }
   }
@@ -1096,19 +1095,17 @@ bool __fastcall TTerminalItem::WaitForUserAction(
 
   TQueueItem::TStatus PrevStatus = FItem->GetStatus();
 
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    FUserAction = NULL;
+    FItem->SetStatus(PrevStatus);
+  });
     FUserAction = UserAction;
 
     FItem->SetStatus(ItemStatus);
     FQueue->DoEvent(qePendingUserAction);
 
     Result = !FTerminated && WaitForEvent() && !FCancel;
-  }
-  __finally
-  {
-    FUserAction = NULL;
-    FItem->SetStatus(PrevStatus);
   }
 
   return Result;
@@ -1223,16 +1220,14 @@ void __fastcall TTerminalItem::OperationProgress(
     FPause = false;
     ProgressData.Suspend();
 
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      FItem->SetStatus(PrevStatus);
+      ProgressData.Resume();
+    });
       FItem->SetStatus(TQueueItem::qsPaused);
 
       WaitForEvent();
-    }
-    __finally
-    {
-      FItem->SetStatus(PrevStatus);
-      ProgressData.Resume();
     }
   }
 
@@ -1354,22 +1349,20 @@ void __fastcall TQueueItem::GetData(TQueueItemProxy * Proxy)
 //---------------------------------------------------------------------------
 void __fastcall TQueueItem::Execute(TTerminalItem * TerminalItem)
 {
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    {
+      TGuard Guard(FSection);
+      delete FProgressData;
+      FProgressData = NULL;
+    }
+  });
     {
       assert(FProgressData == NULL);
       TGuard Guard(FSection);
       FProgressData = new TFileOperationProgressType();
     }
     DoExecute(TerminalItem->FTerminal);
-  }
-  __finally
-  {
-    {
-      TGuard Guard(FSection);
-      delete FProgressData;
-      FProgressData = NULL;
-    }
   }
 }
 //---------------------------------------------------------------------------
@@ -1471,13 +1464,11 @@ bool __fastcall TQueueItemProxy::ProcessUserAction(void * Arg)
 
   bool Result;
   FProcessingUserAction = true;
-  try
-  {
-    Result = FQueue->ItemProcessUserAction(FQueueItem, Arg);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     FProcessingUserAction = false;
+  });
+    Result = FQueue->ItemProcessUserAction(FQueueItem, Arg);
   }
   return Result;
 }
@@ -1651,7 +1642,7 @@ __fastcall TUploadQueueItem::TUploadQueueItem(TTerminal * Terminal,
       // this way the trailing backslash is preserved for root directories like D:\\
       FInfo->Source = ExtractFileDir(IncludeTrailingBackslash(FInfo->Source));
       FInfo->ModifiedLocal = FLAGCLEAR(Params, cpDelete) ? AnsiString() :
-        IncludeTrailingBackslash(FInfo->Source);
+        AnsiString(IncludeTrailingBackslash(FInfo->Source));
     }
   }
   else
@@ -1666,7 +1657,7 @@ __fastcall TUploadQueueItem::TUploadQueueItem(TTerminal * Terminal,
       assert(FilesToCopy->Count > 0);
       FInfo->Source = FilesToCopy->Strings[0];
       FInfo->ModifiedLocal = FLAGCLEAR(Params, cpDelete) ? AnsiString() :
-        IncludeTrailingBackslash(ExtractFilePath(FInfo->Source));
+        AnsiString(IncludeTrailingBackslash(ExtractFilePath(FInfo->Source)));
     }
   }
 

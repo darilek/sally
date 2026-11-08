@@ -20,16 +20,18 @@ extern HINSTANCE DLLInstance;
 extern HINSTANCE HLanguage;
 //---------------------------------------------------------------------------
 char* SalLoadStr(int resID);
+// logs (and optionally shows) an exception caught at an SDK entry point
+void PluginBoundaryException(const char* Where, Exception* E, bool Show);
 
-const pmDisconnectF12 = 1;
-const pmDisconnectLeft = 2;
-const pmDisconnectRight = 3;
-const pmConnect = 4;
-const pmFullSynchronize = 5;
+const int pmDisconnectF12 = 1;
+const int pmDisconnectLeft = 2;
+const int pmDisconnectRight = 3;
+const int pmConnect = 4;
+const int pmFullSynchronize = 5;
 // 6 and 7 was QueueUserActionLeft/QueueUserActionRight
 // 8 was pmConfigure
 // 9 was pmQueueShow
-const pmSynchronize = 10;
+const int pmSynchronize = 10;
 
 class CPluginInterfaceForMenuExt;
 class CPluginInterfaceForFS;
@@ -90,7 +92,7 @@ public:
 
     virtual void WINAPI Event(int Event, DWORD Param);
     virtual void WINAPI ClearHistory(HWND Parent);
-    virtual void WINAPI AcceptChangeOnPathNotification(const char* Path,
+    virtual void WINAPI AcceptChangeOnPathNotification(const wchar_t* Path,
                                                        BOOL IncludingSubdirs) {}
 
     virtual void WINAPI PasswordManagerEvent(HWND Parent, int Event);

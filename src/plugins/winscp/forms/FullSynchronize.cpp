@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Common.h>
@@ -28,8 +29,10 @@ bool __fastcall DoFullSynchronizeDialog(TSynchronizeMode & Mode, int & Params,
 {
   bool Result;
   TFullSynchronizeDialog * Dialog = new TFullSynchronizeDialog(Application);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Dialog;
+  });
     Dialog->Mode = Mode;
     Dialog->Options = Options;
     Dialog->Params = Params;
@@ -50,10 +53,6 @@ bool __fastcall DoFullSynchronizeDialog(TSynchronizeMode & Mode, int & Params,
       SaveSettings = Dialog->SaveSettings;
       SaveMode = Dialog->SaveMode;
     }
-  }
-  __finally
-  {
-    delete Dialog;
   }
   return Result;
 }
@@ -112,7 +111,7 @@ void __fastcall TFullSynchronizeDialog::UpdateControls()
   CopyParamLabel->ShowHint =
     (CopyParamLabel->Canvas->TextWidth(InfoStr) > (CopyParamLabel->Width * 3 / 2));
   SynchronizeBySizeCheck->Caption = SynchronizeTimestampsButton->Checked ?
-    LoadStr(SYNCHRONIZE_SAME_SIZE) : FSynchronizeBySizeCaption;
+    UnicodeString(LoadStr(SYNCHRONIZE_SAME_SIZE)) : UnicodeString(FSynchronizeBySizeCaption);
 }
 //---------------------------------------------------------------------------
 int __fastcall TFullSynchronizeDialog::ActualCopyParamAttrs()

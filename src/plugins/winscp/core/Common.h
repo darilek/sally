@@ -21,15 +21,15 @@
 //---------------------------------------------------------------------------
 extern const char EngShortMonthNames[12][4];
 //---------------------------------------------------------------------------
-AnsiString ReplaceChar(AnsiString Str, Char A, Char B);
-AnsiString DeleteChar(AnsiString Str, Char C);
+AnsiString ReplaceChar(AnsiString Str, char A, char B);
+AnsiString DeleteChar(AnsiString Str, char C);
 void PackStr(AnsiString &Str);
 AnsiString MakeValidFileName(AnsiString FileName);
 AnsiString RootKeyToStr(HKEY RootKey);
 AnsiString BooleanToStr(bool B);
 AnsiString BooleanToEngStr(bool B);
 AnsiString DefaultStr(const AnsiString & Str, const AnsiString & Default);
-AnsiString CutToChar(AnsiString &Str, Char Ch, bool Trim);
+AnsiString CutToChar(AnsiString &Str, char Ch, bool Trim);
 AnsiString CopyToChars(const AnsiString & Str, int & From, AnsiString Chs, bool Trim,
   char * Delimiter = NULL);
 AnsiString DelimitStr(AnsiString Str, AnsiString Chars);
@@ -114,7 +114,7 @@ void __fastcall MakeMethod(void * Data, void * Code, MethodT & Method)
   ((TMethod*)&Method)->Code = Code;
 }
 //---------------------------------------------------------------------------
-TMethod __fastcall MakeMethod(void * Data, void * Code)
+inline TMethod __fastcall MakeMethod(void * Data, void * Code)
 {
   TMethod Method = { Data, Code };
   return Method;

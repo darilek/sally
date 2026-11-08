@@ -18,8 +18,10 @@
 #pragma pack(push, enter_include_spl_fs) // so that structures are independent of the set alignment
 #pragma pack(4)
 #endif // _MSC_VER
-#ifdef __BORLANDC__
+#if defined(__BORLANDC__) && !defined(__clang__)
 #pragma option -a4
+#elif defined(__clang__) && !defined(_MSC_VER) // C++Builder bcc64x
+#pragma pack(push, 4)
 #endif // __BORLANDC__
 
 struct CFileData;
@@ -908,8 +910,10 @@ public:
 #ifdef _MSC_VER
 #pragma pack(pop, enter_include_spl_fs)
 #endif // _MSC_VER
-#ifdef __BORLANDC__
+#if defined(__BORLANDC__) && !defined(__clang__)
 #pragma option -a
+#elif defined(__clang__) && !defined(_MSC_VER) // C++Builder bcc64x
+#pragma pack(pop)
 #endif // __BORLANDC__
 
 /*   Preliminary version of help for the plugin interface

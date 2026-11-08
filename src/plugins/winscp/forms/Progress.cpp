@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Common.h>
@@ -321,8 +322,10 @@ void __fastcall TProgressForm::CancelOperation()
     // mostly useless, as suspend is called over copy of actual progress data
     FData.Suspend();
     UpdateControls();
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      FData.Resume();
+    });
       TCancelStatus ACancel;
       int Result;
       if (FData.TransferingFile &&
@@ -350,10 +353,6 @@ void __fastcall TProgressForm::CancelOperation()
       {
         FCancel = ACancel;
       }
-    }
-    __finally
-    {
-      FData.Resume();
     }
   }
 }
@@ -445,13 +444,13 @@ void __fastcall TProgressForm::SpeedComboSelect(TObject * /*Sender*/)
 }
 //---------------------------------------------------------------------------
 void __fastcall TProgressForm::SpeedComboKeyPress(TObject * /*Sender*/,
-  char & Key)
+  System::WideChar & Key)
 {
   // using OnKeyPress instead of OnKeyDown to catch "enter" prevents
   // system beep for unhandled key
-  if (Key == '\r')
+  if (Key == L'\r')
   {
-    Key = '\0';
+    Key = L'\0';
     ApplyCPSLimit();
   }
 }

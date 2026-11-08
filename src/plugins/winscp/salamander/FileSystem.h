@@ -67,14 +67,14 @@ public:
 
     virtual DWORD WINAPI GetSupportedServices();
 
-    virtual BOOL WINAPI GetChangeDriveOrDisconnectItem(const char* FSName, char*& Title,
+    virtual BOOL WINAPI GetChangeDriveOrDisconnectItem(const wchar_t* FSName, wchar_t*& Title,
                                                        HICON& Icon, BOOL& DestroyIcon);
     virtual HICON WINAPI GetFSIcon(BOOL& DestroyIcon);
-    virtual void WINAPI GetDropEffect(const char* SrcFSPath, const char* TgtFSPath,
+    virtual void WINAPI GetDropEffect(const wchar_t* SrcFSPath, const wchar_t* TgtFSPath,
                                       DWORD AllowedEffects, DWORD KeyState,
                                       DWORD* DropEffect);
     virtual void WINAPI GetFSFreeSpace(CQuadWord* RetValue) {}
-    virtual BOOL WINAPI GetNextDirectoryLineHotPath(const char* Text,
+    virtual BOOL WINAPI GetNextDirectoryLineHotPath(const wchar_t* Text,
                                                     int PathLen, int& Offset);
     virtual BOOL WINAPI CompleteDirectoryLineHotPath(CSalamanderStringBuffer* Path)
     {
@@ -85,19 +85,19 @@ public:
     {
         return FALSE;
     }
-    virtual void WINAPI ShowInfoDialog(const char* FSName, HWND Parent);
+    virtual void WINAPI ShowInfoDialog(const wchar_t* FSName, HWND Parent);
     virtual BOOL WINAPI ExecuteCommandLine(HWND Parent, CSalamanderStringBuffer* Command,
                                            int& SelFrom, int& SelTo);
     virtual BOOL WINAPI QuickRename(const wchar_t* FSName, int Mode, HWND Parent, CFileData& File,
                                     BOOL IsDir, CSalamanderStringBuffer* NewName, BOOL& Cancel);
-    virtual void WINAPI AcceptChangeOnPathNotification(const char* FSName,
-                                                       const char* Path, BOOL IncludingSubdirs);
+    virtual void WINAPI AcceptChangeOnPathNotification(const wchar_t* FSName,
+                                                       const wchar_t* Path, BOOL IncludingSubdirs);
     virtual BOOL WINAPI CreateDir(const wchar_t* FSName, int Mode, HWND Parent,
                                   CSalamanderStringBuffer* NewName,
                                   BOOL& Cancel);
-    virtual void WINAPI ViewFile(const char* FSName, HWND Parent,
+    virtual void WINAPI ViewFile(const wchar_t* FSName, HWND Parent,
                                  CSalamanderForViewFileOnFSAbstract* Salamander, CFileData& File);
-    virtual BOOL WINAPI Delete(const char* FSName, int Mode, HWND Parent,
+    virtual BOOL WINAPI Delete(const wchar_t* FSName, int Mode, HWND Parent,
                                int Panel, int SelectedFiles, int SelectedDirs, BOOL& CancelOrError);
     virtual BOOL WINAPI CopyOrMoveFromFS(BOOL Copy, int Mode, const wchar_t* FSName,
                                          HWND Parent, int Panel, int SelectedFiles, int SelectedDirs,
@@ -107,15 +107,15 @@ public:
                                                const wchar_t* FSName, HWND Parent, const wchar_t* SourcePath,
                                                SalEnumSelection2 Next, void* NextParam, int SourceFiles, int SourceDirs,
                                                CSalamanderStringBuffer* TargetPath, BOOL* InvalidPathOrCancel);
-    virtual BOOL WINAPI ChangeAttributes(const char* FSName, HWND Parent,
+    virtual BOOL WINAPI ChangeAttributes(const wchar_t* FSName, HWND Parent,
                                          int Panel, int SelectedFiles, int SelectedDirs);
-    virtual void WINAPI ShowProperties(const char* FSName, HWND Parent,
+    virtual void WINAPI ShowProperties(const wchar_t* FSName, HWND Parent,
                                        int Panel, int SelectedFiles, int SelectedDirs) {}
-    virtual void WINAPI ContextMenu(const char* FSName, HWND Parent, int MenuX,
+    virtual void WINAPI ContextMenu(const wchar_t* FSName, HWND Parent, int MenuX,
                                     int MenuY, int Type, int Panel, int SelectedFiles, int SelectedDirs);
-    virtual BOOL WINAPI OpenFindDialog(const char* FSName, int Panel);
-    virtual void WINAPI OpenActiveFolder(const char* FSName, HWND Parent);
-    virtual void WINAPI GetAllowedDropEffects(int Mode, const char* TgtFSPath,
+    virtual BOOL WINAPI OpenFindDialog(const wchar_t* FSName, int Panel);
+    virtual void WINAPI OpenActiveFolder(const wchar_t* FSName, HWND Parent);
+    virtual void WINAPI GetAllowedDropEffects(int Mode, const wchar_t* TgtFSPath,
                                               DWORD* AllowedEffects);
     virtual BOOL WINAPI HandleMenuMsg(UINT uMsg, WPARAM wParam, LPARAM lParam,
                                       LRESULT* plResult);
@@ -246,9 +246,9 @@ public:
 
     virtual void WINAPI ReleasePluginData(CFileData& File, BOOL IsDir) {}
 
-    virtual void WINAPI GetFileDataForUpDir(const char* ArchivePath,
+    virtual void WINAPI GetFileDataForUpDir(const wchar_t* ArchivePath,
                                             CFileData& UpDir) {}
-    virtual BOOL WINAPI GetFileDataForNewDir(const char* DirName, CFileData& Dir)
+    virtual BOOL WINAPI GetFileDataForNewDir(const wchar_t* DirName, CFileData& Dir)
     {
         return FALSE;
     }
@@ -271,7 +271,7 @@ public:
     }
 
     virtual void WINAPI SetupView(BOOL LeftPanel, CSalamanderViewAbstract* View,
-                                  const char* ArchivePath, const CFileData* UpperDir);
+                                  const wchar_t* ArchivePath, const CFileData* UpperDir);
     virtual void WINAPI ColumnFixedWidthShouldChange(BOOL LeftPanel, const CColumn* Column,
                                                      int NewFixedWidth);
     virtual void WINAPI ColumnWidthWasChanged(BOOL LeftPanel, const CColumn* Column,

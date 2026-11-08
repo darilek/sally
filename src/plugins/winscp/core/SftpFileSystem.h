@@ -2,6 +2,14 @@
 #ifndef SftpFileSystemH
 #define SftpFileSystemH
 
+// forward declarations for friend classes (required by Clang)
+class TSFTPQueue;
+class TSFTPAsynchronousQueue;
+class TSFTPUploadQueue;
+class TSFTPDownloadQueue;
+class TSFTPLoadFilesPropertiesQueue;
+class TSFTPCalculateFilesChecksumQueue;
+class TSFTPBusy;
 #include <FileSystems.h>
 //---------------------------------------------------------------------------
 class TSFTPPacket;
@@ -112,7 +120,7 @@ protected:
   virtual AnsiString __fastcall GetCurrentDirectory();
   AnsiString __fastcall GetHomeDirectory();
   unsigned long __fastcall GotStatusPacket(TSFTPPacket * Packet, int AllowStatus);
-  bool __fastcall inline IsAbsolutePath(const AnsiString Path);
+  bool __fastcall IsAbsolutePath(const AnsiString Path);
   bool __fastcall RemoteFileExists(const AnsiString FullPath, TRemoteFile ** File = NULL);
   TRemoteFile * __fastcall LoadFile(TSFTPPacket * Packet,
     TRemoteFile * ALinkedByFile, const AnsiString FileName,
@@ -177,15 +185,15 @@ protected:
   void __fastcall SFTPSinkFile(AnsiString FileName,
     const TRemoteFile * File, void * Param);
   char * __fastcall GetEOL() const;
-  inline void __fastcall BusyStart();
-  inline void __fastcall BusyEnd();
-  inline unsigned long __fastcall TransferBlockSize(unsigned long Overhead,
+  void __fastcall BusyStart();
+  void __fastcall BusyEnd();
+  unsigned long __fastcall TransferBlockSize(unsigned long Overhead,
     TFileOperationProgressType * OperationProgress, unsigned long MaxPacketSize = 0);
-  inline unsigned long __fastcall UploadBlockSize(const AnsiString & Handle,
+  unsigned long __fastcall UploadBlockSize(const AnsiString & Handle,
     TFileOperationProgressType * OperationProgress);
-  inline unsigned long __fastcall DownloadBlockSize(
+  unsigned long __fastcall DownloadBlockSize(
     TFileOperationProgressType * OperationProgress);
-  inline int __fastcall PacketLength(char * LenBuf, int ExpectedType);
+  int __fastcall PacketLength(char * LenBuf, int ExpectedType);
 
   static AnsiString __fastcall DecodeUTF(const AnsiString UTF);
   static AnsiString __fastcall EncodeUTF(const WideString Source);

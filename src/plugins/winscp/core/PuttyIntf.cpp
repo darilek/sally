@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #define PUTTY_DO_GLOBALS
@@ -131,8 +132,11 @@ int get_userpass_input(prompts_t * p, unsigned char * /*in*/, int /*inlen*/)
   int Result;
   TStrings * Prompts = new TStringList();
   TStrings * Results = new TStringList();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Prompts;
+    delete Results;
+  });
     for (int Index = 0; Index < int(p->n_prompts); Index++)
     {
       prompt_t * Prompt = p->prompts[Index];
@@ -146,7 +150,7 @@ int get_userpass_input(prompts_t * p, unsigned char * /*in*/, int /*inlen*/)
       for (int Index = 0; Index < int(p->n_prompts); Index++)
       {
         prompt_t * Prompt = p->prompts[Index];
-        strncpy(Prompt->result, Results->Strings[Index].c_str(), Prompt->result_len);
+        strncpy(Prompt->result, AnsiString(Results->Strings[Index]).c_str(), Prompt->result_len);
         Prompt->result[Prompt->result_len - 1] = '\0';
       }
       Result = 1;
@@ -155,11 +159,6 @@ int get_userpass_input(prompts_t * p, unsigned char * /*in*/, int /*inlen*/)
     {
       Result = 0;
     }
-  }
-  __finally
-  {
-    delete Prompts;
-    delete Results;
   }
 
   return Result;
@@ -376,7 +375,7 @@ static long OpenWinSCPKey(HKEY Key, const char * SubKey, HKEY * Result, bool Can
     Storage->AccessMode = (CanCreate ? smReadWrite : smRead);
     if (Storage->OpenSubKey(RegKey, CanCreate))
     {
-      *Result = static_cast<HKEY>(Storage);
+      *Result = reinterpret_cast<HKEY>(Storage);
       R = ERROR_SUCCESS;
     }
     else
@@ -405,7 +404,7 @@ long reg_query_winscp_value_ex(HKEY Key, const char * ValueName, unsigned long *
   long R;
   assert(Configuration != NULL);
 
-  THierarchicalStorage * Storage = static_cast<THierarchicalStorage *>(Key);
+  THierarchicalStorage * Storage = reinterpret_cast<THierarchicalStorage *>(Key);
   AnsiString Value;
   if (Storage == NULL)
   {
@@ -453,7 +452,7 @@ long reg_set_winscp_value_ex(HKEY Key, const char * ValueName, unsigned long /*R
 
   assert(Type == REG_SZ);
   USEDPARAM(Type);
-  THierarchicalStorage * Storage = static_cast<THierarchicalStorage *>(Key);
+  THierarchicalStorage * Storage = reinterpret_cast<THierarchicalStorage *>(Key);
   assert(Storage != NULL);
   if (Storage != NULL)
   {
@@ -468,7 +467,7 @@ long reg_close_winscp_key(HKEY Key)
 {
   assert(Configuration != NULL);
 
-  THierarchicalStorage * Storage = static_cast<THierarchicalStorage *>(Key);
+  THierarchicalStorage * Storage = reinterpret_cast<THierarchicalStorage *>(Key);
   if (Storage != NULL)
   {
     delete Storage;
@@ -606,8 +605,10 @@ bool __fastcall HasGSSAPI()
     Config cfg;
     memset(&cfg, 0, sizeof(cfg));
     ssh_gss_liblist * List = ssh_gss_setup(&cfg);
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      ssh_gss_cleanup(List);
+    });
       for (int Index = 0; (has <= 0) && (Index < List->nlibraries); Index++)
       {
         ssh_gss_library * library = &List->libraries[Index];
@@ -617,10 +618,6 @@ bool __fastcall HasGSSAPI()
           ((library->acquire_cred(library, &ctx) == SSH_GSS_OK) &&
            (library->release_cred(library, &ctx) == SSH_GSS_OK)) ? 1 : 0;
       }
-    }
-    __finally
-    {
-      ssh_gss_cleanup(List);
     }
 
     if (has < 0)

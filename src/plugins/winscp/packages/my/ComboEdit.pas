@@ -627,7 +627,7 @@ var
   Loc: TRect;
 begin
   SetRect(Loc, 0, 0, ClientWidth - FBtnControl.Width - 2, ClientHeight + 1);
-  SendMessage(Handle, EM_SETRECTNP, 0, LongInt(@Loc));
+  SendMessage(Handle, EM_SETRECTNP, 0, LPARAM(@Loc));
 end;
 
 procedure TCustomComboEdit.UpdateBtnBounds;

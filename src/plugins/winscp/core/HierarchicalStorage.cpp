@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include "Common.h"
@@ -145,17 +146,15 @@ void __fastcall THierarchicalStorage::CloseSubKey()
 void __fastcall THierarchicalStorage::ClearSubKeys()
 {
   TStringList *SubKeys = new TStringList();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete SubKeys;
+  });
     GetSubKeyNames(SubKeys);
     for (int Index = 0; Index < SubKeys->Count; Index++)
     {
       RecursiveDeleteSubKey(SubKeys->Strings[Index]);
     }
-  }
-  __finally
-  {
-    delete SubKeys;
   }
 }
 //---------------------------------------------------------------------------
@@ -173,14 +172,12 @@ bool __fastcall THierarchicalStorage::HasSubKeys()
 {
   bool Result;
   TStrings * SubKeys = new TStringList();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete SubKeys;
+  });
     GetSubKeyNames(SubKeys);
     Result = (SubKeys->Count > 0);
-  }
-  __finally
-  {
-    delete SubKeys;
   }
   return Result;
 }
@@ -199,8 +196,10 @@ void __fastcall THierarchicalStorage::ReadValues(Classes::TStrings* Strings,
   bool MaintainKeys)
 {
   TStrings * Names = new TStringList();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Names;
+  });
     GetValueNames(Names);
     for (int Index = 0; Index < Names->Count; Index++)
     {
@@ -215,26 +214,20 @@ void __fastcall THierarchicalStorage::ReadValues(Classes::TStrings* Strings,
       }
     }
   }
-  __finally
-  {
-    delete Names;
-  }
 }
 //---------------------------------------------------------------------------
 void __fastcall THierarchicalStorage::ClearValues()
 {
   TStrings * Names = new TStringList();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Names;
+  });
     GetValueNames(Names);
     for (int Index = 0; Index < Names->Count; Index++)
     {
       DeleteValue(Names->Strings[Index]);
     }
-  }
-  __finally
-  {
-    delete Names;
   }
 }
 //---------------------------------------------------------------------------
@@ -357,8 +350,10 @@ bool __fastcall TRegistryStorage::Copy(TRegistryStorage * Storage)
   TRegistry * Registry = Storage->FRegistry;
   bool Result = true;
   TStrings * Names = new TStringList();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Names;
+  });
     Registry->GetValueNames(Names);
     std::vector<unsigned char> Buffer(1024, 0);
     int Index = 0;
@@ -388,10 +383,6 @@ bool __fastcall TRegistryStorage::Copy(TRegistryStorage * Storage)
 
       ++Index;
     }
-  }
-  __finally
-  {
-    delete Names;
   }
   return Result;
 }
@@ -621,8 +612,13 @@ void __fastcall TIniFileStorage::Flush()
   if (FIniFile != NULL)
   {
     TStrings * Strings = new TStringList;
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete FOriginal;
+      delete Strings;
+      delete FIniFile;
+      FIniFile = NULL;
+    });
       FIniFile->GetStrings(Strings);
       if (!Strings->Equals(FOriginal))
       {
@@ -658,25 +654,16 @@ void __fastcall TIniFileStorage::Flush()
         }
         else
         {
-          TStream * Stream = new THandleStream(int(Handle));
-          try
-          {
-            Strings->SaveToStream(Stream);
-          }
-          __finally
-          {
+          TStream * Stream = new THandleStream(reinterpret_cast<THandle>(Handle));
+          { // try/__finally -> scope guard (bcc64x)
+            FINALLY_GUARD([&]() {
             CloseHandle(Handle);
             delete Stream;
+          });
+            Strings->SaveToStream(Stream);
           }
         }
       }
-    }
-    __finally
-    {
-      delete FOriginal;
-      delete Strings;
-      delete FIniFile;
-      FIniFile = NULL;
     }
   }
 }
@@ -703,8 +690,10 @@ bool __fastcall TIniFileStorage::OpenSubKey(const AnsiString SubKey, bool CanCre
   if (!Result)
   {
     TStringList * Sections = new TStringList();
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete Sections;
+    });
       Sections->Sorted = true;
       FIniFile->ReadSections(Sections);
       AnsiString NewKey = ExcludeTrailingBackslash(CurrentSubKey+MungeSubKey(SubKey, Path));
@@ -718,10 +707,6 @@ bool __fastcall TIniFileStorage::OpenSubKey(const AnsiString SubKey, bool CanCre
           Result = true;
         }
       }
-    }
-    __finally
-    {
-      delete Sections;
     }
   }
 
@@ -750,8 +735,10 @@ bool __fastcall TIniFileStorage::DeleteSubKey(const AnsiString SubKey)
 void __fastcall TIniFileStorage::GetSubKeyNames(Classes::TStrings* Strings)
 {
   TStrings * Sections = new TStringList();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Sections;
+  });
     Strings->Clear();
     FIniFile->ReadSections(Sections);
     for (int i = 0; i < Sections->Count; i++)
@@ -773,10 +760,6 @@ void __fastcall TIniFileStorage::GetSubKeyNames(Classes::TStrings* Strings)
         }
       }
     }
-  }
-  __finally
-  {
-    delete Sections;
   }
 }
 //---------------------------------------------------------------------------
@@ -815,8 +798,10 @@ void __fastcall TIniFileStorage::ApplyOverrides()
   AnsiString OverridesKey = IncludeTrailingBackslash("Override");
 
   TStrings * Sections = new TStringList();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Sections;
+  });
     Sections->Clear();
     FIniFile->ReadSections(Sections);
     for (int i = 0; i < Sections->Count; i++)
@@ -831,8 +816,10 @@ void __fastcall TIniFileStorage::ApplyOverrides()
 
         // this all uses raw names (munged)
         TStrings * Names = new TStringList;
-        try
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
+          delete Names;
+        });
           FIniFile->ReadSection(Section, Names);
 
           for (int ii = 0; ii < Names->Count; ii++)
@@ -842,18 +829,10 @@ void __fastcall TIniFileStorage::ApplyOverrides()
             FIniFile->WriteString(SubKey, Name, Value);
           }
         }
-        __finally
-        {
-          delete Names;
-        }
 
         FIniFile->EraseSection(Section);
       }
     }
-  }
-  __finally
-  {
-    delete Sections;
   }
 }
 //---------------------------------------------------------------------------

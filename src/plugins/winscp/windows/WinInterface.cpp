@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <shlwapi.h>
@@ -251,22 +252,20 @@ TForm * __fastcall CreateMessageDialogEx(const AnsiString Msg,
   else
   {
     TQueryButtonAlias * Aliases = new TQueryButtonAlias[Params->AliasesCount];
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete[] Aliases;
+    });
       for (unsigned int i = 0; i < Params->AliasesCount; i++)
       {
         TMsgDlgBtn Button;
         CHECK(MapButton(Params->Aliases[i].Button, Button));
-        Aliases[i].Button = Button;
+        Aliases[i].Button = static_cast<unsigned int>(Button);
         Aliases[i].Alias = Params->Aliases[i].Alias;
         Aliases[i].OnClick = Params->Aliases[i].OnClick;
       }
       Dialog = CreateMoreMessageDialog(Msg, MoreMessages, DlgType, Buttons,
         Aliases, Params->AliasesCount, TimeoutResult, &TimeoutButton);
-    }
-    __finally
-    {
-      delete[] Aliases;
     }
   }
 
@@ -309,8 +308,8 @@ TForm * __fastcall CreateMessageDialogEx(const AnsiString Msg,
         !Params->NewerAskAgainTitle.IsEmpty() ?
           Params->NewerAskAgainTitle :
           // qaOK | qaIgnore is used, when custom "non-answer" button is required
-          LoadStr(((Answers == qaOK) || (Answers == (qaOK | qaIgnore))) ?
-            NEVER_SHOW_AGAIN : NEVER_ASK_AGAIN);
+          AnsiString(LoadStr(((Answers == qaOK) || (Answers == (qaOK | qaIgnore))) ?
+            NEVER_SHOW_AGAIN : NEVER_ASK_AGAIN));
       NeverAskAgainCheck->Checked = Params->NewerAskAgainCheckedInitially;
       NeverAskAgainCheck->Anchors = TAnchors() << akBottom << akLeft;
       if (Params->NewerAskAgainAnswer > 0)
@@ -319,11 +318,11 @@ TForm * __fastcall CreateMessageDialogEx(const AnsiString Msg,
         if (MapButton(Params->NewerAskAgainAnswer, Button))
         {
           extern const int ModalResults[];
-          NeverAskAgainCheck->Tag = ModalResults[Button] + 1;
+          NeverAskAgainCheck->Tag = ModalResults[static_cast<int>(Button)] + 1;
         }
       }
       TNotifyEvent OnClick;
-      ((TMethod*)&OnClick)->Code = NeverAskAgainCheckClick;
+      ((TMethod*)&OnClick)->Code = reinterpret_cast<void *>(NeverAskAgainCheckClick);
       NeverAskAgainCheck->OnClick = OnClick;
     }
 
@@ -453,8 +452,12 @@ int __fastcall MoreMessageDialog(const AnsiString Message, TStrings * MoreMessag
   TForm * Dialog = NULL;
   TMessageTimer * Timer = NULL;
   TMessageTimeout * Timeout = NULL;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Dialog;
+    delete Timer;
+    delete Timeout;
+  });
     AnsiString AMessage = Message;
 
     if ((Params != NULL) && (Params->Timer > 0))
@@ -496,12 +499,6 @@ int __fastcall MoreMessageDialog(const AnsiString Message, TStrings * MoreMessag
       Result = Timer->Result;
     }
   }
-  __finally
-  {
-    delete Dialog;
-    delete Timer;
-    delete Timeout;
-  }
   return Result;
 }
 //---------------------------------------------------------------------------
@@ -515,18 +512,16 @@ int __fastcall SimpleErrorDialog(const AnsiString Msg, const AnsiString MoreMess
 {
   int Result;
   TStrings * More = NULL;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete More;
+  });
     if (!MoreMessages.IsEmpty())
     {
       More = new TStringList();
       More->Text = MoreMessages;
     }
     Result = MoreMessageDialog(Msg, More, qtError, qaOK, HELP_NONE);
-  }
-  __finally
-  {
-    delete More;
   }
   return Result;
 }
@@ -682,12 +677,12 @@ void __fastcall CopyParamListPopup(TPoint P, TPopupMenu * Menu,
 
     Item = new TMenuItem(Menu);
     Item->Caption = LoadStr(COPY_PARAM_SAVE_SETTINGS);
-    Item->Tag = int(SaveSettings);
+    Item->Tag = reinterpret_cast<NativeInt>(SaveSettings);
     Item->Checked = *SaveSettings;
 
     TNotifyEvent SaveSettingsOnClick;
     ((TMethod*)&SaveSettingsOnClick)->Data = Item;
-    ((TMethod*)&SaveSettingsOnClick)->Code = CopyParamListSaveSettingsClick;
+    ((TMethod*)&SaveSettingsOnClick)->Code = reinterpret_cast<void *>(CopyParamListSaveSettingsClick);
     Item->OnClick = SaveSettingsOnClick;
 
     Menu->Items->Add(Item);
@@ -770,8 +765,10 @@ static unsigned int __fastcall ShellDllVersion()
     HINSTANCE ShellDll = LoadLibrary("shell32.dll");
     if (ShellDll != NULL)
     {
-      try
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
+        FreeLibrary(ShellDll);
+      });
         DLLGETVERSIONPROC DllGetVersion =
           (DLLGETVERSIONPROC)GetProcAddress(ShellDll, "DllGetVersion");
         if(DllGetVersion != NULL)
@@ -784,10 +781,6 @@ static unsigned int __fastcall ShellDllVersion()
             Result = VersionInfo.dwMajorVersion;
           }
         }
-      }
-      __finally
-      {
-        FreeLibrary(ShellDll);
       }
     }
   }
@@ -805,7 +798,8 @@ void __fastcall MenuPopup(TObject * Sender, const TPoint & MousePos, bool & Hand
 {
   class TPublicControl : public TControl
   {
-  friend void __fastcall MenuPopup(TObject * Sender, const TPoint & MousePos, bool & Handled);
+  public:
+    using TControl::PopupMenu;
   };
 
   TControl * Control = dynamic_cast<TControl *>(Sender);
@@ -917,46 +911,8 @@ AnsiString __fastcall TranslateDateFormat(AnsiString FormatStr)
 //---------------------------------------------------------------------------
 void __fastcall GetFormatSettingsFix()
 {
-  // todo InitSysLocale
-  // todo GetMonthDayNames
-  // todo GetEraNamesAndYearOffsets
-  LCID DefaultLCID = GetDefaultLCID();
-  CurrencyString = GetLocaleStr(DefaultLCID, LOCALE_SCURRENCY, "");
-  CurrencyFormat = (Byte) StrToIntDef(GetLocaleStr(DefaultLCID, LOCALE_ICURRENCY, "0"), 0);
-  NegCurrFormat = (Byte) StrToIntDef(GetLocaleStr(DefaultLCID, LOCALE_INEGCURR, "0"), 0);
-  ThousandSeparator = GetLocaleChar(DefaultLCID, LOCALE_STHOUSAND, ',');
-  DecimalSeparator = GetLocaleChar(DefaultLCID, LOCALE_SDECIMAL, '.');
-  CurrencyDecimals = (Byte) StrToIntDef(GetLocaleStr(DefaultLCID, LOCALE_ICURRDIGITS, "0"), 0);
-  DateSeparator = GetLocaleChar(DefaultLCID, LOCALE_SDATE, '/');
-  ShortDateFormat = TranslateDateFormat(GetLocaleStr(DefaultLCID, LOCALE_SSHORTDATE, "m/d/yy"));
-  LongDateFormat = TranslateDateFormat(GetLocaleStr(DefaultLCID, LOCALE_SLONGDATE, "mmmm d, yyyy"));
-  TimeSeparator = GetLocaleChar(DefaultLCID, LOCALE_STIME, ':');
-  TimeAMString = GetLocaleStr(DefaultLCID, LOCALE_S1159, "am");
-  TimePMString = GetLocaleStr(DefaultLCID, LOCALE_S2359, "pm");
-  AnsiString HourFormat;
-  if (StrToIntDef(GetLocaleStr(DefaultLCID, LOCALE_ITLZERO, "0"), 0) == 0)
-  {
-    HourFormat = "h";
-  }
-  else
-  {
-    HourFormat = "hh";
-  }
-  AnsiString TimePrefix, TimePostfix;
-  if (StrToIntDef(GetLocaleStr(DefaultLCID, LOCALE_ITIME, "0"), 0) == 0)
-  {
-    if (StrToIntDef(GetLocaleStr(DefaultLCID, LOCALE_ITIMEMARKPOSN, "0"), 0) == 0)
-    {
-      TimePostfix = " AMPM";
-    }
-    else
-    {
-      TimePrefix = "AMPM ";
-    }
-  }
-  ShortTimeFormat = TimePrefix + HourFormat + ":mm" + TimePostfix;
-  LongTimeFormat = TimePrefix + HourFormat + ":mm:ss" + TimePostfix;
-  ListSeparator = GetLocaleChar(DefaultLCID, LOCALE_SLIST, ',');
+  // BCB6 workaround no longer needed: rebuild global FormatSettings from the user locale
+  FormatSettings = TFormatSettings::Create(GetDefaultLCID());
 }
 //---------------------------------------------------------------------------
 void __fastcall WinInitialize()
@@ -992,7 +948,7 @@ struct TNotifyIconData5
 #undef NOTIFYICONDATA_V1_SIZE
 #define NOTIFYICONDATA_V1_SIZE FIELD_OFFSET(TNotifyIconData5, szTip[64])
 //---------------------------------------------------------------------------
-__fastcall TTrayIcon::TTrayIcon(unsigned int Id)
+__fastcall TScpTrayIcon::TScpTrayIcon(unsigned int Id)
 {
   FVisible = false;
   FOnClick = NULL;
@@ -1009,7 +965,7 @@ __fastcall TTrayIcon::TTrayIcon(unsigned int Id)
   FTaskbarCreatedMsg = RegisterWindowMessage("TaskbarCreated");
 }
 //---------------------------------------------------------------------------
-__fastcall TTrayIcon::~TTrayIcon()
+__fastcall TScpTrayIcon::~TScpTrayIcon()
 {
   // make sure we hide icon even in case it was shown just to pop up the balloon
   // (in which case Visible == false)
@@ -1019,12 +975,12 @@ __fastcall TTrayIcon::~TTrayIcon()
   delete FTrayIcon;
 }
 //---------------------------------------------------------------------------
-bool __fastcall TTrayIcon::SupportsBalloons()
+bool __fastcall TScpTrayIcon::SupportsBalloons()
 {
   return (ShellDllVersion() >= 5);
 }
 //---------------------------------------------------------------------------
-void __fastcall TTrayIcon::PopupBalloon(AnsiString Title,
+void __fastcall TScpTrayIcon::PopupBalloon(AnsiString Title,
   const AnsiString & Str, TQueryType QueryType, unsigned int Timeout)
 {
   if (SupportsBalloons())
@@ -1081,7 +1037,7 @@ void __fastcall TTrayIcon::PopupBalloon(AnsiString Title,
   }
 }
 //---------------------------------------------------------------------------
-void __fastcall TTrayIcon::CancelBalloon()
+void __fastcall TScpTrayIcon::CancelBalloon()
 {
   if (SupportsBalloons())
   {
@@ -1100,26 +1056,24 @@ void __fastcall TTrayIcon::CancelBalloon()
   }
 }
 //---------------------------------------------------------------------------
-bool __fastcall TTrayIcon::Notify(unsigned int Message)
+bool __fastcall TScpTrayIcon::Notify(unsigned int Message)
 {
   bool Result = SUCCEEDED(Shell_NotifyIcon(Message, (NOTIFYICONDATA*)FTrayIcon));
   if (Result && (Message == NIM_ADD))
   {
     UINT Timeout = FTrayIcon->uTimeout;
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      FTrayIcon->uTimeout = Timeout;
+    });
       FTrayIcon->uVersion = NOTIFYICON_VERSION;
       Result = SUCCEEDED(Shell_NotifyIcon(NIM_SETVERSION, (NOTIFYICONDATA*)FTrayIcon));
-    }
-    __finally
-    {
-      FTrayIcon->uTimeout = Timeout;
     }
   }
   return Result;
 }
 //---------------------------------------------------------------------------
-void __fastcall TTrayIcon::Update()
+void __fastcall TScpTrayIcon::Update()
 {
   if (Visible)
   {
@@ -1127,7 +1081,7 @@ void __fastcall TTrayIcon::Update()
   }
 }
 //---------------------------------------------------------------------------
-void __fastcall TTrayIcon::SetVisible(bool value)
+void __fastcall TScpTrayIcon::SetVisible(bool value)
 {
   if (Visible != value)
   {
@@ -1144,7 +1098,7 @@ void __fastcall TTrayIcon::SetVisible(bool value)
   }
 }
 //---------------------------------------------------------------------------
-void __fastcall TTrayIcon::WndProc(TMessage & Message)
+void __fastcall TScpTrayIcon::WndProc(TMessage & Message)
 {
   try
   {
@@ -1206,12 +1160,12 @@ void __fastcall TTrayIcon::WndProc(TMessage & Message)
   }
 }
 //---------------------------------------------------------------------------
-AnsiString __fastcall TTrayIcon::GetHint()
+AnsiString __fastcall TScpTrayIcon::GetHint()
 {
   return FTrayIcon->szTip;
 }
 //---------------------------------------------------------------------------
-void __fastcall TTrayIcon::SetHint(AnsiString value)
+void __fastcall TScpTrayIcon::SetHint(AnsiString value)
 {
   if (Hint != value)
   {
@@ -1219,5 +1173,70 @@ void __fastcall TTrayIcon::SetHint(AnsiString value)
     StrPLCopy(FTrayIcon->szTip, value, Max - 1);
     Update();
   }
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+// Short-cut combo helpers (used by TShortCutDialog in forms\Custom.cpp).
+// The original implementation was not part of the Salamander plugin sources.
+//---------------------------------------------------------------------------
+static TShortCut __fastcall ShortCutComboItem(int Index)
+{
+  // Ctrl+Alt+0 .. Ctrl+Alt+9, Ctrl+Alt+A .. Ctrl+Alt+Z
+  wchar_t Key = (Index < 10) ? static_cast<wchar_t>(L'0' + Index) : static_cast<wchar_t>(L'A' + Index - 10);
+  return ShortCut(static_cast<Word>(Key), TShiftState() << ssCtrl << ssAlt);
+}
+//---------------------------------------------------------------------------
+void __fastcall InitializeShortCutCombo(TComboBox * ComboBox,
+  const TShortCuts & ShortCuts)
+{
+  ComboBox->Items->BeginUpdate();
+  {
+    FINALLY_GUARD([&]() { ComboBox->Items->EndUpdate(); });
+    ComboBox->Items->Clear();
+    ComboBox->Items->AddObject(LoadStr(SHORTCUT_NONE), reinterpret_cast<TObject *>(NativeInt(0)));
+    for (int Index = 0; Index < 10 + 26; Index++)
+    {
+      TShortCut AShortCut = ShortCutComboItem(Index);
+      if (!ShortCuts.Has(AShortCut))
+      {
+        ComboBox->Items->AddObject(ShortCutToText(AShortCut),
+          reinterpret_cast<TObject *>(NativeInt(AShortCut)));
+      }
+    }
+  }
+  ComboBox->Style = csDropDownList;
+  ComboBox->DropDownCount = 16;
+}
+//---------------------------------------------------------------------------
+void __fastcall SetShortCutCombo(TComboBox * ComboBox, TShortCut Value)
+{
+  for (int Index = ComboBox->Items->Count - 1; Index >= 0; Index--)
+  {
+    TShortCut AShortCut = static_cast<TShortCut>(reinterpret_cast<NativeInt>(ComboBox->Items->Objects[Index]));
+    if (AShortCut == Value)
+    {
+      ComboBox->ItemIndex = Index;
+      return;
+    }
+  }
+  if (Value != 0)
+  {
+    // shortcut not offered (e.g. already used), add it so the current value is shown
+    ComboBox->Items->AddObject(ShortCutToText(Value), reinterpret_cast<TObject *>(NativeInt(Value)));
+    ComboBox->ItemIndex = ComboBox->Items->Count - 1;
+  }
+  else
+  {
+    ComboBox->ItemIndex = 0;
+  }
+}
+//---------------------------------------------------------------------------
+TShortCut __fastcall GetShortCutCombo(TComboBox * ComboBox)
+{
+  if (ComboBox->ItemIndex < 0)
+  {
+    return 0;
+  }
+  return static_cast<TShortCut>(reinterpret_cast<NativeInt>(ComboBox->Items->Objects[ComboBox->ItemIndex]));
 }
 //---------------------------------------------------------------------------

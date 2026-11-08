@@ -5,7 +5,7 @@
 #include <comctrls.hpp>
 #include <WinInterface.h>
 #include <HelpIntfs.hpp>
-#include <WinHelpViewer.hpp>
+#include <HelpIntfs.hpp>
 //---------------------------------------------------------------------------
 void __fastcall CenterFormOn(TForm * Form, TControl * CenterOn);
 bool __fastcall ExecuteShellAndWait(const AnsiString Path, const AnsiString Params);
@@ -67,5 +67,6 @@ void __fastcall EditSelectBaseName(HWND Edit);
 //---------------------------------------------------------------------------
 void __fastcall InitializeCustomHelp(ICustomHelpViewer * HelpViewer);
 void __fastcall FinalizeCustomHelp();
+void __fastcall SetCustomHelpViewerID(int ViewerID);
 //---------------------------------------------------------------------------
 #endif

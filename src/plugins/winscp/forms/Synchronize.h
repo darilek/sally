@@ -71,7 +71,7 @@ private:
   TPopupMenu * FPresetsMenu;
   AnsiString FPreset;
   TSynchronizeOptions * FSynchronizeOptions;
-  static const MaxLogItems;
+  static const int MaxLogItems;
 
   void __fastcall SetParams(const TSynchronizeParamType& value);
   TSynchronizeParamType __fastcall GetParams();

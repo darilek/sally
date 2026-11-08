@@ -39,7 +39,7 @@ struct TMessageParams
   bool AllowHelp;
 
 private:
-  inline void Reset();
+  void Reset();
 };
 
 class TCustomScpExplorerForm;
@@ -127,19 +127,19 @@ void __fastcall DoConsoleDialog(TTerminal * Terminal,
     const AnsiString Command = "", const TStrings * Log = NULL);
 
 // forms\Copy.cpp
-const coTemp                = 0x001;
-const coDisableQueue        = 0x002;
-const coDisableDirectory    = 0x008; // not used anymore
-const coDisableNewerOnly    = 0x010;
-const coDoNotShowAgain      = 0x020;
-const coDisableSaveSettings = 0x040; // not used anymore
-const coDoNotUsePresets     = 0x080;
-const coAllowRemoteTransfer = 0x100;
-const coNoQueue             = 0x200;
-const coNoQueueIndividually = 0x400;
-const cooDoNotShowAgain     = 0x01;
-const cooRemoteTransfer     = 0x02;
-const cooSaveSettings       = 0x04;
+const int coTemp = 0x001;
+const int coDisableQueue = 0x002;
+const int coDisableDirectory = 0x008; // not used anymore
+const int coDisableNewerOnly = 0x010;
+const int coDoNotShowAgain = 0x020;
+const int coDisableSaveSettings = 0x040; // not used anymore
+const int coDoNotUsePresets = 0x080;
+const int coAllowRemoteTransfer = 0x100;
+const int coNoQueue = 0x200;
+const int coNoQueueIndividually = 0x400;
+const int cooDoNotShowAgain = 0x01;
+const int cooRemoteTransfer = 0x02;
+const int cooSaveSettings = 0x04;
 bool __fastcall DoCopyDialog(bool ToRemote,
   bool Move, TStrings * FileList, AnsiString & TargetDirectory,
   TGUICopyParamType * Params, int Options, int CopyParamAttrs,
@@ -158,18 +158,18 @@ void __fastcall DoLicenseDialog(TLicense License);
 
 // forms\Login.cpp
 // these flags are used in navigation tree of login dialog, change with care
-const loLocalDirectory = 0x01;
-const loLanguage       = 0x02;
-const loTools          = 0x04;
-const loLogWindow      = 0x08;
-const loAbout          = 0x10;
+const int loLocalDirectory = 0x01;
+const int loLanguage = 0x02;
+const int loTools = 0x04;
+const int loLogWindow = 0x08;
+const int loAbout = 0x10;
 
-const loPreferences    = 0x20;
-const loColor          = 0x80;
+const int loPreferences = 0x20;
+const int loColor = 0x80;
 
-const loNone           = 0x00;
-const loAddSession     = (loLocalDirectory | loLogWindow | loColor);
-const loStartup        = (loLocalDirectory | loLanguage | loTools |
+const int loNone = 0x00;
+const int loAddSession = (loLocalDirectory | loLogWindow | loColor);
+const int loStartup = (loLocalDirectory | loLanguage | loTools |
   loLogWindow | loPreferences | loAbout | loColor);
 bool __fastcall DoLoginDialog(TStoredSessionList * SessionList,
   TSessionData * Data, int Options);
@@ -201,7 +201,7 @@ class TCustomCommandList;
 class TCustomCommandType;
 class TShortCuts;
 enum TCustomCommandsMode { ccmAdd, ccmEdit, ccmAdHoc };
-const ccoDisableRemote = 0x01;
+const int ccoDisableRemote = 0x01;
 typedef void __fastcall (__closure *TCustomCommandValidate)
   (const TCustomCommandType & Command);
 bool __fastcall DoCustomCommandDialog(TCustomCommandType & Command,
@@ -223,9 +223,9 @@ bool __fastcall DoCopyParamCustomDialog(TCopyParamType & CopyParam,
 class TRemoteProperties;
 class TRemoteTokenList;
 struct TCalculateSizeStats;
-const cpMode =  0x01;
-const cpOwner = 0x02;
-const cpGroup = 0x04;
+const int cpMode =  0x01;
+const int cpOwner = 0x02;
+const int cpGroup = 0x04;
 typedef void __fastcall (__closure *TCalculateSizeEvent)
   (TStrings * FileList, __int64 & Size, TCalculateSizeStats & Stats,
    bool & Close);
@@ -254,20 +254,20 @@ bool __fastcall DoFilterMaskDialog(TCustomDirView * Parent,
   TFileFilter * Filter);
 #endif
 
-const spDelete = 0x01;
-const spNoConfirmation = 0x02;
-const spExistingOnly = 0x04;
-const spPreviewChanges = 0x40; // not used by core
-const spTimestamp = 0x100;
-const spNotByTime = 0x200;
-const spBySize = 0x400;
-const spSelectedOnly = 0x800;
-const spMirror = 0x1000;
+const int spDelete = 0x01;
+const int spNoConfirmation = 0x02;
+const int spExistingOnly = 0x04;
+const int spPreviewChanges = 0x40; // not used by core
+const int spTimestamp = 0x100;
+const int spNotByTime = 0x200;
+const int spBySize = 0x400;
+const int spSelectedOnly = 0x800;
+const int spMirror = 0x1000;
 
 // forms\Synchronize.cpp
-const soDoNotUsePresets =  0x01;
-const soNoMinimize =       0x02;
-const soAllowSelectedOnly = 0x04;
+const int soDoNotUsePresets =  0x01;
+const int soNoMinimize =       0x02;
+const int soAllowSelectedOnly = 0x04;
 typedef void __fastcall (__closure *TGetSynchronizeOptionsEvent)
   (int Params, TSynchronizeOptions & Options);
 bool __fastcall DoSynchronizeDialog(TSynchronizeParamType & Params,
@@ -278,9 +278,9 @@ bool __fastcall DoSynchronizeDialog(TSynchronizeParamType & Params,
 // forms\FullSynchronize.cpp
 struct TUsableCopyParamAttrs;
 enum TSynchronizeMode { smRemote, smLocal, smBoth };
-const fsoDisableTimestamp = 0x01;
-const fsoDoNotUsePresets =  0x02;
-const fsoAllowSelectedOnly = 0x04;
+const int fsoDisableTimestamp = 0x01;
+const int fsoDoNotUsePresets =  0x02;
+const int fsoAllowSelectedOnly = 0x04;
 bool __fastcall DoFullSynchronizeDialog(TSynchronizeMode & Mode, int & Params,
   AnsiString & LocalDirectory, AnsiString & RemoteDirectory,
   TCopyParamType * CopyParams, bool & SaveSettings, bool & SaveMode,
@@ -383,11 +383,11 @@ private:
 //---------------------------------------------------------------------------
 struct TNotifyIconData5;
 //---------------------------------------------------------------------------
-class TTrayIcon
+class TScpTrayIcon
 {
 public:
-  __fastcall TTrayIcon(unsigned int Id);
-  __fastcall ~TTrayIcon();
+  __fastcall TScpTrayIcon(unsigned int Id);
+  __fastcall ~TScpTrayIcon();
 
   static bool __fastcall SupportsBalloons();
 

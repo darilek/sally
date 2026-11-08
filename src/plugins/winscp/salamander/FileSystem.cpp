@@ -5,6 +5,7 @@
 //---------------------------------------------------------------------------
 #define NO_WIN32_LEAN_AND_MEAN
 #include <vcl.h>
+#include <Finally.h>
 #include "SalamandText.h"
 #pragma hdrstop
 
@@ -164,17 +165,15 @@ void __fastcall CPluginFSInterface::ConnectTerminal(TTerminal* Terminal)
     CALL_STACK_MESSAGE3("CPluginFSInterface::ConnectTerminal(%p, %p)",
                         this, Terminal);
 
-    try
-    {
-        Terminal->Open();
-    }
-    __finally
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
         if (FWaitWindowShown)
         {
             FWaitWindowShown = false;
             SalamanderGeneral()->DestroySafeWaitWindow();
         }
+    });
+        Terminal->Open();
     }
 }
 //---------------------------------------------------------------------------
@@ -192,8 +191,10 @@ void __fastcall CPluginFSInterface::Connect(int FSNameIndex, const AnsiString Us
     SessionData = CPluginInterfaceForFS::GetSessionData(FSNameIndex, UserPart, &Path);
     if (SessionData != NULL)
     {
-        try
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
+            delete SessionData;
+        });
             Connect(SessionData);
             if (IgnoreFileName)
             {
@@ -205,10 +206,6 @@ void __fastcall CPluginFSInterface::Connect(int FSNameIndex, const AnsiString Us
                 ChangePathBytes(FSNameIndex, NULL, FSNameIndex,
                                 Path.c_str(), NULL, false, 3);
             }
-        }
-        __finally
-        {
-            delete SessionData;
         }
     }
     else
@@ -264,12 +261,13 @@ bool __fastcall CPluginFSInterface::GetPathType(const AnsiString Path,
                         this, FTerminal, Path.c_str());
 
     BOOL IsDir;
-    int Error;
-    char* SecondPart;
+    int Error = 0;
+    size_t SecondPartOffset;
     bool Result;
 
-    Result = SalamanderGeneral()->SalParsePath(Application->Handle, Path.c_str(),
-                                               PathType, IsDir, SecondPart, NULL, NULL, false, NULL, NULL, &Error, 2 * MAX_PATH) ||
+    std::wstring PathW = SalW(Path.c_str());
+    Result = SPLSalParsePathOwned(SalamanderGeneral(), Application->Handle, PathW,
+                                  PathType, IsDir, SecondPartOffset, NULL, FALSE, NULL, &Error) ||
              (Error == SPP_INCOMLETEPATH);
     return Result;
 }
@@ -484,7 +482,7 @@ void __fastcall CPluginFSInterface::TerminalPromptUser(TTerminal* Terminal,
 {
     CALL_STACK_MESSAGE8("CPluginFSInterface::TerminalPromptUser(%p, %p, %d, %s, %s, %d, %s)",
                         this, Terminal, Kind, Name.c_str(), Instructions.c_str(), Prompts->Count,
-                        ((Prompts->Count > 0) ? Prompts->Strings[0].c_str() : "<no prompt>"));
+                        ((Prompts->Count > 0) ? AnsiString(Prompts->Strings[0]).c_str() : "<no prompt>"));
 
     if ((Kind == pkPrompt) && (FAuthenticateForm == NULL) &&
         (Terminal->Status != ssOpening))
@@ -510,17 +508,15 @@ void __fastcall CPluginFSInterface::TerminalPromptUser(TTerminal* Terminal,
             AuthenticateForm = MakeAuthenticateForm(Terminal->SessionData);
         }
 
-        try
-        {
-            Result = AuthenticateForm->PromptUser(Kind, Name, Instructions, Prompts, Results,
-                                                  (FAuthenticateForm != NULL), Terminal->StoredCredentialsTried);
-        }
-        __finally
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
             if (FAuthenticateForm == NULL)
             {
                 delete AuthenticateForm;
             }
+        });
+            Result = AuthenticateForm->PromptUser(Kind, Name, Instructions, Prompts, Results,
+                                                  (FAuthenticateForm != NULL), Terminal->StoredCredentialsTried);
         }
     }
 }
@@ -539,16 +535,14 @@ void __fastcall CPluginFSInterface::TerminalDisplayBanner(
         AuthenticateForm = MakeAuthenticateForm(Terminal->SessionData);
     }
 
-    try
-    {
-        AuthenticateForm->Banner(Banner, NeverShowAgain, Options);
-    }
-    __finally
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
         if (FAuthenticateForm == NULL)
         {
             delete AuthenticateForm;
         }
+    });
+        AuthenticateForm->Banner(Banner, NeverShowAgain, Options);
     }
 }
 //---------------------------------------------------------------------------
@@ -890,8 +884,13 @@ bool __fastcall CPluginFSInterface::RemoteTransfer(AnsiString TargetDirectory,
 
     if (Result)
     {
-        try
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
+            // must be called for "duplicate" too, as the current directory is
+            // reloaded always, so we must force Salamander to do the same
+            CurrentPathChanged(SubDirs);
+            OurPathChanged(TargetDirectory, SubDirs);
+        });
             if (Move)
             {
                 FTerminal->MoveFiles(FFileList, TargetDirectory, FileMask);
@@ -900,13 +899,6 @@ bool __fastcall CPluginFSInterface::RemoteTransfer(AnsiString TargetDirectory,
             {
                 FTerminal->CopyFiles(FFileList, TargetDirectory, FileMask);
             }
-        }
-        __finally
-        {
-            // must be called for "duplicate" too, as the current directory is
-            // reloaded always, so we must force Salamander to do the same
-            CurrentPathChanged(SubDirs);
-            OurPathChanged(TargetDirectory, SubDirs);
         }
     }
     return Result;
@@ -930,14 +922,12 @@ void __fastcall CPluginFSInterface::RemoteTransfer(bool Move)
             (SelectedFiles + SelectedDirs == 0);
 
         CreateFileList(Panel, osRemote, Focused);
-        try
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
+            DestroyFileList();
+        });
             RemoteTransfer(FTerminal->CurrentDirectory, "*.*", !Focused && (SelectedDirs > 0),
                            false, Move);
-        }
-        __finally
-        {
-            DestroyFileList();
         }
     }
 }
@@ -1001,7 +991,7 @@ void __fastcall CPluginFSInterface::GetSynchronizeOptions(
     {
         Options.Filter = new TStringList();
         Options.Filter->CaseSensitive = false;
-        Options.Filter->Duplicates = dupAccept;
+        Options.Filter->Duplicates = System::Classes::dupAccept;
 
         for (int PanelI = 0; PanelI < 2; PanelI++)
         {
@@ -1057,10 +1047,14 @@ void __fastcall CPluginFSInterface::FullSynchronize(bool Source)
         }
 
         TSynchronizeChecklist* Checklist = NULL;
-        try
-        {
-            try
-            {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
+            delete Checklist;
+        });
+            { // try/__finally -> scope guard (bcc64x)
+              FINALLY_GUARD([&]() {
+                SAFE_DESTROY(FSynchronizeProgressForm);
+            });
                 FSynchronizeProgressForm = new TSynchronizeProgressForm(Application, false, true);
                 FSynchronizeProgressForm->Start();
 
@@ -1068,10 +1062,6 @@ void __fastcall CPluginFSInterface::FullSynchronize(bool Source)
                                                           static_cast<TTerminal::TSynchronizeMode>(Mode),
                                                           &CopyParam, Params | spNoConfirmation, TerminalSynchronizeDirectory,
                                                           &SynchronizeOptions);
-            }
-            __finally
-            {
-                SAFE_DESTROY(FSynchronizeProgressForm);
             }
 
             if (Checklist->Count == 0)
@@ -1083,24 +1073,18 @@ void __fastcall CPluginFSInterface::FullSynchronize(bool Source)
                      DoSynchronizeChecklistDialog(Checklist, Mode, Params,
                                                   LocalDirectory, RemoteDirectory, NULL))
             {
-                try
-                {
+                { // try/__finally -> scope guard (bcc64x)
+                  FINALLY_GUARD([&]() {
+                    SAFE_DESTROY(FSynchronizeProgressForm);
+                    CurrentPathChanged(true);
+                });
                     FSynchronizeProgressForm = new TSynchronizeProgressForm(Application, false, false);
                     FSynchronizeProgressForm->Start();
 
                     FTerminal->SynchronizeApply(Checklist, LocalDirectory, RemoteDirectory,
                                                 &CopyParam, Params | spNoConfirmation, TerminalSynchronizeDirectory);
                 }
-                __finally
-                {
-                    SAFE_DESTROY(FSynchronizeProgressForm);
-                    CurrentPathChanged(true);
-                }
             }
-        }
-        __finally
-        {
-            delete Checklist;
         }
     }
 }
@@ -1115,8 +1099,20 @@ void __fastcall CPluginFSInterface::Synchronize(const AnsiString LocalDirectory,
                         Params, Checklist, Options);
 
     TSynchronizeChecklist* AChecklist = NULL;
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+        if (Checklist == NULL)
+        {
+            delete AChecklist;
+        }
+        else
+        {
+            *Checklist = AChecklist;
+        }
+
+        SAFE_DESTROY(FSynchronizeProgressForm);
+        CurrentPathChanged(true);
+    });
         FSynchronizeProgressForm = new TSynchronizeProgressForm(Application, false, true);
         if (FLAGCLEAR(Params, TTerminal::spDelayProgress))
         {
@@ -1139,20 +1135,6 @@ void __fastcall CPluginFSInterface::Synchronize(const AnsiString LocalDirectory,
         FTerminal->SynchronizeApply(AChecklist, LocalDirectory, RemoteDirectory,
                                     &CopyParam, Params | spNoConfirmation, TerminalSynchronizeDirectory);
     }
-    __finally
-    {
-        if (Checklist == NULL)
-        {
-            delete AChecklist;
-        }
-        else
-        {
-            *Checklist = AChecklist;
-        }
-
-        SAFE_DESTROY(FSynchronizeProgressForm);
-        CurrentPathChanged(true);
-    }
 }
 //---------------------------------------------------------------------------
 void __fastcall CPluginFSInterface::Synchronize()
@@ -1172,8 +1154,10 @@ void __fastcall CPluginFSInterface::Synchronize()
                                       &DoSynchronizeTooManyDirectories);
     assert(FSynchronizeController == NULL);
     FSynchronizeController = &Controller;
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+        FSynchronizeController = NULL;
+    });
         TCopyParamType CopyParam = GUIConfiguration->DefaultCopyParam;
         int CopyParamAttrs = FTerminal->UsableCopyParamAttrs(0).Upload;
         int Options =
@@ -1199,10 +1183,6 @@ void __fastcall CPluginFSInterface::Synchronize()
                 }
             }
         }
-    }
-    __finally
-    {
-        FSynchronizeController = NULL;
     }
 }
 //---------------------------------------------------------------------------
@@ -1472,32 +1452,56 @@ void __fastcall CPluginFSInterface::FileSystemInfo()
 //---------------------------------------------------------------------------
 BOOL WINAPI CPluginFSInterface::GetCurrentPath(CSalamanderStringBuffer* UserPart)
 {
-    CALL_STACK_MESSAGE5("CPluginFSInterface::GetCurrentPath(%p, %p, %d, %p)",
-                        this, FTerminal, FClosing, UserPart);
-
-    if (FClosing)
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        return FALSE;
+        CALL_STACK_MESSAGE5("CPluginFSInterface::GetCurrentPath(%p, %p, %d, %p)",
+                            this, FTerminal, FClosing, UserPart);
+    
+        if (FClosing)
+        {
+            return FALSE;
+        }
+    
+        return WriteWinScpBytes(UserPart, CurrentFullPath());
     }
-
-    return WriteWinScpBytes(UserPart, CurrentFullPath());
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginFSInterface::GetCurrentPath", &E, false);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSInterface::GetCurrentPath", NULL, false);
+    }
+    return FALSE;
 }
 //---------------------------------------------------------------------------
 BOOL WINAPI CPluginFSInterface::GetFullName(CFileData& File, int /*IsDir*/,
                                             CSalamanderStringBuffer* FullNameBuffer)
 {
-    CALL_STACK_MESSAGE5("CPluginFSInterface::GetFullName(%p, %p, %d, %p)",
-                        this, FTerminal, FClosing, FullNameBuffer);
-
-    if (FClosing)
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        return FALSE;
+        CALL_STACK_MESSAGE5("CPluginFSInterface::GetFullName(%p, %p, %d, %p)",
+                            this, FTerminal, FClosing, FullNameBuffer);
+    
+        if (FClosing)
+        {
+            return FALSE;
+        }
+    
+        TRemoteFile* RemoteFile = reinterpret_cast<TRemoteFile*>(File.PluginData);
+        assert(RemoteFile);
+        AnsiString FullName = FullPath(RemoteFile->FullFileName);
+        return WriteWinScpBytes(FullNameBuffer, FullName);
     }
-
-    TRemoteFile* RemoteFile = reinterpret_cast<TRemoteFile*>(File.PluginData);
-    assert(RemoteFile);
-    AnsiString FullName = FullPath(RemoteFile->FullFileName);
-    return WriteWinScpBytes(FullNameBuffer, FullName);
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginFSInterface::GetFullName", &E, false);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSInterface::GetFullName", NULL, false);
+    }
+    return FALSE;
 }
 //---------------------------------------------------------------------------
 BOOL WINAPI CPluginFSInterface::GetFullFSPath(HWND Parent,
@@ -1550,40 +1554,64 @@ BOOL WINAPI CPluginFSInterface::GetRootPath(CSalamanderStringBuffer* UserPart)
 BOOL WINAPI CPluginFSInterface::IsCurrentPath(int CurrentFSNameIndex,
                                               int FSNameIndex, const wchar_t* UserPart)
 {
-    CALL_STACK_MESSAGE5("CPluginFSInterface::IsCurrentPath(%p, %p, %d, %d)",
-                        this, FTerminal, CurrentFSNameIndex, FSNameIndex);
-
-    if (FClosing)
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        return FALSE;
+        CALL_STACK_MESSAGE5("CPluginFSInterface::IsCurrentPath(%p, %p, %d, %d)",
+                            this, FTerminal, CurrentFSNameIndex, FSNameIndex);
+    
+        if (FClosing)
+        {
+            return FALSE;
+        }
+    
+        AnsiString UserPartBytes;
+        return (CurrentFSNameIndex == FSNameIndex) &&
+               WideToWinScpBytes(UserPart, UserPartBytes) &&
+               UnixComparePaths(UserPartBytes, CurrentFullPath());
     }
-
-    AnsiString UserPartBytes;
-    return (CurrentFSNameIndex == FSNameIndex) &&
-           WideToWinScpBytes(UserPart, UserPartBytes) &&
-           UnixComparePaths(UserPartBytes, CurrentFullPath());
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginFSInterface::IsCurrentPath", &E, false);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSInterface::IsCurrentPath", NULL, false);
+    }
+    return FALSE;
 }
 //---------------------------------------------------------------------------
 BOOL WINAPI CPluginFSInterface::IsOurPath(int CurrentFSNameIndex,
                                           int FSNameIndex, const wchar_t* UserPart)
 {
-    CALL_STACK_MESSAGE5("CPluginFSInterface::IsOurPath(%p, %p, %d, %d)",
-                        this, FTerminal, CurrentFSNameIndex, FSNameIndex);
-
-    if (FClosing)
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        return FALSE;
+        CALL_STACK_MESSAGE5("CPluginFSInterface::IsOurPath(%p, %p, %d, %d)",
+                            this, FTerminal, CurrentFSNameIndex, FSNameIndex);
+    
+        if (FClosing)
+        {
+            return FALSE;
+        }
+    
+        BOOL Result = (CurrentFSNameIndex == FSNameIndex);
+    
+        if (Result)
+        {
+            AnsiString UserPartBytes;
+            Result = WideToWinScpBytes(UserPart, UserPartBytes) &&
+                     IsOurUserPart(UserPartBytes);
+        }
+        return Result;
     }
-
-    BOOL Result = (CurrentFSNameIndex == FSNameIndex);
-
-    if (Result)
+    catch (Exception& E)
     {
-        AnsiString UserPartBytes;
-        Result = WideToWinScpBytes(UserPart, UserPartBytes) &&
-                 IsOurUserPart(UserPartBytes);
+        PluginBoundaryException("CPluginFSInterface::IsOurPath", &E, false);
     }
-    return Result;
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSInterface::IsOurPath", NULL, false);
+    }
+    return FALSE;
 }
 //---------------------------------------------------------------------------
 BOOL __fastcall CPluginFSInterface::ChangePathBytes(int CurrentFSNameIndex,
@@ -1636,13 +1664,11 @@ BOOL __fastcall CPluginFSInterface::ChangePathBytes(int CurrentFSNameIndex,
                 if (!UnixComparePaths(Path, FTerminal->CurrentDirectory))
                 {
                     FTerminal->ExceptionOnFail = true;
-                    try
-                    {
-                        FTerminal->ChangeDirectory(Path);
-                    }
-                    __finally
-                    {
+                    { // try/__finally -> scope guard (bcc64x)
+                      FINALLY_GUARD([&]() {
                         FTerminal->ExceptionOnFail = false;
+                    });
+                        FTerminal->ChangeDirectory(Path);
                     }
                 }
                 Result = TRUE;
@@ -1669,22 +1695,34 @@ BOOL WINAPI CPluginFSInterface::ChangePath(int CurrentFSNameIndex,
                                            CSalamanderStringBuffer* CutFileName,
                                            BOOL* PathWasCut, BOOL ForceRefresh, int Mode)
 {
-    AnsiString UserPartBytes;
-    if (!WideToWinScpBytes(UserPart, UserPartBytes))
-        return FALSE;
-
-    if (PathWasCut != NULL)
-        *PathWasCut = FALSE;
-    if (CutFileName != NULL &&
-        !sally::plugin_abi::WriteStringBuffer(*CutFileName, std::wstring()))
-        return FALSE;
-
-    AnsiString FSNameBytes;
-    const BOOL Result = ChangePathBytes(CurrentFSNameIndex,
-                                        FSNameBuffer != NULL ? &FSNameBytes : NULL,
-                                        FSNameIndex, UserPartBytes.c_str(), PathWasCut,
-                                        ForceRefresh, Mode);
-    return Result && (FSNameBuffer == NULL || WriteWinScpBytes(FSNameBuffer, FSNameBytes));
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
+    {
+        AnsiString UserPartBytes;
+        if (!WideToWinScpBytes(UserPart, UserPartBytes))
+            return FALSE;
+    
+        if (PathWasCut != NULL)
+            *PathWasCut = FALSE;
+        if (CutFileName != NULL &&
+            !sally::plugin_abi::WriteStringBuffer(*CutFileName, std::wstring()))
+            return FALSE;
+    
+        AnsiString FSNameBytes;
+        const BOOL Result = ChangePathBytes(CurrentFSNameIndex,
+                                            FSNameBuffer != NULL ? &FSNameBytes : NULL,
+                                            FSNameIndex, UserPartBytes.c_str(), PathWasCut,
+                                            ForceRefresh, Mode);
+        return Result && (FSNameBuffer == NULL || WriteWinScpBytes(FSNameBuffer, FSNameBytes));
+    }
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginFSInterface::ChangePath", &E, true);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSInterface::ChangePath", NULL, false);
+    }
+    return FALSE;
 }
 //---------------------------------------------------------------------------
 BOOL WINAPI CPluginFSInterface::ListCurrentPath(CSalamanderDirectoryAbstract* Dir,
@@ -1742,8 +1780,9 @@ BOOL WINAPI CPluginFSInterface::ListCurrentPath(CSalamanderDirectoryAbstract* Di
         {
             File = FTerminal->Files->Files[Index];
 
-            FileData.Name = SalamanderGeneral()->DupStr(File->FileName.c_str());
-            FileData.NameLen = File->FileName.Length();
+            const std::wstring FileNameW = SalW(File->FileName.c_str());
+            FileData.Name = SalamanderGeneral()->DupStr(FileNameW.c_str());
+            FileData.NameLen = static_cast<int>(FileNameW.length());
             if (FileData.Name != NULL)
             {
                 if (File->IsParentDirectory ||
@@ -1753,7 +1792,7 @@ BOOL WINAPI CPluginFSInterface::ListCurrentPath(CSalamanderDirectoryAbstract* Di
                 }
                 else
                 {
-                    char* s = strrchr(FileData.Name, '.');
+                    wchar_t* s = wcsrchr(FileData.Name, L'.');
                     if (s != NULL)
                         FileData.Ext = s + 1; // ".cvspass" is considered an extension on Windows
                     else
@@ -1771,7 +1810,7 @@ BOOL WINAPI CPluginFSInterface::ListCurrentPath(CSalamanderDirectoryAbstract* Di
                 (File->Rights->ReadOnly ? FILE_ATTRIBUTE_READONLY : 0);
             FileData.Hidden = File->IsHidden;
 
-            FileData.PluginData = reinterpret_cast<unsigned long>(File);
+            FileData.PluginData = reinterpret_cast<DWORD_PTR>(File);
 
             FileData.IsLink = File->IsSymLink;
             FileData.IsOffline = 0;
@@ -1981,100 +2020,150 @@ void WINAPI CPluginFSInterface::ReleaseObject(HWND Parent)
 //---------------------------------------------------------------------------
 DWORD WINAPI CPluginFSInterface::GetSupportedServices()
 {
-    CALL_STACK_MESSAGE3("CPluginFSInterface::GetSupportedServices(%p, %p)",
-                        this, FTerminal);
-
-    unsigned int Services =
-        FS_SERVICE_GETFSICON | FS_SERVICE_GETCHANGEDRIVEORDISCONNECTITEM |
-        FS_SERVICE_GETNEXTDIRLINEHOTPATH | FS_SERVICE_SHOWINFO |
-        FS_SERVICE_ACCEPTSCHANGENOTIF | FS_SERVICE_VIEWFILE |
-        FS_SERVICE_CREATEDIR | FS_SERVICE_DELETE |
-        FS_SERVICE_COPYFROMFS | FS_SERVICE_MOVEFROMFS |
-        FS_SERVICE_COPYFROMDISKTOFS | FS_SERVICE_MOVEFROMDISKTOFS |
-        FS_SERVICE_CHANGEATTRS | FS_SERVICE_CONTEXTMENU | FS_SERVICE_COMMANDLINE |
-        FS_SERVICE_SHOWSECURITYINFO;
-
-    if (!FClosing && ((FTerminal == NULL) || FTerminal->IsCapable[fcRename]))
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        Services |= FS_SERVICE_QUICKRENAME;
+        CALL_STACK_MESSAGE3("CPluginFSInterface::GetSupportedServices(%p, %p)",
+                            this, FTerminal);
+    
+        unsigned int Services =
+            FS_SERVICE_GETFSICON | FS_SERVICE_GETCHANGEDRIVEORDISCONNECTITEM |
+            FS_SERVICE_GETNEXTDIRLINEHOTPATH | FS_SERVICE_SHOWINFO |
+            FS_SERVICE_ACCEPTSCHANGENOTIF | FS_SERVICE_VIEWFILE |
+            FS_SERVICE_CREATEDIR | FS_SERVICE_DELETE |
+            FS_SERVICE_COPYFROMFS | FS_SERVICE_MOVEFROMFS |
+            FS_SERVICE_COPYFROMDISKTOFS | FS_SERVICE_MOVEFROMDISKTOFS |
+            FS_SERVICE_CHANGEATTRS | FS_SERVICE_CONTEXTMENU | FS_SERVICE_COMMANDLINE |
+            FS_SERVICE_SHOWSECURITYINFO;
+    
+        if (!FClosing && ((FTerminal == NULL) || FTerminal->IsCapable[fcRename]))
+        {
+            Services |= FS_SERVICE_QUICKRENAME;
+        }
+    
+        return Services;
     }
-
-    return Services;
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginFSInterface::GetSupportedServices", &E, false);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSInterface::GetSupportedServices", NULL, false);
+    }
+    return 0;
 }
 //---------------------------------------------------------------------------
-BOOL WINAPI CPluginFSInterface::GetChangeDriveOrDisconnectItem(const char* /*FSName*/,
-                                                               char*& Title, HICON& Icon, BOOL& DestroyIcon)
+BOOL WINAPI CPluginFSInterface::GetChangeDriveOrDisconnectItem(const wchar_t* /*FSName*/,
+                                                               wchar_t*& Title, HICON& Icon, BOOL& DestroyIcon)
 {
-    CALL_STACK_MESSAGE3("CPluginFSInterface::GetChangeDriveOrDisconnectItem(%p, %p)",
-                        this, FTerminal);
-
-    if (FClosing)
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        return FALSE;
+        CALL_STACK_MESSAGE3("CPluginFSInterface::GetChangeDriveOrDisconnectItem(%p, %p)",
+                            this, FTerminal);
+    
+        if (FClosing)
+        {
+            return FALSE;
+        }
+    
+        AnsiString Caption;
+        Caption = FORMAT("\t%s://%s\t",
+                         (FSName(), FTerminal->SessionData->SessionName));
+        std::string escapedCaption(Caption.c_str());
+        for (size_t at = 0;
+             (at = escapedCaption.find('&', at)) != std::string::npos;
+             at += 2)
+            escapedCaption.insert(at, 1, '&');
+        Caption = escapedCaption.c_str();
+        Title = SalamanderGeneral()->DupStr(SalW(Caption.c_str()).c_str());
+    
+        BOOL Result = (Title != NULL);
+        if (Result)
+        {
+            Icon = GetFSIcon(DestroyIcon);
+        }
+        return Result;
     }
-
-    AnsiString Caption;
-    Caption = FORMAT("\t%s://%s\t",
-                     (FSName(), FTerminal->SessionData->SessionName));
-    std::string escapedCaption(Caption.c_str());
-    for (size_t at = 0;
-         (at = escapedCaption.find('&', at)) != std::string::npos;
-         at += 2)
-        escapedCaption.insert(at, 1, '&');
-    Caption = escapedCaption.c_str();
-    Title = SalamanderGeneral()->DupStr(Caption.c_str());
-
-    BOOL Result = (Title != NULL);
-    if (Result)
+    catch (Exception& E)
     {
-        Icon = GetFSIcon(DestroyIcon);
+        PluginBoundaryException("CPluginFSInterface::GetChangeDriveOrDisconnectItem", &E, false);
     }
-    return Result;
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSInterface::GetChangeDriveOrDisconnectItem", NULL, false);
+    }
+    return FALSE;
 }
 //---------------------------------------------------------------------------
 HICON WINAPI CPluginFSInterface::GetFSIcon(BOOL& DestroyIcon)
 {
-    CALL_STACK_MESSAGE3("CPluginFSInterface::GetFSIcon(%p, %p)",
-                        this, FTerminal);
-
-    HICON Handle = static_cast<HICON>(LoadImage(FPlugin->GetDLLInstance(),
-                                                MAKEINTRESOURCE(IDI_WINSCP), IMAGE_ICON, 16, 16, SalamanderGeneral()->GetIconLRFlags()));
-    DestroyIcon = TRUE;
-    return Handle;
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
+    {
+        CALL_STACK_MESSAGE3("CPluginFSInterface::GetFSIcon(%p, %p)",
+                            this, FTerminal);
+    
+        HICON Handle = static_cast<HICON>(LoadImage(FPlugin->GetDLLInstance(),
+                                                    MAKEINTRESOURCE(IDI_WINSCP), IMAGE_ICON, 16, 16, SalamanderGeneral()->GetIconLRFlags()));
+        DestroyIcon = TRUE;
+        return Handle;
+    }
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginFSInterface::GetFSIcon", &E, false);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSInterface::GetFSIcon", NULL, false);
+    }
+    return NULL;
 }
 //---------------------------------------------------------------------------
-BOOL WINAPI CPluginFSInterface::GetNextDirectoryLineHotPath(const char* Text,
+BOOL WINAPI CPluginFSInterface::GetNextDirectoryLineHotPath(const wchar_t* TextW,
                                                             int PathLen, int& Offset)
 {
-    CALL_STACK_MESSAGE6("CPluginFSInterface::GetNextDirectoryLineHotPath(%p, %p, %s, %d, %d)",
-                        this, FTerminal, Text, PathLen, Offset);
-
-    if (FClosing)
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        return FALSE;
-    }
-
-    BOOL Result;
-    if (Offset == 0)
-    {
-        AnsiString RootPath = FullFSPath(FullPath("/"));
-
-        Offset = RootPath.Length();
-
-        assert(SameText(AnsiString(Text).SubString(1, Offset), RootPath));
-
-        Result = TRUE;
-    }
-    else
-    {
-        const char* Separator = strchr(Text + Offset + 1, '/');
-        Result = (Separator != NULL) && (Separator < Text + PathLen);
-        if (Result)
+        const AnsiString Text_A = SalA(TextW);
+        const char* Text = Text_A.c_str();
+        CALL_STACK_MESSAGE6("CPluginFSInterface::GetNextDirectoryLineHotPath(%p, %p, %s, %d, %d)",
+                            this, FTerminal, Text, PathLen, Offset);
+    
+        if (FClosing)
         {
-            Offset = Separator - Text;
+            return FALSE;
         }
+    
+        BOOL Result;
+        if (Offset == 0)
+        {
+            AnsiString RootPath = FullFSPath(FullPath("/"));
+    
+            Offset = RootPath.Length();
+    
+            assert(SameText(AnsiString(Text).SubString(1, Offset), RootPath));
+    
+            Result = TRUE;
+        }
+        else
+        {
+            const char* Separator = strchr(Text + Offset + 1, '/');
+            Result = (Separator != NULL) && (Separator < Text + PathLen);
+            if (Result)
+            {
+                Offset = Separator - Text;
+            }
+        }
+        return Result;
     }
-    return Result;
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginFSInterface::GetNextDirectoryLineHotPath", &E, false);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSInterface::GetNextDirectoryLineHotPath", NULL, false);
+    }
+    return FALSE;
 }
 //---------------------------------------------------------------------------
 void __fastcall CPluginFSInterface::GetSpaceAvailable(const AnsiString Path,
@@ -2106,7 +2195,7 @@ void __fastcall CPluginFSInterface::GetSpaceAvailable(const AnsiString Path,
     }
 }
 //---------------------------------------------------------------------------
-void WINAPI CPluginFSInterface::ShowInfoDialog(const char* /*FSName*/, HWND Parent)
+void WINAPI CPluginFSInterface::ShowInfoDialog(const wchar_t* /*FSName*/, HWND Parent)
 {
     CALL_STACK_MESSAGE4("CPluginFSInterface::ShowInfoDialog(%p, %p, %x)",
                         this, FTerminal, Parent);
@@ -2129,39 +2218,52 @@ void WINAPI CPluginFSInterface::ShowInfoDialog(const char* /*FSName*/, HWND Pare
 }
 //---------------------------------------------------------------------------
 void WINAPI CPluginFSInterface::AcceptChangeOnPathNotification(
-    const char* /*FSName*/, const char* APath, BOOL IncludingSubdirs)
+    const wchar_t* /*FSName*/, const wchar_t* APathW, BOOL IncludingSubdirs)
 {
-    CALL_STACK_MESSAGE5("CPluginFSInterface::AcceptChangeOnPathNotification(%p, %p, %s, %d)",
-                        this, FTerminal, APath, IncludingSubdirs);
-
-    if (FClosing)
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        return;
+        const AnsiString APath_A = SalA(APathW);
+        const char* APath = APath_A.c_str();
+        CALL_STACK_MESSAGE5("CPluginFSInterface::AcceptChangeOnPathNotification(%p, %p, %s, %d)",
+                            this, FTerminal, APath, IncludingSubdirs);
+    
+        if (FClosing)
+        {
+            return;
+        }
+    
+        assert(FTerminal);
+        assert(FTerminal->Active);
+    
+        AnsiString FullPath(APath);
+        if (StripFS(FullPath, false))
+        {
+            AnsiString Path;
+    
+            CPluginInterfaceForFS::ParseUserPart(FullPath, UnixPaths(), NULL, NULL,
+                                                 NULL, NULL, NULL, &Path);
+            // if this FS sent the notification, do not clear the cache
+            // (in case it was triggered by a background transfer, because then we would
+            // lose the loaded directory and there would be no refresh)
+            // btw, this is a rather imperfect check, but sufficient for now
+            if (!FPreloaded)
+            {
+                FTerminal->DirectoryModified(Path, IncludingSubdirs);
+            }
+    
+            if (AffectsCurrentPath(APath, IncludingSubdirs))
+            {
+                SalamanderGeneral()->PostRefreshPanelFS(this);
+            }
+        }
     }
-
-    assert(FTerminal);
-    assert(FTerminal->Active);
-
-    AnsiString FullPath(APath);
-    if (StripFS(FullPath, false))
+    catch (Exception& E)
     {
-        AnsiString Path;
-
-        CPluginInterfaceForFS::ParseUserPart(FullPath, UnixPaths(), NULL, NULL,
-                                             NULL, NULL, NULL, &Path);
-        // if this FS sent the notification, do not clear the cache
-        // (in case it was triggered by a background transfer, because then we would
-        // lose the loaded directory and there would be no refresh)
-        // btw, this is a rather imperfect check, but sufficient for now
-        if (!FPreloaded)
-        {
-            FTerminal->DirectoryModified(Path, IncludingSubdirs);
-        }
-
-        if (AffectsCurrentPath(APath, IncludingSubdirs))
-        {
-            SalamanderGeneral()->PostRefreshPanelFS(this);
-        }
+        PluginBoundaryException("CPluginFSInterface::AcceptChangeOnPathNotification", &E, false);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSInterface::AcceptChangeOnPathNotification", NULL, false);
     }
 }
 //---------------------------------------------------------------------------
@@ -2196,15 +2298,13 @@ BOOL WINAPI CPluginFSInterface::ExecuteCommandLine(HWND Parent,
 
         if (Result)
         {
-            try
-            {
+            { // try/__finally -> scope guard (bcc64x)
+              FINALLY_GUARD([&]() {
+                CurrentPathChanged(false);
+            });
                 SetParentWindow(Parent);
 
                 DoConsoleDialog(FTerminal, CommandBytes);
-            }
-            __finally
-            {
-                CurrentPathChanged(false);
             }
         }
     }
@@ -2270,13 +2370,11 @@ BOOL WINAPI CPluginFSInterface::QuickRename(const wchar_t* /*FSName*/, int Mode,
             if (!WideToWinScpBytes(NewNameW.c_str(), RenameBytes))
                 return FALSE;
 
-            try
-            {
-                FTerminal->RenameFile(RemoteFile, RenameBytes, true);
-            }
-            __finally
-            {
+            { // try/__finally -> scope guard (bcc64x)
+              FINALLY_GUARD([&]() {
                 CurrentPathChanged(IsDir);
+            });
+                FTerminal->RenameFile(RemoteFile, RenameBytes, true);
             }
         }
     }
@@ -2319,13 +2417,11 @@ BOOL WINAPI CPluginFSInterface::CreateDir(const wchar_t* /*FSName*/, int Mode,
     {
         SetParentWindow(Parent);
 
-        try
-        {
-            FTerminal->CreateDirectory(NewNameBytes);
-        }
-        __finally
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
             CurrentPathChanged(false);
+        });
+            FTerminal->CreateDirectory(NewNameBytes);
         }
     }
     catch (Exception& E)
@@ -2336,7 +2432,7 @@ BOOL WINAPI CPluginFSInterface::CreateDir(const wchar_t* /*FSName*/, int Mode,
     return sally::plugin_abi::WriteStringBuffer(*NewName, NewNameW) ? TRUE : FALSE;
 }
 //---------------------------------------------------------------------------
-void WINAPI CPluginFSInterface::ViewFile(const char* /*FSName*/, HWND Parent,
+void WINAPI CPluginFSInterface::ViewFile(const wchar_t* /*FSName*/, HWND Parent,
                                          CSalamanderForViewFileOnFSAbstract* Salamander, CFileData& File)
 {
     CALL_STACK_MESSAGE5("CPluginFSInterface::ViewFile(%p, %p, %x, %p)",
@@ -2360,39 +2456,41 @@ void WINAPI CPluginFSInterface::ViewFile(const char* /*FSName*/, HWND Parent,
         CopyParam.ExcludeFileMask = TFileMasks();
 
         AnsiString UniqPath;
-        AnsiString LocalFileName = CopyParam.ChangeFileName(File.Name, osRemote, false);
+        AnsiString LocalFileName = CopyParam.ChangeFileName(SalA(File.Name), osRemote, false);
         UniqPath = FullFSPath(UnixIncludeTrailingBackslash(CurrentFullPath()) +
                               LocalFileName);
 
         CQuadWord FileSize(0, 0);
         BOOL CacheExisted;
-        const char* TempFileName = Salamander->AllocFileNameInCache(
-            Parent, UniqPath.c_str(), LocalFileName.c_str(), NULL, CacheExisted);
+        const std::wstring UniqPathW = SalW(UniqPath.c_str());
+        const wchar_t* TempFileNameW = Salamander->AllocFileNameInCache(
+            Parent, UniqPathW.c_str(), SalW(LocalFileName.c_str()).c_str(), NULL, CacheExisted);
 
-        if (TempFileName)
+        if (TempFileNameW)
         {
             bool CacheCreated = false;
             HANDLE FileLock = NULL;
             BOOL FileLockOwner = FALSE;
 
-            try
-            {
+            { // try/__finally -> scope guard (bcc64x)
+              FINALLY_GUARD([&]() {
+                Salamander->FreeFileNameInCache(UniqPathW.c_str(), CacheExisted,
+                                                CacheCreated, FileSize, FileLock, FileLockOwner, TRUE);
+            });
                 if (!CacheExisted)
                 {
-                    AnsiString TempDirectory(ExtractFilePath(TempFileName));
+                    AnsiString TempDirectory(SalA(ExtractFilePath(UnicodeString(TempFileNameW)).c_str()));
 
                     CreateFileList(&File, osRemote);
-                    try
-                    {
+                    { // try/__finally -> scope guard (bcc64x)
+                      FINALLY_GUARD([&]() {
+                        DestroyFileList();
+                    });
                         FTerminal->CopyToLocal(FFileList, TempDirectory, &CopyParam,
                                                cpTemporary | cpNoConfirmation);
                     }
-                    __finally
-                    {
-                        DestroyFileList();
-                    }
 
-                    HANDLE Handle = CreateFile(TempFileName, GENERIC_READ,
+                    HANDLE Handle = CreateFileW(TempFileNameW, GENERIC_READ,
                                                FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, 0);
                     CacheCreated = (Handle != INVALID_HANDLE_VALUE);
                     if (CacheCreated)
@@ -2404,17 +2502,12 @@ void WINAPI CPluginFSInterface::ViewFile(const char* /*FSName*/, HWND Parent,
                 }
 
                 if ((!CacheExisted && !CacheCreated) ||
-                    !Salamander->OpenViewer(Parent, TempFileName, &FileLock, &FileLockOwner))
+                    !Salamander->OpenViewer(Parent, TempFileNameW, &FileLock, &FileLockOwner))
                 {
                     FileLock = NULL;
                     FileLockOwner = FALSE;
                 }
-                SalamanderGeneral()->RemoveOneFileFromCache(UniqPath.c_str());
-            }
-            __finally
-            {
-                Salamander->FreeFileNameInCache(UniqPath.c_str(), CacheExisted,
-                                                CacheCreated, FileSize, FileLock, FileLockOwner, TRUE);
+                SalamanderGeneral()->RemoveOneFileFromCache(UniqPathW.c_str());
             }
         }
     }
@@ -2424,7 +2517,7 @@ void WINAPI CPluginFSInterface::ViewFile(const char* /*FSName*/, HWND Parent,
     }
 }
 //---------------------------------------------------------------------------
-BOOL WINAPI CPluginFSInterface::Delete(const char* /*FSName*/, int Mode,
+BOOL WINAPI CPluginFSInterface::Delete(const wchar_t* /*FSName*/, int Mode,
                                        HWND Parent, int Panel, int SelectedFiles, int SelectedDirs,
                                        BOOL& CancelOrError)
 {
@@ -2449,14 +2542,12 @@ BOOL WINAPI CPluginFSInterface::Delete(const char* /*FSName*/, int Mode,
         SetParentWindow(Parent);
 
         CreateFileList(Panel, osRemote, SelectedFiles + SelectedDirs == 0);
-        try
-        {
-            FTerminal->DeleteFiles(FFileList);
-        }
-        __finally
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
             CurrentPathChanged(SelectedDirs > 0);
             DestroyFileList();
+        });
+            FTerminal->DeleteFiles(FFileList);
         }
     }
     catch (Exception& E)
@@ -2472,16 +2563,28 @@ BOOL WINAPI CPluginFSInterface::CopyOrMoveFromFS(BOOL Copy, int Mode,
                                                  int SelectedDirs, CSalamanderStringBuffer* TargetPath, BOOL& OperationMask,
                                                  BOOL& CancelOrHandlePath, HWND /*DropTarget*/)
 {
-    std::wstring TargetPathW;
-    AnsiString TargetPathBytes;
-    if (TargetPath == NULL ||
-        !sally::plugin_abi::ReadStringBuffer(*TargetPath, TargetPathW) ||
-        !WideToWinScpBytes(TargetPathW.c_str(), TargetPathBytes))
-        return FALSE;
-    const BOOL Result = CopyOrMoveFromFSBytes(
-        Copy, Mode, Parent, Panel, SelectedFiles, SelectedDirs,
-        TargetPathBytes, OperationMask, CancelOrHandlePath);
-    return WriteWinScpBytes(TargetPath, TargetPathBytes) ? Result : FALSE;
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
+    {
+        std::wstring TargetPathW;
+        AnsiString TargetPathBytes;
+        if (TargetPath == NULL ||
+            !sally::plugin_abi::ReadStringBuffer(*TargetPath, TargetPathW) ||
+            !WideToWinScpBytes(TargetPathW.c_str(), TargetPathBytes))
+            return FALSE;
+        const BOOL Result = CopyOrMoveFromFSBytes(
+            Copy, Mode, Parent, Panel, SelectedFiles, SelectedDirs,
+            TargetPathBytes, OperationMask, CancelOrHandlePath);
+        return WriteWinScpBytes(TargetPath, TargetPathBytes) ? Result : FALSE;
+    }
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginFSInterface::CopyOrMoveFromFS", &E, true);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSInterface::CopyOrMoveFromFS", NULL, false);
+    }
+    return FALSE;
 }
 
 BOOL CPluginFSInterface::CopyOrMoveFromFSBytes(
@@ -2564,8 +2667,10 @@ BOOL CPluginFSInterface::CopyOrMoveFromFSBytes(
             if (Result)
             {
                 CreateFileList(Panel, osRemote, SelectedFiles + SelectedDirs == 0);
-                try
-                {
+                { // try/__finally -> scope guard (bcc64x)
+                  FINALLY_GUARD([&]() {
+                    DestroyFileList();
+                });
                     TGUICopyParamType CopyParam = GUIConfiguration->DefaultCopyParam;
 
                     // these parameters are known in advance
@@ -2623,25 +2728,19 @@ BOOL CPluginFSInterface::CopyOrMoveFromFSBytes(
                             {
                                 TargetPath = TargetDirectory;
 
-                                try
-                                {
-                                    FTerminal->CopyToLocal(FFileList, TargetDirectory, &CopyParam, Params);
-                                }
-                                __finally
-                                {
+                                { // try/__finally -> scope guard (bcc64x)
+                                  FINALLY_GUARD([&]() {
                                     if (!Copy)
                                     {
                                         CurrentPathChanged(SelectedDirs > 0);
                                     }
                                     PathChanged(TargetDirectory, (SelectedDirs > 0));
+                                });
+                                    FTerminal->CopyToLocal(FFileList, TargetDirectory, &CopyParam, Params);
                                 }
                             }
                         }
                     }
-                }
-                __finally
-                {
-                    DestroyFileList();
                 }
             }
         }
@@ -2659,23 +2758,36 @@ BOOL WINAPI CPluginFSInterface::CopyOrMoveFromDiskToFS(BOOL Copy, int Mode,
                                                        SalEnumSelection2 Next, void* NextParam, int /*SourceFiles*/,
                                                        int SourceDirs, CSalamanderStringBuffer* TargetPath, BOOL* InvalidPathOrCancel)
 {
-    std::wstring TargetPathW;
-    AnsiString FSNameBytes;
-    AnsiString TargetPathBytes;
-    if (TargetPath == NULL ||
-        !sally::plugin_abi::ReadStringBuffer(*TargetPath, TargetPathW) ||
-        !WideToWinScpBytes(FSName, FSNameBytes) ||
-        !WideToWinScpBytes(TargetPathW.c_str(), TargetPathBytes))
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        if (InvalidPathOrCancel != NULL)
-            *InvalidPathOrCancel = TRUE;
-        return FALSE;
+        std::wstring TargetPathW;
+        AnsiString FSNameBytes;
+        AnsiString TargetPathBytes;
+        if (TargetPath == NULL ||
+            !sally::plugin_abi::ReadStringBuffer(*TargetPath, TargetPathW) ||
+            !WideToWinScpBytes(FSName, FSNameBytes) ||
+            !WideToWinScpBytes(TargetPathW.c_str(), TargetPathBytes))
+        {
+            if (InvalidPathOrCancel != NULL)
+                *InvalidPathOrCancel = TRUE;
+            return FALSE;
+        }
+        const BOOL Result = CopyOrMoveFromDiskToFSBytes(
+            Copy, Mode, FSNameBytes, Parent,
+            SourcePath != NULL ? std::wstring(SourcePath) : std::wstring(),
+            Next, NextParam, SourceDirs, TargetPathBytes, InvalidPathOrCancel);
+        const BOOL WriteOK = WriteWinScpBytes(TargetPath, TargetPathBytes);
+        return WriteOK ? Result : FALSE;
     }
-    const BOOL Result = CopyOrMoveFromDiskToFSBytes(
-        Copy, Mode, FSNameBytes, Parent,
-        SourcePath != NULL ? std::wstring(SourcePath) : std::wstring(),
-        Next, NextParam, SourceDirs, TargetPathBytes, InvalidPathOrCancel);
-    return WriteWinScpBytes(TargetPath, TargetPathBytes) ? Result : FALSE;
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginFSInterface::CopyOrMoveFromDiskToFS", &E, true);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSInterface::CopyOrMoveFromDiskToFS", NULL, false);
+    }
+    return FALSE;
 }
 
 BOOL CPluginFSInterface::CopyOrMoveFromDiskToFSBytes(
@@ -2768,8 +2880,10 @@ BOOL CPluginFSInterface::CopyOrMoveFromDiskToFSBytes(
                     FLAGMASK(!Copy, cpDelete);
 
                 CreateFileList(SourcePath, Next, NextParam);
-                try
-                {
+                { // try/__finally -> scope guard (bcc64x)
+                  FINALLY_GUARD([&]() {
+                    DestroyFileList();
+                });
                     if (SalamandConfiguration->ConfirmUpload)
                     {
                         int Options =
@@ -2802,12 +2916,8 @@ BOOL CPluginFSInterface::CopyOrMoveFromDiskToFSBytes(
                         }
                         else
                         {
-                            try
-                            {
-                                FTerminal->CopyToRemote(FFileList, TargetDirectory, &CopyParam, Params);
-                            }
-                            __finally
-                            {
+                            { // try/__finally -> scope guard (bcc64x)
+                              FINALLY_GUARD([&]() {
                                 if (FTerminal && FTerminal->Active)
                                 {
                                     OurPathChanged(TargetDirectory, (SourceDirs > 0));
@@ -2821,13 +2931,11 @@ BOOL CPluginFSInterface::CopyOrMoveFromDiskToFSBytes(
                                         PathChanged(SourcePathBytes, (SourceDirs > 0));
                                     }
                                 }
+                            });
+                                FTerminal->CopyToRemote(FFileList, TargetDirectory, &CopyParam, Params);
                             }
                         }
                     }
-                }
-                __finally
-                {
-                    DestroyFileList();
                 }
             }
         }
@@ -2900,7 +3008,7 @@ void __fastcall CPluginFSInterface::CalculateChecksum(const AnsiString& Alg,
     }
 }
 //---------------------------------------------------------------------------
-BOOL WINAPI CPluginFSInterface::ChangeAttributes(const char* /*FSName*/,
+BOOL WINAPI CPluginFSInterface::ChangeAttributes(const wchar_t* /*FSName*/,
                                                  HWND Parent, int Panel, int SelectedFiles, int SelectedDirs)
 {
     CALL_STACK_MESSAGE7("CPluginFSInterface::ChangeAttributes(%p, %p, %x, %d, %d, %d)",
@@ -2918,8 +3026,10 @@ BOOL WINAPI CPluginFSInterface::ChangeAttributes(const char* /*FSName*/,
         SetParentWindow(Parent);
 
         CreateFileList(Panel, osRemote, SelectedFiles + SelectedDirs == 0);
-        try
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
+            DestroyFileList();
+        });
             TRemoteProperties CurrentProperties;
 
             if (FTerminal->LoadFilesProperties(FFileList))
@@ -2953,20 +3063,14 @@ BOOL WINAPI CPluginFSInterface::ChangeAttributes(const char* /*FSName*/,
                 {
                     NewProperties = TRemoteProperties::ChangedProperties(CurrentProperties,
                                                                          NewProperties);
-                    try
-                    {
-                        FTerminal->ChangeFilesProperties(FFileList, &NewProperties);
-                    }
-                    __finally
-                    {
+                    { // try/__finally -> scope guard (bcc64x)
+                      FINALLY_GUARD([&]() {
                         CurrentPathChanged(SelectedDirs > 0);
+                    });
+                        FTerminal->ChangeFilesProperties(FFileList, &NewProperties);
                     }
                 }
             }
-        }
-        __finally
-        {
-            DestroyFileList();
         }
     }
     catch (Exception& E)
@@ -2977,7 +3081,7 @@ BOOL WINAPI CPluginFSInterface::ChangeAttributes(const char* /*FSName*/,
     return Result;
 }
 //---------------------------------------------------------------------------
-void WINAPI CPluginFSInterface::ContextMenu(const char* /*FSName*/, HWND Parent,
+void WINAPI CPluginFSInterface::ContextMenu(const wchar_t* /*FSName*/, HWND Parent,
                                             int MenuX, int MenuY, int Type, int Panel, int /*SelectedFiles*/,
                                             int /*SelectedDirs*/)
 {
@@ -3029,50 +3133,78 @@ BOOL WINAPI CPluginFSInterface::HandleMenuMsg(UINT /*Msg*/, WPARAM /*WParam*/,
     return FALSE;
 }
 //---------------------------------------------------------------------------
-BOOL WINAPI CPluginFSInterface::OpenFindDialog(const char* /*FSName*/, int /*Panel*/)
+BOOL WINAPI CPluginFSInterface::OpenFindDialog(const wchar_t* /*FSName*/, int /*Panel*/)
 {
     assert(false);
     return false;
 }
 //---------------------------------------------------------------------------
-void WINAPI CPluginFSInterface::OpenActiveFolder(const char* /*FSName*/,
+void WINAPI CPluginFSInterface::OpenActiveFolder(const wchar_t* /*FSName*/,
                                                  HWND /*Parent*/)
 {
 }
 //---------------------------------------------------------------------------
-void WINAPI CPluginFSInterface::GetDropEffect(const char* SrcFSPath,
-                                              const char* TgtFSPath, DWORD /*AllowedEffects*/, DWORD /*KeyState*/,
+void WINAPI CPluginFSInterface::GetDropEffect(const wchar_t* SrcFSPathW,
+                                              const wchar_t* TgtFSPathW, DWORD /*AllowedEffects*/, DWORD /*KeyState*/,
                                               DWORD* DropEffect)
 {
-    CALL_STACK_MESSAGE6("CPluginFSInterface::GetDropEffect(%p, %p, %s, %s, %p)",
-                        this, FTerminal, SrcFSPath, TgtFSPath, DropEffect);
-
-    AnsiString UserPart = SrcFSPath;
-    if (FLAGSET(*DropEffect, DROPEFFECT_MOVE | DROPEFFECT_COPY) &&
-        // (strcmp(SrcFSPath, TgtFSPath) != 0) &&  // Petr: commented out so dragging to the adjacent panel with the same path results in a Move effect (otherwise it was Copy, which was not OK)
-        StripFS(UserPart, false) && IsOurUserPart(UserPart))
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        *DropEffect = DROPEFFECT_MOVE;
+        const AnsiString SrcFSPath_A = SalA(SrcFSPathW);
+        const char* SrcFSPath = SrcFSPath_A.c_str();
+        const AnsiString TgtFSPath_A = SalA(TgtFSPathW);
+        const char* TgtFSPath = TgtFSPath_A.c_str();
+        CALL_STACK_MESSAGE6("CPluginFSInterface::GetDropEffect(%p, %p, %s, %s, %p)",
+                            this, FTerminal, SrcFSPath, TgtFSPath, DropEffect);
+    
+        AnsiString UserPart = SrcFSPath;
+        if (FLAGSET(*DropEffect, DROPEFFECT_MOVE | DROPEFFECT_COPY) &&
+            // (strcmp(SrcFSPath, TgtFSPath) != 0) &&  // Petr: commented out so dragging to the adjacent panel with the same path results in a Move effect (otherwise it was Copy, which was not OK)
+            StripFS(UserPart, false) && IsOurUserPart(UserPart))
+        {
+            *DropEffect = DROPEFFECT_MOVE;
+        }
+    }
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginFSInterface::GetDropEffect", &E, false);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSInterface::GetDropEffect", NULL, false);
     }
 }
 //---------------------------------------------------------------------------
 void WINAPI CPluginFSInterface::GetAllowedDropEffects(int Mode,
-                                                      const char* TgtFSPath, DWORD* AllowedEffects)
+                                                      const wchar_t* TgtFSPathW, DWORD* AllowedEffects)
 {
-    CALL_STACK_MESSAGE6("CPluginFSInterface::GetAllowedDropEffects(%p, %p, %d, %s, %p)",
-                        this, FTerminal, Mode, TgtFSPath, AllowedEffects);
-
-    if ((Mode == 1) && (AllowedEffects != NULL))
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        AnsiString UserPart = TgtFSPath;
-        if (StripFS(UserPart, false) && IsOurUserPart(UserPart))
+        const AnsiString TgtFSPath_A = SalA(TgtFSPathW);
+        const char* TgtFSPath = TgtFSPath_A.c_str();
+        CALL_STACK_MESSAGE6("CPluginFSInterface::GetAllowedDropEffects(%p, %p, %d, %s, %p)",
+                            this, FTerminal, Mode, TgtFSPath, AllowedEffects);
+    
+        if ((Mode == 1) && (AllowedEffects != NULL))
         {
-            *AllowedEffects &= (DROPEFFECT_MOVE | DROPEFFECT_COPY);
+            AnsiString UserPart = TgtFSPath;
+            if (StripFS(UserPart, false) && IsOurUserPart(UserPart))
+            {
+                *AllowedEffects &= (DROPEFFECT_MOVE | DROPEFFECT_COPY);
+            }
+            else
+            {
+                *AllowedEffects = 0;
+            }
         }
-        else
-        {
-            *AllowedEffects = 0;
-        }
+    }
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginFSInterface::GetAllowedDropEffects", &E, false);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSInterface::GetAllowedDropEffects", NULL, false);
     }
 }
 //---------------------------------------------------------------------------
@@ -3137,7 +3269,7 @@ void __fastcall CPluginFSDataInterface::Invalidate()
 //---------------------------------------------------------------------------
 const CFileData** TransferFileData = NULL;
 int* TransferIsDir = NULL;
-char* TransferBuffer = NULL;
+wchar_t* TransferBuffer = NULL;
 int* TransferLen = NULL;
 DWORD* TransferRowData = NULL;
 CPluginDataInterfaceAbstract** TransferPluginDataIface = NULL;
@@ -3145,6 +3277,8 @@ DWORD* TransferActCustomData = NULL;
 //---------------------------------------------------------------------------
 void WINAPI GetColumnText()
 {
+    try // PLUGIN_BOUNDARY: called by Sally for every panel cell
+    {
     assert(dynamic_cast<CPluginFSDataInterface*>(*TransferPluginDataIface) != NULL);
 
     if (((CPluginFSDataInterface*)(*TransferPluginDataIface))->IsInvalid())
@@ -3178,88 +3312,131 @@ void WINAPI GetColumnText()
     default:
         assert(false);
     }
-    *TransferLen = Value.Length();
-    strcpy(TransferBuffer, Value.c_str());
+    std::wstring ValueW = SalW(Value.c_str());
+    if (ValueW.length() >= TRANSFER_BUFFER_MAX)
+        ValueW.resize(TRANSFER_BUFFER_MAX - 1); // buffer holds TRANSFER_BUFFER_MAX characters
+    *TransferLen = static_cast<int>(ValueW.length());
+    wmemcpy(TransferBuffer, ValueW.c_str(), ValueW.length() + 1);
+    }
+    catch (...)
+    {
+        *TransferLen = 0;
+        PluginBoundaryException("GetColumnText", NULL, false);
+    }
 }
 //---------------------------------------------------------------------------
 void WINAPI CPluginFSDataInterface::SetupView(BOOL LeftPanel,
-                                              CSalamanderViewAbstract* View, const char* /*ArchivePath*/,
+                                              CSalamanderViewAbstract* View, const wchar_t* /*ArchivePath*/,
                                               const CFileData* /*UpperDir*/)
 {
-    CALL_STACK_MESSAGE4("CPluginFSDataInterface::SetupView(%p, %p, %p)",
-                        this, FFileSystem, View);
-
-    View->GetTransferVariables(TransferFileData, TransferIsDir, TransferBuffer,
-                               TransferLen, TransferRowData, TransferPluginDataIface, TransferActCustomData);
-
-    if (View->GetViewMode() == VIEW_MODE_DETAILED)
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        for (int i = 0; i < View->GetColumnsCount(); i++)
+        CALL_STACK_MESSAGE4("CPluginFSDataInterface::SetupView(%p, %p, %p)",
+                            this, FFileSystem, View);
+    
+        View->GetTransferVariables(TransferFileData, TransferIsDir, TransferBuffer,
+                                   TransferLen, TransferRowData, TransferPluginDataIface, TransferActCustomData);
+    
+        if (View->GetViewMode() == VIEW_MODE_DETAILED)
         {
-            const CColumn* Column = View->GetColumn(i);
-            if (Column->ID == COLUMN_ID_ATTRIBUTES)
+            for (int i = 0; i < View->GetColumnsCount(); i++)
             {
-                View->DeleteColumn(i);
+                const CColumn* Column = View->GetColumn(i);
+                if (Column->ID == COLUMN_ID_ATTRIBUTES)
+                {
+                    View->DeleteColumn(i);
+                }
+            }
+    
+            CColumn NewColumn;
+            memset(&NewColumn, 0, sizeof(NewColumn));
+            NewColumn.GetText = GetColumnText;
+            NewColumn.SupportSorting = 0;
+            NewColumn.LeftAlignment = 1;
+            NewColumn.ID = COLUMN_ID_CUSTOM;
+    
+            void* Iterator = NULL;
+            int Column;
+            bool Show;
+            while (SalamandConfiguration->IteratePanelColumns(Column, Show, Iterator))
+            {
+                if (Show)
+                {
+                    wcsncpy(NewColumn.Name, LoadStr(ColumnNames[Column - 1]).c_str(), COLUMN_NAME_MAX - 1);
+                    wcsncpy(NewColumn.Description, LoadStr(ColumnDescs[Column - 1]).c_str(), COLUMN_DESCRIPTION_MAX - 1);
+                    NewColumn.Width = LeftPanel ? SalamandConfiguration->LeftColumnWidth[Column] : SalamandConfiguration->RightColumnWidth[Column];
+                    NewColumn.FixedWidth = LeftPanel ? SalamandConfiguration->LeftColumnFixedWidth[Column] : SalamandConfiguration->RightColumnFixedWidth[Column];
+                    NewColumn.CustomData = Column;
+                    View->InsertColumn(View->GetColumnsCount(), &NewColumn);
+                }
             }
         }
-
-        CColumn NewColumn;
-        NewColumn.GetText = GetColumnText;
-        NewColumn.SupportSorting = 0;
-        NewColumn.LeftAlignment = 1;
-        NewColumn.ID = COLUMN_ID_CUSTOM;
-
-        void* Iterator = NULL;
-        int Column;
-        bool Show;
-        while (SalamandConfiguration->IteratePanelColumns(Column, Show, Iterator))
-        {
-            if (Show)
-            {
-                strcpy(NewColumn.Name, LoadStr(ColumnNames[Column - 1]).c_str());
-                strcpy(NewColumn.Description, LoadStr(ColumnDescs[Column - 1]).c_str());
-                NewColumn.Width = LeftPanel ? SalamandConfiguration->LeftColumnWidth[Column] : SalamandConfiguration->RightColumnWidth[Column];
-                NewColumn.FixedWidth = LeftPanel ? SalamandConfiguration->LeftColumnFixedWidth[Column] : SalamandConfiguration->RightColumnFixedWidth[Column];
-                NewColumn.CustomData = Column;
-                View->InsertColumn(View->GetColumnsCount(), &NewColumn);
-            }
-        }
+    }
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginFSDataInterface::SetupView", &E, false);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSDataInterface::SetupView", NULL, false);
     }
 }
 //---------------------------------------------------------------------------
 void WINAPI CPluginFSDataInterface::ColumnFixedWidthShouldChange(BOOL LeftPanel,
                                                                  const CColumn* Column, int NewFixedWidth)
 {
-    if ((Column->CustomData > 0) && (Column->CustomData <= pcLast))
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        if (LeftPanel)
+        if ((Column->CustomData > 0) && (Column->CustomData <= pcLast))
         {
-            SalamandConfiguration->LeftColumnFixedWidth[Column->CustomData] = NewFixedWidth;
+            if (LeftPanel)
+            {
+                SalamandConfiguration->LeftColumnFixedWidth[Column->CustomData] = NewFixedWidth;
+            }
+            else
+            {
+                SalamandConfiguration->RightColumnFixedWidth[Column->CustomData] = NewFixedWidth;
+            }
         }
-        else
+    
+        if (NewFixedWidth)
         {
-            SalamandConfiguration->RightColumnFixedWidth[Column->CustomData] = NewFixedWidth;
+            ColumnWidthWasChanged(LeftPanel, Column, Column->Width);
         }
     }
-
-    if (NewFixedWidth)
+    catch (Exception& E)
     {
-        ColumnWidthWasChanged(LeftPanel, Column, Column->Width);
+        PluginBoundaryException("CPluginFSDataInterface::ColumnFixedWidthShouldChange", &E, false);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSDataInterface::ColumnFixedWidthShouldChange", NULL, false);
     }
 }
 //---------------------------------------------------------------------------
 void WINAPI CPluginFSDataInterface::ColumnWidthWasChanged(BOOL LeftPanel,
                                                           const CColumn* Column, int NewWidth)
 {
-    if ((Column->CustomData > 0) && (Column->CustomData <= pcLast))
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        if (LeftPanel)
+        if ((Column->CustomData > 0) && (Column->CustomData <= pcLast))
         {
-            SalamandConfiguration->LeftColumnWidth[Column->CustomData] = NewWidth;
+            if (LeftPanel)
+            {
+                SalamandConfiguration->LeftColumnWidth[Column->CustomData] = NewWidth;
+            }
+            else
+            {
+                SalamandConfiguration->RightColumnWidth[Column->CustomData] = NewWidth;
+            }
         }
-        else
-        {
-            SalamandConfiguration->RightColumnWidth[Column->CustomData] = NewWidth;
-        }
+    }
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginFSDataInterface::ColumnWidthWasChanged", &E, false);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginFSDataInterface::ColumnWidthWasChanged", NULL, false);
     }
 }

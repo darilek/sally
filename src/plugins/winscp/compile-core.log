@@ -1,0 +1,913 @@
+Compiling module core 
+===== core\Bookmarks.cpp 
+===== core\Common.cpp 
+===== core\Configuration.cpp 
+In file included from core\Configuration.cpp:11:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:26:
+Warning W1290 putty\puttyps.h 10(10): non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   10 | #include "winstuff.h"
+      |          ^~~~~~~~~~~~
+      |          "WINSTUFF.H"
+In file included from core\Configuration.cpp:11:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:26:
+In file included from putty\puttyps.h:10:
+Warning W1290 putty\windows\winstuff.h 14(10): non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include "tree234.h"
+      |          ^~~~~~~~~~~
+      |          "TREE234.H"
+In file included from core\Configuration.cpp:11:
+In file included from core\PuttyIntf.h:15:
+Warning W1290 putty\putty.h 27(10): non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   27 | #include "network.h"
+      |          ^~~~~~~~~~~
+      |          "NETWORK.H"
+Warning W1290 putty\putty.h 28(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   28 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\Configuration.cpp:11:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:28:
+Warning W1290 putty\misc.h 8(10): non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    8 | #include "puttymem.h"
+      |          ^~~~~~~~~~~~
+      |          "PUTTYMEM.H"
+In file included from core\Configuration.cpp:11:
+In file included from core\PuttyIntf.h:15:
+Warning W1290 putty\putty.h 1018(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+ 1018 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\Configuration.cpp:11:
+Warning W1290 core\PuttyIntf.h 16(10): non-portable path to file '<PUTTYEXP.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   16 | #include <puttyexp.h>
+      |          ^~~~~~~~~~~~
+      |          <PUTTYEXP.H>
+In file included from core\Configuration.cpp:11:
+In file included from core\PuttyIntf.h:16:
+Warning W1290 putty\puttyexp.h 28(10): non-portable path to file '"SSHGSS.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   28 | #include "sshgss.h"
+      |          ^~~~~~~~~~
+      |          "SSHGSS.H"
+In file included from core\Configuration.cpp:11:
+In file included from core\PuttyIntf.h:16:
+In file included from putty\puttyexp.h:28:
+Warning W1290 putty\sshgss.h 4(10): non-portable path to file '"PGSSAPI.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    4 | #include "pgssapi.h"
+      |          ^~~~~~~~~~~
+      |          "PGSSAPI.H"
+In file included from core\Configuration.cpp:11:
+In file included from core\PuttyIntf.h:16:
+Warning W1290 putty\puttyexp.h 39(10): non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   39 | #include "winstuff.h"
+      |          ^~~~~~~~~~~~
+      |          "WINSTUFF.H"
+Warning W1290 putty\puttyexp.h 61(10): non-portable path to file '"charset/CHARSET.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   61 | #include "charset/charset.h"
+      |          ^~~~~~~~~~~~~~~~~~~
+      |          "charset/CHARSET.H"
+In file included from core\Configuration.cpp:11:
+Warning W1290 core\PuttyIntf.h 17(10): non-portable path to file '<SSH.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   17 | #include <ssh.h>
+      |          ^~~~~~~
+      |          <SSH.H>
+In file included from core\Configuration.cpp:11:
+In file included from core\PuttyIntf.h:17:
+Warning W1290 putty\ssh.h 4(10): non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    4 | #include "puttymem.h"
+      |          ^~~~~~~~~~~~
+      |          "PUTTYMEM.H"
+Warning W1290 putty\ssh.h 5(10): non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    5 | #include "tree234.h"
+      |          ^~~~~~~~~~~
+      |          "TREE234.H"
+Warning W1290 putty\ssh.h 6(10): non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    6 | #include "network.h"
+      |          ^~~~~~~~~~~
+      |          "NETWORK.H"
+Warning W1290 putty\ssh.h 7(10): non-portable path to file '"INT64.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    7 | #include "int64.h"
+      |          ^~~~~~~~~
+      |          "INT64.H"
+Warning W1290 putty\ssh.h 8(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    8 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\Configuration.cpp:11:
+Warning W1290 core\PuttyIntf.h 18(10): non-portable path to file '<PROXY.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   18 | #include <proxy.h>
+      |          ^~~~~~~~~
+      |          <PROXY.H>
+Warning W1290 core\PuttyIntf.h 19(10): non-portable path to file '<STORAGE.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   19 | #include <storage.h>
+      |          ^~~~~~~~~~~
+      |          <STORAGE.H>
+Warning W6645 core\Configuration.cpp 547(7): 'GetVersionExA' is deprecated [-Wdeprecated-declarations]
+  547 |   if (GetVersionEx(&OSVersionInfo) != 0)
+      |       ^
+Hint H0 C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk\sysinfoapi.h 415(23): expanded from macro 'GetVersionEx'
+  415 | #define GetVersionEx  GetVersionExA
+      |                       ^
+Hint H5652 C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk\sysinfoapi.h 394(1): 'GetVersionExA' has been explicitly marked deprecated here
+  394 | NOT_BUILD_WINDOWS_DEPRECATE
+      | ^
+Hint H0 C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk\sysinfoapi.h 38(49): expanded from macro 'NOT_BUILD_WINDOWS_DEPRECATE'
+   38 | # define NOT_BUILD_WINDOWS_DEPRECATE __declspec(deprecated)
+      |                                                 ^
+20 warnings generated.
+===== core\CopyParam.cpp 
+Warning W6498 core\CopyParam.cpp 244(32): comparison of different enumeration types ('TStringMbcsByteType' and 'System::Sysutils::TMbcsByteType') is deprecated [-Wdeprecated-enum-compare]
+  244 |   if (FileName.ByteType(Index) == mbSingleByte)
+      |       ~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~
+Warning W6498 core\CopyParam.cpp 321(37): comparison of different enumeration types ('TStringMbcsByteType' and 'System::Sysutils::TMbcsByteType') is deprecated [-Wdeprecated-enum-compare]
+  321 |           (FileName.ByteType(Index) == mbSingleByte) &&
+      |            ~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~
+Warning W6498 core\CopyParam.cpp 322(41): comparison of different enumeration types ('TStringMbcsByteType' and 'System::Sysutils::TMbcsByteType') is deprecated [-Wdeprecated-enum-compare]
+  322 |           (FileName.ByteType(Index + 1) == mbSingleByte) &&
+      |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~
+Warning W6498 core\CopyParam.cpp 323(41): comparison of different enumeration types ('TStringMbcsByteType' and 'System::Sysutils::TMbcsByteType') is deprecated [-Wdeprecated-enum-compare]
+  323 |           (FileName.ByteType(Index + 2) == mbSingleByte))
+      |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~
+4 warnings generated.
+===== core\CoreMain.cpp 
+In file included from core\CoreMain.cpp:17:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:26:
+Warning W1290 putty\puttyps.h 10(10): non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   10 | #include "winstuff.h"
+      |          ^~~~~~~~~~~~
+      |          "WINSTUFF.H"
+In file included from core\CoreMain.cpp:17:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:26:
+In file included from putty\puttyps.h:10:
+Warning W1290 putty\windows\winstuff.h 14(10): non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include "tree234.h"
+      |          ^~~~~~~~~~~
+      |          "TREE234.H"
+In file included from core\CoreMain.cpp:17:
+In file included from core\PuttyIntf.h:15:
+Warning W1290 putty\putty.h 27(10): non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   27 | #include "network.h"
+      |          ^~~~~~~~~~~
+      |          "NETWORK.H"
+Warning W1290 putty\putty.h 28(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   28 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\CoreMain.cpp:17:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:28:
+Warning W1290 putty\misc.h 8(10): non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    8 | #include "puttymem.h"
+      |          ^~~~~~~~~~~~
+      |          "PUTTYMEM.H"
+In file included from core\CoreMain.cpp:17:
+In file included from core\PuttyIntf.h:15:
+Warning W1290 putty\putty.h 1018(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+ 1018 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\CoreMain.cpp:17:
+Warning W1290 core\PuttyIntf.h 16(10): non-portable path to file '<PUTTYEXP.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   16 | #include <puttyexp.h>
+      |          ^~~~~~~~~~~~
+      |          <PUTTYEXP.H>
+In file included from core\CoreMain.cpp:17:
+In file included from core\PuttyIntf.h:16:
+Warning W1290 putty\puttyexp.h 28(10): non-portable path to file '"SSHGSS.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   28 | #include "sshgss.h"
+      |          ^~~~~~~~~~
+      |          "SSHGSS.H"
+In file included from core\CoreMain.cpp:17:
+In file included from core\PuttyIntf.h:16:
+In file included from putty\puttyexp.h:28:
+Warning W1290 putty\sshgss.h 4(10): non-portable path to file '"PGSSAPI.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    4 | #include "pgssapi.h"
+      |          ^~~~~~~~~~~
+      |          "PGSSAPI.H"
+In file included from core\CoreMain.cpp:17:
+In file included from core\PuttyIntf.h:16:
+Warning W1290 putty\puttyexp.h 39(10): non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   39 | #include "winstuff.h"
+      |          ^~~~~~~~~~~~
+      |          "WINSTUFF.H"
+Warning W1290 putty\puttyexp.h 61(10): non-portable path to file '"charset/CHARSET.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   61 | #include "charset/charset.h"
+      |          ^~~~~~~~~~~~~~~~~~~
+      |          "charset/CHARSET.H"
+In file included from core\CoreMain.cpp:17:
+Warning W1290 core\PuttyIntf.h 17(10): non-portable path to file '<SSH.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   17 | #include <ssh.h>
+      |          ^~~~~~~
+      |          <SSH.H>
+In file included from core\CoreMain.cpp:17:
+In file included from core\PuttyIntf.h:17:
+Warning W1290 putty\ssh.h 4(10): non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    4 | #include "puttymem.h"
+      |          ^~~~~~~~~~~~
+      |          "PUTTYMEM.H"
+Warning W1290 putty\ssh.h 5(10): non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    5 | #include "tree234.h"
+      |          ^~~~~~~~~~~
+      |          "TREE234.H"
+Warning W1290 putty\ssh.h 6(10): non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    6 | #include "network.h"
+      |          ^~~~~~~~~~~
+      |          "NETWORK.H"
+Warning W1290 putty\ssh.h 7(10): non-portable path to file '"INT64.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    7 | #include "int64.h"
+      |          ^~~~~~~~~
+      |          "INT64.H"
+Warning W1290 putty\ssh.h 8(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    8 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\CoreMain.cpp:17:
+Warning W1290 core\PuttyIntf.h 18(10): non-portable path to file '<PROXY.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   18 | #include <proxy.h>
+      |          ^~~~~~~~~
+      |          <PROXY.H>
+Warning W1290 core\PuttyIntf.h 19(10): non-portable path to file '<STORAGE.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   19 | #include <storage.h>
+      |          ^~~~~~~~~~~
+      |          <STORAGE.H>
+19 warnings generated.
+===== core\Cryptography.cpp 
+In file included from core\Cryptography.cpp:6:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:26:
+Warning W1290 putty\puttyps.h 10(10): non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   10 | #include "winstuff.h"
+      |          ^~~~~~~~~~~~
+      |          "WINSTUFF.H"
+In file included from core\Cryptography.cpp:6:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:26:
+In file included from putty\puttyps.h:10:
+Warning W1290 putty\windows\winstuff.h 14(10): non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include "tree234.h"
+      |          ^~~~~~~~~~~
+      |          "TREE234.H"
+In file included from core\Cryptography.cpp:6:
+In file included from core\PuttyIntf.h:15:
+Warning W1290 putty\putty.h 27(10): non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   27 | #include "network.h"
+      |          ^~~~~~~~~~~
+      |          "NETWORK.H"
+Warning W1290 putty\putty.h 28(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   28 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\Cryptography.cpp:6:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:28:
+Warning W1290 putty\misc.h 8(10): non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    8 | #include "puttymem.h"
+      |          ^~~~~~~~~~~~
+      |          "PUTTYMEM.H"
+In file included from core\Cryptography.cpp:6:
+In file included from core\PuttyIntf.h:15:
+Warning W1290 putty\putty.h 1018(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+ 1018 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\Cryptography.cpp:6:
+Warning W1290 core\PuttyIntf.h 16(10): non-portable path to file '<PUTTYEXP.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   16 | #include <puttyexp.h>
+      |          ^~~~~~~~~~~~
+      |          <PUTTYEXP.H>
+In file included from core\Cryptography.cpp:6:
+In file included from core\PuttyIntf.h:16:
+Warning W1290 putty\puttyexp.h 28(10): non-portable path to file '"SSHGSS.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   28 | #include "sshgss.h"
+      |          ^~~~~~~~~~
+      |          "SSHGSS.H"
+In file included from core\Cryptography.cpp:6:
+In file included from core\PuttyIntf.h:16:
+In file included from putty\puttyexp.h:28:
+Warning W1290 putty\sshgss.h 4(10): non-portable path to file '"PGSSAPI.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    4 | #include "pgssapi.h"
+      |          ^~~~~~~~~~~
+      |          "PGSSAPI.H"
+In file included from core\Cryptography.cpp:6:
+In file included from core\PuttyIntf.h:16:
+Warning W1290 putty\puttyexp.h 39(10): non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   39 | #include "winstuff.h"
+      |          ^~~~~~~~~~~~
+      |          "WINSTUFF.H"
+Warning W1290 putty\puttyexp.h 61(10): non-portable path to file '"charset/CHARSET.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   61 | #include "charset/charset.h"
+      |          ^~~~~~~~~~~~~~~~~~~
+      |          "charset/CHARSET.H"
+In file included from core\Cryptography.cpp:6:
+Warning W1290 core\PuttyIntf.h 17(10): non-portable path to file '<SSH.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   17 | #include <ssh.h>
+      |          ^~~~~~~
+      |          <SSH.H>
+In file included from core\Cryptography.cpp:6:
+In file included from core\PuttyIntf.h:17:
+Warning W1290 putty\ssh.h 4(10): non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    4 | #include "puttymem.h"
+      |          ^~~~~~~~~~~~
+      |          "PUTTYMEM.H"
+Warning W1290 putty\ssh.h 5(10): non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    5 | #include "tree234.h"
+      |          ^~~~~~~~~~~
+      |          "TREE234.H"
+Warning W1290 putty\ssh.h 6(10): non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    6 | #include "network.h"
+      |          ^~~~~~~~~~~
+      |          "NETWORK.H"
+Warning W1290 putty\ssh.h 7(10): non-portable path to file '"INT64.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    7 | #include "int64.h"
+      |          ^~~~~~~~~
+      |          "INT64.H"
+Warning W1290 putty\ssh.h 8(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    8 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\Cryptography.cpp:6:
+Warning W1290 core\PuttyIntf.h 18(10): non-portable path to file '<PROXY.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   18 | #include <proxy.h>
+      |          ^~~~~~~~~
+      |          <PROXY.H>
+Warning W1290 core\PuttyIntf.h 19(10): non-portable path to file '<STORAGE.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   19 | #include <storage.h>
+      |          ^~~~~~~~~~~
+      |          <STORAGE.H>
+19 warnings generated.
+===== core\Exceptions.cpp 
+===== core\FileBuffer.cpp 
+Warning W5383 core\FileBuffer.cpp 13(24): ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings]
+   13 |     case eolLF: return "\n";
+      |                        ^
+Warning W5383 core\FileBuffer.cpp 14(26): ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings]
+   14 |     case eolCRLF: return "\r\n";
+      |                          ^
+Warning W5383 core\FileBuffer.cpp 15(24): ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings]
+   15 |     case eolCR: return "\r";
+      |                        ^
+Warning W5383 core\FileBuffer.cpp 16(36): ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings]
+   16 |     default: assert(false); return "";
+      |                                    ^
+4 warnings generated.
+===== core\FileInfo.cpp 
+Warning W5382 core\FileInfo.cpp 168(7): cannot delete expression with pointer-to-'void' type 'void *' [-Wdelete-incomplete]
+  168 |       delete[] Result;
+      |       ^        ~~~~~~
+Warning W5382 core\FileInfo.cpp 181(3): cannot delete expression with pointer-to-'void' type 'void *' [-Wdelete-incomplete]
+  181 |   delete[] FileInfo;
+      |   ^        ~~~~~~~~
+2 warnings generated.
+===== core\FileMasks.cpp 
+In file included from core\FileMasks.cpp:11:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+1 warning generated.
+===== core\FileOperationProgress.cpp 
+===== core\FileSystems.cpp 
+===== core\FtpFileSystem.cpp 
+Warning W1236 core\FtpFileSystem.cpp 3405(8): extra tokens at end of #endif directive [-Wextra-tokens]
+ 3405 | #endif NO_FILEZILLA
+      |        ^
+      |        //
+1 warning generated.
+===== core\HierarchicalStorage.cpp 
+In file included from core\HierarchicalStorage.cpp:8:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:26:
+Warning W1290 putty\puttyps.h 10(10): non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   10 | #include "winstuff.h"
+      |          ^~~~~~~~~~~~
+      |          "WINSTUFF.H"
+In file included from core\HierarchicalStorage.cpp:8:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:26:
+In file included from putty\puttyps.h:10:
+Warning W1290 putty\windows\winstuff.h 14(10): non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include "tree234.h"
+      |          ^~~~~~~~~~~
+      |          "TREE234.H"
+In file included from core\HierarchicalStorage.cpp:8:
+In file included from core\PuttyIntf.h:15:
+Warning W1290 putty\putty.h 27(10): non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   27 | #include "network.h"
+      |          ^~~~~~~~~~~
+      |          "NETWORK.H"
+Warning W1290 putty\putty.h 28(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   28 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\HierarchicalStorage.cpp:8:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:28:
+Warning W1290 putty\misc.h 8(10): non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    8 | #include "puttymem.h"
+      |          ^~~~~~~~~~~~
+      |          "PUTTYMEM.H"
+In file included from core\HierarchicalStorage.cpp:8:
+In file included from core\PuttyIntf.h:15:
+Warning W1290 putty\putty.h 1018(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+ 1018 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\HierarchicalStorage.cpp:8:
+Warning W1290 core\PuttyIntf.h 16(10): non-portable path to file '<PUTTYEXP.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   16 | #include <puttyexp.h>
+      |          ^~~~~~~~~~~~
+      |          <PUTTYEXP.H>
+In file included from core\HierarchicalStorage.cpp:8:
+In file included from core\PuttyIntf.h:16:
+Warning W1290 putty\puttyexp.h 28(10): non-portable path to file '"SSHGSS.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   28 | #include "sshgss.h"
+      |          ^~~~~~~~~~
+      |          "SSHGSS.H"
+In file included from core\HierarchicalStorage.cpp:8:
+In file included from core\PuttyIntf.h:16:
+In file included from putty\puttyexp.h:28:
+Warning W1290 putty\sshgss.h 4(10): non-portable path to file '"PGSSAPI.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    4 | #include "pgssapi.h"
+      |          ^~~~~~~~~~~
+      |          "PGSSAPI.H"
+In file included from core\HierarchicalStorage.cpp:8:
+In file included from core\PuttyIntf.h:16:
+Warning W1290 putty\puttyexp.h 39(10): non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   39 | #include "winstuff.h"
+      |          ^~~~~~~~~~~~
+      |          "WINSTUFF.H"
+Warning W1290 putty\puttyexp.h 61(10): non-portable path to file '"charset/CHARSET.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   61 | #include "charset/charset.h"
+      |          ^~~~~~~~~~~~~~~~~~~
+      |          "charset/CHARSET.H"
+In file included from core\HierarchicalStorage.cpp:8:
+Warning W1290 core\PuttyIntf.h 17(10): non-portable path to file '<SSH.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   17 | #include <ssh.h>
+      |          ^~~~~~~
+      |          <SSH.H>
+In file included from core\HierarchicalStorage.cpp:8:
+In file included from core\PuttyIntf.h:17:
+Warning W1290 putty\ssh.h 4(10): non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    4 | #include "puttymem.h"
+      |          ^~~~~~~~~~~~
+      |          "PUTTYMEM.H"
+Warning W1290 putty\ssh.h 5(10): non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    5 | #include "tree234.h"
+      |          ^~~~~~~~~~~
+      |          "TREE234.H"
+Warning W1290 putty\ssh.h 6(10): non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    6 | #include "network.h"
+      |          ^~~~~~~~~~~
+      |          "NETWORK.H"
+Warning W1290 putty\ssh.h 7(10): non-portable path to file '"INT64.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    7 | #include "int64.h"
+      |          ^~~~~~~~~
+      |          "INT64.H"
+Warning W1290 putty\ssh.h 8(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    8 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\HierarchicalStorage.cpp:8:
+Warning W1290 core\PuttyIntf.h 18(10): non-portable path to file '<PROXY.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   18 | #include <proxy.h>
+      |          ^~~~~~~~~
+      |          <PROXY.H>
+Warning W1290 core\PuttyIntf.h 19(10): non-portable path to file '<STORAGE.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   19 | #include <storage.h>
+      |          ^~~~~~~~~~~
+      |          <STORAGE.H>
+Warning W7040 core\HierarchicalStorage.cpp 370(20): result of comparison of constant 234 with expression of type 'bool' is always false [-Wtautological-constant-out-of-range-compare]
+  370 |         if (Result == ERROR_MORE_DATA)
+      |             ~~~~~~ ^  ~~~~~~~~~~~~~~~
+Warning W6619 core\HierarchicalStorage.cpp 877(16): first argument in call to 'memcpy' is a pointer to non-trivially copyable type 'TDateTime' [-Wnontrivial-memcall]
+  877 |         memcpy(&Result, Raw.c_str(), sizeof(Result));
+      |                ^
+Hint H5654 core\HierarchicalStorage.cpp 877(16): explicitly cast the pointer to silence this warning
+  877 |         memcpy(&Result, Raw.c_str(), sizeof(Result));
+      |                ^
+      |                (void*)
+21 warnings generated.
+===== core\NamedObjs.cpp 
+===== core\Option.cpp 
+===== core\PuttyIntf.cpp 
+In file included from core\PuttyIntf.cpp:7:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:26:
+Warning W1290 putty\puttyps.h 10(10): non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   10 | #include "winstuff.h"
+      |          ^~~~~~~~~~~~
+      |          "WINSTUFF.H"
+In file included from core\PuttyIntf.cpp:7:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:26:
+In file included from putty\puttyps.h:10:
+Warning W1290 putty\windows\winstuff.h 14(10): non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include "tree234.h"
+      |          ^~~~~~~~~~~
+      |          "TREE234.H"
+In file included from core\PuttyIntf.cpp:7:
+In file included from core\PuttyIntf.h:15:
+Warning W1290 putty\putty.h 27(10): non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   27 | #include "network.h"
+      |          ^~~~~~~~~~~
+      |          "NETWORK.H"
+Warning W1290 putty\putty.h 28(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   28 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\PuttyIntf.cpp:7:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:28:
+Warning W1290 putty\misc.h 8(10): non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    8 | #include "puttymem.h"
+      |          ^~~~~~~~~~~~
+      |          "PUTTYMEM.H"
+In file included from core\PuttyIntf.cpp:7:
+In file included from core\PuttyIntf.h:15:
+Warning W1290 putty\putty.h 1018(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+ 1018 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\PuttyIntf.cpp:7:
+Warning W1290 core\PuttyIntf.h 16(10): non-portable path to file '<PUTTYEXP.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   16 | #include <puttyexp.h>
+      |          ^~~~~~~~~~~~
+      |          <PUTTYEXP.H>
+In file included from core\PuttyIntf.cpp:7:
+In file included from core\PuttyIntf.h:16:
+Warning W1290 putty\puttyexp.h 28(10): non-portable path to file '"SSHGSS.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   28 | #include "sshgss.h"
+      |          ^~~~~~~~~~
+      |          "SSHGSS.H"
+In file included from core\PuttyIntf.cpp:7:
+In file included from core\PuttyIntf.h:16:
+In file included from putty\puttyexp.h:28:
+Warning W1290 putty\sshgss.h 4(10): non-portable path to file '"PGSSAPI.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    4 | #include "pgssapi.h"
+      |          ^~~~~~~~~~~
+      |          "PGSSAPI.H"
+In file included from core\PuttyIntf.cpp:7:
+In file included from core\PuttyIntf.h:16:
+Warning W1290 putty\puttyexp.h 39(10): non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   39 | #include "winstuff.h"
+      |          ^~~~~~~~~~~~
+      |          "WINSTUFF.H"
+Warning W1290 putty\puttyexp.h 61(10): non-portable path to file '"charset/CHARSET.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   61 | #include "charset/charset.h"
+      |          ^~~~~~~~~~~~~~~~~~~
+      |          "charset/CHARSET.H"
+In file included from core\PuttyIntf.cpp:7:
+Warning W1290 core\PuttyIntf.h 17(10): non-portable path to file '<SSH.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   17 | #include <ssh.h>
+      |          ^~~~~~~
+      |          <SSH.H>
+In file included from core\PuttyIntf.cpp:7:
+In file included from core\PuttyIntf.h:17:
+Warning W1290 putty\ssh.h 4(10): non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    4 | #include "puttymem.h"
+      |          ^~~~~~~~~~~~
+      |          "PUTTYMEM.H"
+Warning W1290 putty\ssh.h 5(10): non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    5 | #include "tree234.h"
+      |          ^~~~~~~~~~~
+      |          "TREE234.H"
+Warning W1290 putty\ssh.h 6(10): non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    6 | #include "network.h"
+      |          ^~~~~~~~~~~
+      |          "NETWORK.H"
+Warning W1290 putty\ssh.h 7(10): non-portable path to file '"INT64.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    7 | #include "int64.h"
+      |          ^~~~~~~~~
+      |          "INT64.H"
+Warning W1290 putty\ssh.h 8(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    8 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\PuttyIntf.cpp:7:
+Warning W1290 core\PuttyIntf.h 18(10): non-portable path to file '<PROXY.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   18 | #include <proxy.h>
+      |          ^~~~~~~~~
+      |          <PROXY.H>
+Warning W1290 core\PuttyIntf.h 19(10): non-portable path to file '<STORAGE.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   19 | #include <storage.h>
+      |          ^~~~~~~~~~~
+      |          <STORAGE.H>
+Warning W6865 core\PuttyIntf.cpp 143(42): cast to 'System::TObject *' from smaller integer type 'int' [-Wint-to-pointer-cast]
+  143 |       Prompts->AddObject(Prompt->prompt, (TObject *)Prompt->echo);
+      |                                          ^~~~~~~~~~~~~~~~~~~~~~~
+Warning W6344 core\PuttyIntf.cpp 481(23): comparison of different enumeration types ('TKeyType' and '(unnamed enum at putty/ssh.h:512:1)') is deprecated [-Wdeprecated-anon-enum-enum-conversion]
+  481 |   assert(ktUnopenable == SSH_KEYTYPE_UNOPENABLE);
+      |          ~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~~~~~~~~
+Hint H0 C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\assert.h 52(7): expanded from macro 'assert'
+   52 |  ((!!(_Expression)) || \
+      |       ^~~~~~~~~~~
+Warning W6344 core\PuttyIntf.cpp 482(19): comparison of different enumeration types ('TKeyType' and '(unnamed enum at putty/ssh.h:512:1)') is deprecated [-Wdeprecated-anon-enum-enum-conversion]
+  482 |   assert(ktSSHCom == SSH_KEYTYPE_SSHCOM);
+      |          ~~~~~~~~ ^  ~~~~~~~~~~~~~~~~~~
+Hint H0 C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\assert.h 52(7): expanded from macro 'assert'
+   52 |  ((!!(_Expression)) || \
+      |       ^~~~~~~~~~~
+22 warnings generated.
+===== core\Queue.cpp 
+In file included from core\Queue.cpp:7:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+1 warning generated.
+===== core\RemoteFiles.cpp 
+In file included from core\RemoteFiles.cpp:13:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+Warning W6913 core\RemoteFiles.cpp 2315(15): enumeration value 'rsUndef' not handled in switch [-Wswitch]
+ 2315 |       switch (RightUndef[Right])
+      |               ^~~~~~~~~~~~~~~~~
+Warning W6913 core\RemoteFiles.cpp 2329(13): enumeration value 'rsUndef' not handled in switch [-Wswitch]
+ 2329 |     switch (RightUndef[Right])
+      |             ^~~~~~~~~~~~~~~~~
+Warning W6619 core\RemoteFiles.cpp 2527(12): first argument in call to 'memcpy' is a pointer to non-trivially copyable type 'TValidProperties' (aka 'Set<TValidProperty, vpRights, vpLastAccess>') [-Wnontrivial-memcall]
+ 2527 |     memcpy(&Valid, Buf, sizeof(Valid));
+      |            ^
+Hint H5654 core\RemoteFiles.cpp 2527(12): explicitly cast the pointer to silence this warning
+ 2527 |     memcpy(&Valid, Buf, sizeof(Valid));
+      |            ^
+      |            (void*)
+4 warnings generated.
+===== core\ScpFileSystem.cpp 
+In file included from core\ScpFileSystem.cpp:8:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+1 warning generated.
+===== core\Script.cpp 
+In file included from core\Script.cpp:11:
+In file included from core\Script.h:7:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+1 warning generated.
+===== core\SecureShell.cpp 
+In file included from core\SecureShell.cpp:6:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:26:
+Warning W1290 putty\puttyps.h 10(10): non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   10 | #include "winstuff.h"
+      |          ^~~~~~~~~~~~
+      |          "WINSTUFF.H"
+In file included from core\SecureShell.cpp:6:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:26:
+In file included from putty\puttyps.h:10:
+Warning W1290 putty\windows\winstuff.h 14(10): non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include "tree234.h"
+      |          ^~~~~~~~~~~
+      |          "TREE234.H"
+In file included from core\SecureShell.cpp:6:
+In file included from core\PuttyIntf.h:15:
+Warning W1290 putty\putty.h 27(10): non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   27 | #include "network.h"
+      |          ^~~~~~~~~~~
+      |          "NETWORK.H"
+Warning W1290 putty\putty.h 28(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   28 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\SecureShell.cpp:6:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:28:
+Warning W1290 putty\misc.h 8(10): non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    8 | #include "puttymem.h"
+      |          ^~~~~~~~~~~~
+      |          "PUTTYMEM.H"
+In file included from core\SecureShell.cpp:6:
+In file included from core\PuttyIntf.h:15:
+Warning W1290 putty\putty.h 1018(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+ 1018 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\SecureShell.cpp:6:
+Warning W1290 core\PuttyIntf.h 16(10): non-portable path to file '<PUTTYEXP.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   16 | #include <puttyexp.h>
+      |          ^~~~~~~~~~~~
+      |          <PUTTYEXP.H>
+In file included from core\SecureShell.cpp:6:
+In file included from core\PuttyIntf.h:16:
+Warning W1290 putty\puttyexp.h 28(10): non-portable path to file '"SSHGSS.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   28 | #include "sshgss.h"
+      |          ^~~~~~~~~~
+      |          "SSHGSS.H"
+In file included from core\SecureShell.cpp:6:
+In file included from core\PuttyIntf.h:16:
+In file included from putty\puttyexp.h:28:
+Warning W1290 putty\sshgss.h 4(10): non-portable path to file '"PGSSAPI.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    4 | #include "pgssapi.h"
+      |          ^~~~~~~~~~~
+      |          "PGSSAPI.H"
+In file included from core\SecureShell.cpp:6:
+In file included from core\PuttyIntf.h:16:
+Warning W1290 putty\puttyexp.h 39(10): non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   39 | #include "winstuff.h"
+      |          ^~~~~~~~~~~~
+      |          "WINSTUFF.H"
+Warning W1290 putty\puttyexp.h 61(10): non-portable path to file '"charset/CHARSET.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   61 | #include "charset/charset.h"
+      |          ^~~~~~~~~~~~~~~~~~~
+      |          "charset/CHARSET.H"
+In file included from core\SecureShell.cpp:6:
+Warning W1290 core\PuttyIntf.h 17(10): non-portable path to file '<SSH.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   17 | #include <ssh.h>
+      |          ^~~~~~~
+      |          <SSH.H>
+In file included from core\SecureShell.cpp:6:
+In file included from core\PuttyIntf.h:17:
+Warning W1290 putty\ssh.h 4(10): non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    4 | #include "puttymem.h"
+      |          ^~~~~~~~~~~~
+      |          "PUTTYMEM.H"
+Warning W1290 putty\ssh.h 5(10): non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    5 | #include "tree234.h"
+      |          ^~~~~~~~~~~
+      |          "TREE234.H"
+Warning W1290 putty\ssh.h 6(10): non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    6 | #include "network.h"
+      |          ^~~~~~~~~~~
+      |          "NETWORK.H"
+Warning W1290 putty\ssh.h 7(10): non-portable path to file '"INT64.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    7 | #include "int64.h"
+      |          ^~~~~~~~~
+      |          "INT64.H"
+Warning W1290 putty\ssh.h 8(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    8 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\SecureShell.cpp:6:
+Warning W1290 core\PuttyIntf.h 18(10): non-portable path to file '<PROXY.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   18 | #include <proxy.h>
+      |          ^~~~~~~~~
+      |          <PROXY.H>
+Warning W1290 core\PuttyIntf.h 19(10): non-portable path to file '<STORAGE.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   19 | #include <storage.h>
+      |          ^~~~~~~~~~~
+      |          <STORAGE.H>
+19 warnings generated.
+===== core\Security.cpp 
+===== core\SessionData.cpp 
+In file included from core\SessionData.cpp:13:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:26:
+Warning W1290 putty\puttyps.h 10(10): non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   10 | #include "winstuff.h"
+      |          ^~~~~~~~~~~~
+      |          "WINSTUFF.H"
+In file included from core\SessionData.cpp:13:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:26:
+In file included from putty\puttyps.h:10:
+Warning W1290 putty\windows\winstuff.h 14(10): non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include "tree234.h"
+      |          ^~~~~~~~~~~
+      |          "TREE234.H"
+In file included from core\SessionData.cpp:13:
+In file included from core\PuttyIntf.h:15:
+Warning W1290 putty\putty.h 27(10): non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   27 | #include "network.h"
+      |          ^~~~~~~~~~~
+      |          "NETWORK.H"
+Warning W1290 putty\putty.h 28(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   28 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\SessionData.cpp:13:
+In file included from core\PuttyIntf.h:15:
+In file included from putty\putty.h:28:
+Warning W1290 putty\misc.h 8(10): non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    8 | #include "puttymem.h"
+      |          ^~~~~~~~~~~~
+      |          "PUTTYMEM.H"
+In file included from core\SessionData.cpp:13:
+In file included from core\PuttyIntf.h:15:
+Warning W1290 putty\putty.h 1018(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+ 1018 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\SessionData.cpp:13:
+Warning W1290 core\PuttyIntf.h 16(10): non-portable path to file '<PUTTYEXP.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   16 | #include <puttyexp.h>
+      |          ^~~~~~~~~~~~
+      |          <PUTTYEXP.H>
+In file included from core\SessionData.cpp:13:
+In file included from core\PuttyIntf.h:16:
+Warning W1290 putty\puttyexp.h 28(10): non-portable path to file '"SSHGSS.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   28 | #include "sshgss.h"
+      |          ^~~~~~~~~~
+      |          "SSHGSS.H"
+In file included from core\SessionData.cpp:13:
+In file included from core\PuttyIntf.h:16:
+In file included from putty\puttyexp.h:28:
+Warning W1290 putty\sshgss.h 4(10): non-portable path to file '"PGSSAPI.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    4 | #include "pgssapi.h"
+      |          ^~~~~~~~~~~
+      |          "PGSSAPI.H"
+In file included from core\SessionData.cpp:13:
+In file included from core\PuttyIntf.h:16:
+Warning W1290 putty\puttyexp.h 39(10): non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   39 | #include "winstuff.h"
+      |          ^~~~~~~~~~~~
+      |          "WINSTUFF.H"
+Warning W1290 putty\puttyexp.h 61(10): non-portable path to file '"charset/CHARSET.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   61 | #include "charset/charset.h"
+      |          ^~~~~~~~~~~~~~~~~~~
+      |          "charset/CHARSET.H"
+In file included from core\SessionData.cpp:13:
+Warning W1290 core\PuttyIntf.h 17(10): non-portable path to file '<SSH.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   17 | #include <ssh.h>
+      |          ^~~~~~~
+      |          <SSH.H>
+In file included from core\SessionData.cpp:13:
+In file included from core\PuttyIntf.h:17:
+Warning W1290 putty\ssh.h 4(10): non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    4 | #include "puttymem.h"
+      |          ^~~~~~~~~~~~
+      |          "PUTTYMEM.H"
+Warning W1290 putty\ssh.h 5(10): non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    5 | #include "tree234.h"
+      |          ^~~~~~~~~~~
+      |          "TREE234.H"
+Warning W1290 putty\ssh.h 6(10): non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    6 | #include "network.h"
+      |          ^~~~~~~~~~~
+      |          "NETWORK.H"
+Warning W1290 putty\ssh.h 7(10): non-portable path to file '"INT64.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    7 | #include "int64.h"
+      |          ^~~~~~~~~
+      |          "INT64.H"
+Warning W1290 putty\ssh.h 8(10): non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+    8 | #include "misc.h"
+      |          ^~~~~~~~
+      |          "MISC.h"
+In file included from core\SessionData.cpp:13:
+Warning W1290 core\PuttyIntf.h 18(10): non-portable path to file '<PROXY.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   18 | #include <proxy.h>
+      |          ^~~~~~~~~
+      |          <PROXY.H>
+Warning W1290 core\PuttyIntf.h 19(10): non-portable path to file '<STORAGE.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   19 | #include <storage.h>
+      |          ^~~~~~~~~~~
+      |          <STORAGE.H>
+Warning W7040 core\SessionData.cpp 1918(26): result of comparison of constant 2 with expression of type 'TSftpBug' is always true [-Wtautological-constant-out-of-range-compare]
+ 1918 |   assert(Bug >= 0 && Bug < LENOF(FSFTPBugs));
+      |   ~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~
+Hint H0 C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\assert.h 52(7): expanded from macro 'assert'
+   52 |  ((!!(_Expression)) || \
+      |       ^~~~~~~~~~~
+Warning W7040 core\SessionData.cpp 1924(26): result of comparison of constant 2 with expression of type 'TSftpBug' is always true [-Wtautological-constant-out-of-range-compare]
+ 1924 |   assert(Bug >= 0 && Bug < LENOF(FSFTPBugs));
+      |   ~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~
+Hint H0 C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\assert.h 52(7): expanded from macro 'assert'
+   52 |  ((!!(_Expression)) || \
+      |       ^~~~~~~~~~~
+21 warnings generated.
+===== core\SessionInfo.cpp 
+Warning W5383 core\SessionInfo.cpp 943(24): ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings]
+  943 |     char * PingTypes = "-NC";
+      |                        ^
+1 warning generated.
+===== core\SftpFileSystem.cpp 
+In file included from core\SftpFileSystem.cpp:12:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+Warning W5383 core\SftpFileSystem.cpp 593(28): ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings]
+  593 |       static char* Types = "U-DLSUOCBF";
+      |                            ^
+2 warnings generated.
+===== core\Terminal.cpp 
+In file included from core\Terminal.cpp:6:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+Warning W6619 core\Terminal.cpp 87(10): first argument in call to 'memset' is a pointer to non-trivially copyable type 'TSynchronizeOptions' [-Wnontrivial-memcall]
+   87 |   memset(this, 0, sizeof(*this));
+      |          ^
+Hint H5654 core\Terminal.cpp 87(10): explicitly cast the pointer to silence this warning
+   87 |   memset(this, 0, sizeof(*this));
+      |          ^
+      |          (void*)
+Warning W6865 core\Terminal.cpp 998(32): cast to 'System::TObject *' from smaller integer type 'int' [-Wint-to-pointer-cast]
+  998 |     Results->AddObject(Result, (TObject *)MaxLen);
+      |                                ^~~~~~~~~~~~~~~~~
+Warning W6913 core\Terminal.cpp 1193(11): 14 enumeration values not handled in switch: 'fsNull', 'fsVarValue', 'fsLastLine'... [-Wswitch]
+ 1193 |   switch ((TFSCommand)Cmd) {
+      |           ^~~~~~~~~~~~~~~
+Warning W6913 core\Terminal.cpp 1886(11): 4 enumeration values not handled in switch: 'boNo', 'boAll', 'boNone'... [-Wswitch]
+ 1886 |   switch (BatchOverwrite)
+      |           ^~~~~~~~~~~~~~
+Warning W6913 core\Terminal.cpp 1956(13): enumeration value 'boNo' not handled in switch [-Wswitch]
+ 1956 |     switch (BatchOverwrite)
+      |             ^~~~~~~~~~~~~~
+6 warnings generated.
+ 
+==== RESULT: 27 ok, 0 failed: 

@@ -16,8 +16,10 @@
 #pragma pack(push, enter_include_spl_gen) // to make structures independent of the configured alignment
 #pragma pack(4)
 #endif // _MSC_VER
-#ifdef __BORLANDC__
+#if defined(__BORLANDC__) && !defined(__clang__)
 #pragma option -a4
+#elif defined(__clang__) && !defined(_MSC_VER) // C++Builder bcc64x
+#pragma pack(push, 4)
 #endif // __BORLANDC__
 
 struct CFileData;
@@ -3074,8 +3076,8 @@ public:
     // of the function doesn't open the dialog and silently returns FALSE and CommDlgExtendedError() returns FNERR_INVALIDFILENAME.
     // The following two functions in this case call the API again, but with a "safely"
     // existing path (Documents, or Desktop).
-    virtual BOOL WINAPI SafeGetOpenFileName(LPOPENFILENAME lpofn) = 0;
-    virtual BOOL WINAPI SafeGetSaveFileName(LPOPENFILENAME lpofn) = 0;
+    virtual BOOL WINAPI SafeGetOpenFileName(LPOPENFILENAMEW lpofn) = 0; // explicit W: plugin may be built without UNICODE
+    virtual BOOL WINAPI SafeGetSaveFileName(LPOPENFILENAMEW lpofn) = 0;
 
     // plugin must provide Salamander with the name of its .chm file before using OpenHtmlHelp()
     // without path (e.g. "demoplug.chm")
@@ -4827,6 +4829,8 @@ inline BOOL SPLSafeGetSaveFileNameOwned(CSalamanderGeneralAbstract* general,
 #ifdef _MSC_VER
 #pragma pack(pop, enter_include_spl_gen)
 #endif // _MSC_VER
-#ifdef __BORLANDC__
+#if defined(__BORLANDC__) && !defined(__clang__)
 #pragma option -a
+#elif defined(__clang__) && !defined(_MSC_VER) // C++Builder bcc64x
+#pragma pack(pop)
 #endif // __BORLANDC__

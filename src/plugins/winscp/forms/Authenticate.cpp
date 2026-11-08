@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Common.h>
@@ -187,8 +188,8 @@ TList * __fastcall TAuthenticateForm::GeneratePrompt(AnsiString Instructions,
     TLabel * Label = GenerateLabel(Current, Prompts->Strings[Index]);
     Current += Label->Height + FPromptEditGap;
 
-    TCustomEdit * Edit = GenerateEdit(Current, bool(Prompts->Objects[Index]),
-      int(Results->Objects[Index]));
+    TCustomEdit * Edit = GenerateEdit(Current, (Prompts->Objects[Index] != NULL),
+      (int)reinterpret_cast<NativeInt>(Results->Objects[Index]));
     Result->Add(Edit);
     Label->FocusControl = Edit;
     Current += Edit->Height;
@@ -207,13 +208,15 @@ bool __fastcall TAuthenticateForm::PromptUser(TPromptKind Kind, AnsiString Name,
   bool Result;
   TList * Edits = GeneratePrompt(Instructions, Prompts, Results);
 
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Edits;
+  });
     bool ShowSavePasswordPanel = false;
     TSessionData * Data = NULL;
     if (((Kind == pkPassword) || (Kind == pkTIS) || (Kind == pkCryptoCard) ||
          (Kind == pkKeybInteractive)) &&
-        (Prompts->Count == 1) && !bool(Prompts->Objects[0]) &&
+        (Prompts->Count == 1) && (Prompts->Objects[0] == NULL) &&
         !FSessionData->Name.IsEmpty() &&
         StoredCredentialsTried)
     {
@@ -261,10 +264,6 @@ bool __fastcall TAuthenticateForm::PromptUser(TPromptKind Kind, AnsiString Name,
       }
     }
   }
-  __finally
-  {
-    delete Edits;
-  }
 
   return Result;
 }
@@ -288,8 +287,14 @@ bool __fastcall TAuthenticateForm::Execute(AnsiString Status, TPanel * Panel,
   bool FixHeight, bool Zoom, bool ForceLog)
 {
   TAlign Align = Panel->Align;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    Panel->Align = Align;
+    DefaultButton->Default = false;
+    CancelButton->Cancel = false;
+    FStatus = "";
+    AdjustControls();
+  });
     assert(FStatus.IsEmpty());
     FStatus = Status;
     DefaultButton->Default = true;
@@ -311,8 +316,16 @@ bool __fastcall TAuthenticateForm::Execute(AnsiString Status, TPanel * Panel,
       Panel->Top = ClientHeight - Panel->Height;
       Panel->Show();
       TCursor PrevCursor = Screen->Cursor;
-      try
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
+        Panel->Hide();
+        Screen->Cursor = PrevCursor;
+        if (Zoom)
+        {
+          LogView->Show();
+        }
+        Repaint();
+      });
         if (Zoom)
         {
           LogView->Hide();
@@ -346,24 +359,21 @@ bool __fastcall TAuthenticateForm::Execute(AnsiString Status, TPanel * Panel,
         }
         while (!Application->Terminated && (ModalResult == mrNone));
       }
-      __finally
-      {
-        Panel->Hide();
-        Screen->Cursor = PrevCursor;
-        if (Zoom)
-        {
-          LogView->Show();
-        }
-        Repaint();
-      }
     }
     else
     {
       int PrevHeight = ClientHeight;
       int PrevMinHeight = Constraints->MinHeight;
       int PrevMaxHeight = Constraints->MaxHeight;
-      try
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
+        FFocusControl = NULL;
+        ClientHeight = PrevHeight;
+        Constraints->MinHeight = PrevMinHeight;
+        Constraints->MaxHeight = PrevMaxHeight;
+        Panel->Hide();
+        LogView->Show();
+      });
         Constraints->MinHeight = 0;
         ClientHeight = Panel->Height;
         if (FixHeight)
@@ -377,24 +387,7 @@ bool __fastcall TAuthenticateForm::Execute(AnsiString Status, TPanel * Panel,
 
         ShowModal();
       }
-      __finally
-      {
-        FFocusControl = NULL;
-        ClientHeight = PrevHeight;
-        Constraints->MinHeight = PrevMinHeight;
-        Constraints->MaxHeight = PrevMaxHeight;
-        Panel->Hide();
-        LogView->Show();
-      }
     }
-  }
-  __finally
-  {
-    Panel->Align = Align;
-    DefaultButton->Default = false;
-    CancelButton->Cancel = false;
-    FStatus = "";
-    AdjustControls();
   }
 
   return (ModalResult != mrCancel);

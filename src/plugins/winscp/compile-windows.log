@@ -1,0 +1,70 @@
+Compiling module windows 
+===== windows\CustomWinConfiguration.cpp 
+===== windows\GUIConfiguration.cpp 
+In file included from windows\GUIConfiguration.cpp:7:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+In file included from windows\GUIConfiguration.cpp:11:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+2 warnings generated.
+===== windows\GUITools.cpp 
+In file included from windows\GUITools.cpp:10:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+1 warning generated.
+===== windows\QueueController.cpp 
+In file included from windows\QueueController.cpp:7:
+In file included from core\Queue.h:10:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+In file included from windows\QueueController.cpp:9:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+Warning W6913 windows\QueueController.cpp 68(13): enumeration values 'qsConnecting' and 'qsDone' not handled in switch [-Wswitch]
+   68 |     switch (QueueItem->Status)
+      |             ^~~~~~~~~~~~~~~~~
+Warning W6913 windows\QueueController.cpp 254(11): enumeration values 'qsProcessing' and 'qsDone' not handled in switch [-Wswitch]
+  254 |   switch (QueueItem->Status)
+      |           ^~~~~~~~~~~~~~~~~
+Warning W6913 windows\QueueController.cpp 296(13): 10 enumeration values not handled in switch: 'foNone', 'foDelete', 'foSetProperties'... [-Wswitch]
+  296 |     switch (Info->Operation)
+      |             ^~~~~~~~~~~~~~~
+5 warnings generated.
+===== windows\SynchronizeController.cpp 
+In file included from windows\SynchronizeController.cpp:8:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+1 warning generated.
+===== windows\Tools.cpp 
+In file included from windows\Tools.cpp:17:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+1 warning generated.
+===== windows\VCLCommon.cpp 
+In file included from windows\VCLCommon.cpp:13:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+1 warning generated.
+===== windows\WinInterface.cpp 
+In file included from windows\WinInterface.cpp:19:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+1 warning generated.
+ 
+==== RESULT: 8 ok, 0 failed: 

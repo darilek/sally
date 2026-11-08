@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <StrUtils.hpp>
@@ -30,25 +31,57 @@
 // Sheet tag:
 // 01 top, 02 indented
 //---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+// Busy (hourglass) cursor while the login dialog is being built - building
+// the form takes about a second and blocks Sally's UI thread.
+static bool LoginBusyCursor = false;
+static void LoginBusyBegin()
+{
+  if (!LoginBusyCursor)
+  {
+    LoginBusyCursor = true;
+    Screen->Cursor = crHourGlass; // calls SetCursor() immediately
+  }
+}
+static void LoginBusyEnd()
+{
+  if (LoginBusyCursor)
+  {
+    LoginBusyCursor = false;
+    // crDefault makes VCL send WM_SETCURSOR to the window under the mouse,
+    // so the proper cursor comes back without moving the mouse
+    Screen->Cursor = crDefault;
+  }
+}
+//---------------------------------------------------------------------------
 bool __fastcall DoLoginDialog(TStoredSessionList *SessionList,
   TSessionData * Data, int Options)
 {
   assert(Data);
+  // let Sally finish repainting before the (slow) form construction blocks the thread
+  FlushThreadPaint();
+  LoginBusyBegin();
+  // normally ended in FormShow; this covers exceptions and early returns
+  FINALLY_GUARD([&]() { LoginBusyEnd(); });
   TLoginDialog * LoginDialog = SafeFormCreate<TLoginDialog>();
+  FlushThreadPaint(); // first VCL form creation invalidates the whole Sally window
   TSessionData * Data2;
   bool Result;
   bool Owned;
-  try
-  {
-    try
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    if (Result && Owned)
     {
+      delete Data2;
+    }
+  });
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete LoginDialog;
+    });
       LoginDialog->Init(SessionList, Options);
       Data2 = Data;
       Result = LoginDialog->Execute(Data2, Owned);
-    }
-    __finally
-    {
-      delete LoginDialog;
     }
     if (Result)
     {
@@ -57,13 +90,6 @@ bool __fastcall DoLoginDialog(TStoredSessionList *SessionList,
       // (from within try ...finally block above)
       // the next window will appear in background for some reason
       Data->Assign(Data2);
-    }
-  }
-  __finally
-  {
-    if (Result && Owned)
-    {
-      delete Data2;
     }
   }
   return Result;
@@ -142,8 +168,10 @@ void __fastcall TLoginDialog::InitControls()
   InstallPathWordBreakProc(RecycleBinPathEdit);
 
   TunnelLocalPortNumberEdit->Items->BeginUpdate();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    TunnelLocalPortNumberEdit->Items->EndUpdate();
+  });
     AnsiString TunnelLocalPortNumberAutoassign = TunnelLocalPortNumberEdit->Items->Strings[0];
     TunnelLocalPortNumberEdit->Items->Clear();
     TunnelLocalPortNumberEdit->Items->Add(TunnelLocalPortNumberAutoassign);
@@ -152,10 +180,6 @@ void __fastcall TLoginDialog::InitControls()
     {
       TunnelLocalPortNumberEdit->Items->Add(IntToStr(Index));
     }
-  }
-  __finally
-  {
-    TunnelLocalPortNumberEdit->Items->EndUpdate();
   }
 
   HintLabel(ProxyTelnetCommandHintText, LoadStr(LOGIN_PROXY_COMMAND_PATTERNS_HINT));
@@ -292,20 +316,18 @@ void __fastcall TLoginDialog::DestroySession(TSessionData * Data)
 void __fastcall TLoginDialog::LoadSessions()
 {
   SessionTree->Items->BeginUpdate();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    // folders seem not to be sorted automatically (not having set the data property)
+    SessionTree->AlphaSort();
+    SessionTree->Items->EndUpdate();
+  });
     SessionTree->Items->Clear();
     assert(StoredSessions != NULL);
     for (int Index = 0; Index < StoredSessions->Count; Index++)
     {
       AddSession(StoredSessions->Sessions[Index]);
     }
-  }
-  __finally
-  {
-    // folders seem not to be sorted automatically (not having set the data property)
-    SessionTree->AlphaSort();
-    SessionTree->Items->EndUpdate();
   }
   SessionTree->Selected = SessionTree->Items->GetFirstNode();
   UpdateControls();
@@ -337,8 +359,11 @@ void __fastcall TLoginDialog::LoadSession(TSessionData * aSessionData)
   assert(aSessionData == FSessionData);
 
   NoUpdate++;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    NoUpdate--;
+    UpdateControls();
+  });
     // Basic tab
     UserNameEdit->Text = aSessionData->UserName;
     PortNumberEdit->AsInteger = aSessionData->PortNumber;
@@ -570,7 +595,7 @@ void __fastcall TLoginDialog::LoadSession(TSessionData * aSessionData)
     }
     else
     {
-      FtpProxyMethodCombo->ItemIndex = pmNone;
+      FtpProxyMethodCombo->ItemIndex = ::pmNone;
     }
     if (aSessionData->FtpProxyLogonType != 0)
     {
@@ -617,11 +642,6 @@ void __fastcall TLoginDialog::LoadSession(TSessionData * aSessionData)
     // hide selection, which is wrongly shown initially even when the box has not focus
     TunnelLocalPortNumberEdit->SelLength = 0;
   }
-  __finally
-  {
-    NoUpdate--;
-    UpdateControls();
-  }
 
   if (UnixExtractFileName(aSessionData->Name) != aSessionData->DefaultSessionName)
   {
@@ -664,14 +684,14 @@ void __fastcall TLoginDialog::SaveSession(TSessionData * aSessionData)
 
   for (int Index = 0; Index < CIPHER_COUNT; Index++)
   {
-    aSessionData->Cipher[Index] = (TCipher)CipherListBox->Items->Objects[Index];
+    aSessionData->Cipher[Index] = (TCipher)reinterpret_cast<NativeInt>(CipherListBox->Items->Objects[Index]);
   }
 
   // Kex tab
 
   for (int Index = 0; Index < KEX_COUNT; Index++)
   {
-    aSessionData->Kex[Index] = (TKex)KexListBox->Items->Objects[Index];
+    aSessionData->Kex[Index] = (TKex)reinterpret_cast<NativeInt>(KexListBox->Items->Objects[Index]);
   }
 
   aSessionData->RekeyTime = RekeyTimeEdit->AsInteger;
@@ -759,9 +779,9 @@ void __fastcall TLoginDialog::SaveSession(TSessionData * aSessionData)
 
   // SCP tab
   aSessionData->DefaultShell = (ShellEdit->Text == ShellEdit->Items->Strings[0]);
-  aSessionData->Shell = (aSessionData->DefaultShell ? AnsiString() : ShellEdit->Text);
+  aSessionData->Shell = (aSessionData->DefaultShell ? AnsiString() : AnsiString(ShellEdit->Text));
   aSessionData->DetectReturnVar = (ReturnVarEdit->Text == ReturnVarEdit->Items->Strings[0]);
-  aSessionData->ReturnVar = (aSessionData->DetectReturnVar ? AnsiString() : ReturnVarEdit->Text);
+  aSessionData->ReturnVar = (aSessionData->DetectReturnVar ? AnsiString() : AnsiString(ReturnVarEdit->Text));
   aSessionData->ListingCommand = ListingCommandEdit->Text;
   aSessionData->LookupUserGroups = LookupUserGroupsCheck->Checked;
   aSessionData->ClearAliases = ClearAliasesCheck->Checked;
@@ -773,7 +793,7 @@ void __fastcall TLoginDialog::SaveSession(TSessionData * aSessionData)
   // SFTP tab
   aSessionData->SftpServer =
     ((SftpServerEdit->Text == SftpServerEdit->Items->Strings[0]) ?
-      AnsiString() : SftpServerEdit->Text);
+      AnsiString() : AnsiString(SftpServerEdit->Text));
   aSessionData->SFTPMaxVersion = SFTPMaxVersionCombo->ItemIndex;
 
   #define SAVE_SFTP_BUG_COMBO(BUG) aSessionData->SFTPBug[sb ## BUG] = ComboAutoSwitchSave(SFTPBug ## BUG ## Combo);
@@ -841,8 +861,10 @@ void __fastcall TLoginDialog::UpdateNavigationTree()
   TTreeNode * ActiveNode = NULL;
 
   NoUpdate++;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    NoUpdate--;
+  });
     int Index = 0;
     TTreeNode * PrevNode = NULL;
     while (Index < PageControl->PageCount)
@@ -913,7 +935,7 @@ void __fastcall TLoginDialog::UpdateNavigationTree()
         }
 
         Node->Text = Label;
-        Node->SelectedIndex = reinterpret_cast<int>(Tab);
+        Node->Data = Tab;
         PrevNode = Node;
         if (PageControl->ActivePage == Tab)
         {
@@ -932,10 +954,6 @@ void __fastcall TLoginDialog::UpdateNavigationTree()
 
     NavigationTree->FullExpand();
   }
-  __finally
-  {
-    NoUpdate--;
-  }
 
   // node of active page was hidden
   if (ActiveNode == NULL)
@@ -949,8 +967,10 @@ void __fastcall TLoginDialog::UpdateControls()
   if (Visible && FInitialized)
   {
     NoUpdate++;
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      NoUpdate--;
+    });
       TFSProtocol FSProtocol = IndexToFSProtocol(
         TransferProtocolCombo->ItemIndex, AllowScpFallbackCheck->Checked);
       bool SshProtocol =
@@ -973,7 +993,7 @@ void __fastcall TLoginDialog::UpdateControls()
       ConnSheet->Enabled = Advanced;
       EnableControl(FtpPasvModeCheck, FtpProtocol);
       if (FtpProtocol &&
-          (FtpProxyMethodCombo->ItemIndex != pmNone) &&
+          (FtpProxyMethodCombo->ItemIndex != ::pmNone) &&
           SupportedFtpProxyMethod(FtpProxyMethodCombo->ItemIndex) &&
           !FtpPasvModeCheck->Checked)
       {
@@ -1052,7 +1072,7 @@ void __fastcall TLoginDialog::UpdateControls()
       }
       else
       {
-        OtherProxyMethodCombo->ItemIndex = pmNone;
+        OtherProxyMethodCombo->ItemIndex = ::pmNone;
       }
 
       ProxySheet->Enabled = Advanced;
@@ -1095,7 +1115,7 @@ void __fastcall TLoginDialog::UpdateControls()
          AnsiContainsText(ProxyCommand, "%pass")) ||
         ((FtpProxyLogonType > 0) && (FtpProxyLogonType != 3) && (FtpProxyLogonType != 5)));
       EnableControl(ProxyPasswordLabel, ProxyPasswordEdit->Enabled);
-      bool ProxySettings = (ProxyMethod != pmNone) && SshProtocol;
+      bool ProxySettings = (ProxyMethod != ::pmNone) && SshProtocol;
       EnableControl(ProxySettingsGroup, ProxySettings);
       EnableControl(ProxyTelnetCommandEdit,
         ProxySettings && (ProxyMethod == pmTelnet));
@@ -1194,10 +1214,6 @@ void __fastcall TLoginDialog::UpdateControls()
 
       UpdateNavigationTree();
     }
-    __finally
-    {
-      NoUpdate--;
-    }
   }
 }
 //---------------------------------------------------------------------------
@@ -1208,6 +1224,7 @@ void __fastcall TLoginDialog::DataChange(TObject * /*Sender*/)
 //---------------------------------------------------------------------------
 void __fastcall TLoginDialog::FormShow(TObject * /*Sender*/)
 {
+  FINALLY_GUARD([&]() { LoginBusyEnd(); });
   if (!FInitialized)
   {
     Init();
@@ -1581,14 +1598,12 @@ void __fastcall TLoginDialog::SaveConfiguration()
 {
   assert(CustomWinConfiguration);
   CustomWinConfiguration->BeginUpdate();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    CustomWinConfiguration->EndUpdate();
+  });
     LoggingFrame->SaveConfiguration();
     GeneralSettingsFrame->SaveConfiguration();
-  }
-  __finally
-  {
-    CustomWinConfiguration->EndUpdate();
   }
 }
 //---------------------------------------------------------------------------
@@ -1615,14 +1630,12 @@ void __fastcall TLoginDialog::ShowPreferencesDialog()
 {
   assert(CustomWinConfiguration->OnMasterPasswordRecrypt == NULL);
   CustomWinConfiguration->OnMasterPasswordRecrypt = MasterPasswordRecrypt;
-  try
-  {
-    DoPreferencesDialog(pmLogin);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     assert(CustomWinConfiguration->OnMasterPasswordRecrypt == MasterPasswordRecrypt);
     CustomWinConfiguration->OnMasterPasswordRecrypt = NULL;
+  });
+    DoPreferencesDialog(pmLogin);
   }
 }
 //---------------------------------------------------------------------------
@@ -1637,7 +1650,7 @@ void __fastcall TLoginDialog::NavigationTreeChange(TObject * /*Sender*/,
 {
   if (NoUpdate == 0)
   {
-    TTabSheet * Tab = reinterpret_cast<TTabSheet *>(Node->SelectedIndex);
+    TTabSheet * Tab = static_cast<TTabSheet *>(Node->Data);
     // should happen only while loading language
     // (UpdateNavigationTree may not be called yet)
     if (Tab != NULL)
@@ -1662,8 +1675,8 @@ void __fastcall TLoginDialog::PageControlChange(TObject *Sender)
   {
     for (int Index = 0; Index < NavigationTree->Items->Count; Index++)
     {
-      if (NavigationTree->Items->Item[Index]->SelectedIndex ==
-            reinterpret_cast<int>(PageControl->ActivePage))
+      if (NavigationTree->Items->Item[Index]->Data ==
+            PageControl->ActivePage)
       {
         NavigationTree->Items->Item[Index]->Selected = true;
         Found = true;
@@ -1750,13 +1763,11 @@ void __fastcall TLoginDialog::Dispatch(void * Message)
     else
     {
       FLocaleChanging = true;
-      try
-      {
-        Show();
-      }
-      __finally
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
         FLocaleChanging = false;
+      });
+        Show();
       }
     }
   }
@@ -1949,9 +1960,9 @@ void __fastcall TLoginDialog::LanguagesButtonClick(TObject * /*Sender*/)
     Item = new TMenuItem(FLanguagesPopupMenu);
     FLanguagesPopupMenu->Items->Add(Item);
     Item->Caption = Locales->Strings[Index];
-    Item->Tag = reinterpret_cast<int>(Locales->Objects[Index]);
+    Item->Tag = reinterpret_cast<NativeInt>(Locales->Objects[Index]);
     Item->OnClick = LocaleClick;
-    Item->Checked = (reinterpret_cast<LCID>(Locales->Objects[Index]) ==
+    Item->Checked = ((LCID)reinterpret_cast<NativeUInt>(Locales->Objects[Index]) ==
       GUIConfiguration->Locale);
   }
   Item = new TMenuItem(FLanguagesPopupMenu);
@@ -2050,8 +2061,13 @@ void __fastcall TLoginDialog::VerifyKey(AnsiString FileName, bool TypeOnly)
 }
 //---------------------------------------------------------------------------
 void __fastcall TLoginDialog::PrivateKeyEditAfterDialog(TObject * Sender,
-  AnsiString & Name, bool & /*Action*/)
+  UnicodeString & NameU, bool & /*Action*/)
 {
+  // VCL passes UnicodeString& (BCB6 passed AnsiString&): work on an ANSI copy,
+  // write back only when changed so untouched non-ANSI text survives
+  const AnsiString Name_Orig = NameU;
+  AnsiString Name = Name_Orig;
+  FINALLY_GUARD([&]() { if (Name != Name_Orig) { NameU = Name; } });
   if (CompareFileName(Name, ExpandEnvironmentVariables(FBeforeDialogPath)))
   {
     Name = FBeforeDialogPath;
@@ -2093,18 +2109,16 @@ void __fastcall TLoginDialog::ColorDefaultItemClick(TObject * /*Sender*/)
 void __fastcall TLoginDialog::PickColorItemClick(TObject * /*Sender*/)
 {
   TColorDialog * Dialog = new TColorDialog(this);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Dialog;
+  });
     Dialog->Options = Dialog->Options << cdFullOpen;
     Dialog->Color = (FColor != 0 ? FColor : clSkyBlue);
     if (Dialog->Execute())
     {
       FColor = Dialog->Color;
     }
-  }
-  __finally
-  {
-    delete Dialog;
   }
 }
 //---------------------------------------------------------------------------
@@ -2149,8 +2163,13 @@ void __fastcall TLoginDialog::CheckDuplicateFolder(TTreeNode * Parent,
 }
 //---------------------------------------------------------------------------
 void __fastcall TLoginDialog::SessionTreeEdited(TObject * /*Sender*/,
-  TTreeNode * Node, AnsiString & S)
+  TTreeNode * Node, UnicodeString & SU)
 {
+  // VCL passes UnicodeString& (BCB6 passed AnsiString&): work on an ANSI copy,
+  // write back only when changed so untouched non-ANSI text survives
+  const AnsiString S_Orig = SU;
+  AnsiString S = S_Orig;
+  FINALLY_GUARD([&]() { if (S != S_Orig) { SU = S; } });
   if (Node->Text != S)
   {
     TSessionData * Session = SelectedSession;
@@ -2207,8 +2226,10 @@ void __fastcall TLoginDialog::SessionTreeEdited(TObject * /*Sender*/,
       // temporarily disable automatic sorting, so that nodes are kept in order
       // while we traverse them. otherwise it may happen that we omit some.
       SessionTree->SortType = Comctrls::stNone;
-      try
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
+        SessionTree->SortType = PrevSortType;
+      });
         TTreeNode * ANode = Node->GetNext();
         while ((ANode != NULL) && ANode->HasAsParent(Node))
         {
@@ -2238,10 +2259,6 @@ void __fastcall TLoginDialog::SessionTreeEdited(TObject * /*Sender*/,
           ANode = ANode->GetNext();
         }
       }
-      __finally
-      {
-        SessionTree->SortType = PrevSortType;
-      }
 
       if (AnySession)
       {
@@ -2253,8 +2270,13 @@ void __fastcall TLoginDialog::SessionTreeEdited(TObject * /*Sender*/,
 }
 //---------------------------------------------------------------------------
 void __fastcall TLoginDialog::PathEditBeforeDialog(TObject * /*Sender*/,
-  AnsiString & Name, bool & /*Action*/)
+  UnicodeString & NameU, bool & /*Action*/)
 {
+  // VCL passes UnicodeString& (BCB6 passed AnsiString&): work on an ANSI copy,
+  // write back only when changed so untouched non-ANSI text survives
+  const AnsiString Name_Orig = NameU;
+  AnsiString Name = Name_Orig;
+  FINALLY_GUARD([&]() { if (Name != Name_Orig) { NameU = Name; } });
   FBeforeDialogPath = Name;
   Name = ExpandEnvironmentVariables(Name);
 }
@@ -2325,7 +2347,7 @@ TProxyMethod __fastcall TLoginDialog::GetProxyMethod()
     }
     else
     {
-      Result = pmNone;
+      Result = ::pmNone;
     }
   }
   return Result;

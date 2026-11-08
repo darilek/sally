@@ -1,0 +1,108 @@
+Compiling module forms 
+===== forms\About.cpp 
+===== forms\Authenticate.cpp 
+In file included from forms\Authenticate.cpp:12:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+1 warning generated.
+===== forms\Console.cpp 
+In file included from forms\Console.cpp:13:
+In file included from forms\Console.h:24:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+1 warning generated.
+===== forms\Copy.cpp 
+===== forms\CopyParamCustom.cpp 
+In file included from forms\CopyParamCustom.cpp:9:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+1 warning generated.
+===== forms\CopyParams.cpp 
+===== forms\Custom.cpp 
+===== forms\FileSystemInfo.cpp 
+In file included from forms\FileSystemInfo.cpp:7:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+In file included from forms\FileSystemInfo.cpp:13:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+2 warnings generated.
+===== forms\FullSynchronize.cpp 
+===== forms\GeneralSettings.cpp 
+===== forms\InputDlg.cpp 
+===== forms\License.cpp 
+===== forms\Login.cpp 
+In file included from forms\Login.cpp:17:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+1 warning generated.
+===== forms\LogSettings.cpp 
+===== forms\MessageDlg.cpp 
+In file included from forms\MessageDlg.cpp:6:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+1 warning generated.
+===== forms\Progress.cpp 
+In file included from forms\Progress.cpp:13:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+1 warning generated.
+===== forms\Properties.cpp 
+In file included from forms\Properties.cpp:11:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+In file included from forms\Properties.cpp:13:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+2 warnings generated.
+===== forms\Rights.cpp 
+In file included from forms\Rights.cpp:12:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+1 warning generated.
+===== forms\RightsExt.cpp 
+===== forms\Synchronize.cpp 
+In file included from forms\Synchronize.cpp:12:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+In file included from forms\Synchronize.cpp:13:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+2 warnings generated.
+===== forms\SynchronizeChecklist.cpp 
+In file included from forms\SynchronizeChecklist.cpp:9:
+In file included from forms\SynchronizeChecklist.h:19:
+Warning W6689 core\Terminal.h 126(35): interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland]
+  126 | class TTerminal : public TObject, public TSessionUI
+      |                                   ^
+1 warning generated.
+===== forms\SynchronizeProgress.cpp 
+In file included from forms\SynchronizeProgress.cpp:12:
+Warning W1290 windows\GUITools.h 14(10): non-portable path to file '<FileMasks.h>'; specified path differs in case from file name on disk [-Wnonportable-include-path]
+   14 | #include <FileMasks.H>
+      |          ^~~~~~~~~~~~~
+      |          <FileMasks.h>
+1 warning generated.
+ 
+==== RESULT: 22 ok, 0 failed: 

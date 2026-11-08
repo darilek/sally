@@ -37,9 +37,9 @@ __published:
   void __fastcall LogToFileCheckChange(TObject *Sender);
   void __fastcall DataChange(TObject *Sender);
   void __fastcall LogFileNameEdit2BeforeDialog(TObject *Sender,
-          AnsiString &Name, bool &Action);
+          UnicodeString &NameU, bool &Action);
   void __fastcall LogFileNameEdit2AfterDialog(TObject *Sender,
-          AnsiString &Name, bool &Action);
+          UnicodeString &NameU, bool &Action);
   void __fastcall LogFileNameEdit2CreateEditDialog(TObject *Sender,
           TFileDialogKind DialogKind, TOpenDialog *&Dialog);
   void __fastcall LoggingButtonClick(TObject *Sender);

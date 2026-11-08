@@ -1,0 +1,2 @@
+    141 |         TRACE_C("Registration of the universal window has failed. Error=" << err);
+==== errors / warnings summary ==== 

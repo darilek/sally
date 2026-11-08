@@ -734,7 +734,7 @@ begin
       // just to be sure everything goes into the stream
       ok2 := FStream.write(p^, ok);
       Dec(ok,ok2);
-      p := Pointer(LongInt(p) + ok2);
+      p := Pointer(NativeInt(p) + ok2);
     end;
   end;
   FStream.Seek(0, 0);
@@ -906,7 +906,7 @@ begin
       // just to be sure everything goes into the stream
       ok2 := FStream.Write(p^, ok);
       Dec(ok, ok2);
-      p := Pointer(LongInt(p) + ok2);
+      p := Pointer(NativeInt(p) + ok2);
     end;
   end;
   FStream.Seek(0,0); // set the stream back to start
@@ -959,7 +959,7 @@ begin
       // just to be sure everything goes into the stream
       ok2 := FStream.Write(p^, ok);
       Dec(ok, ok2);
-      p := Pointer(LongInt(p) + ok2);
+      p := Pointer(NativeInt(p) + ok2);
     end;
   end;
   FStream.Seek(0,0); // set the stream back to start

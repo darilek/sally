@@ -10,14 +10,14 @@ class TGUIConfiguration;
 enum TLogView { lvNone, lvWindow, pvPanel };
 enum TInterface { ifCommander, ifExplorer };
 //---------------------------------------------------------------------------
-extern const ccLocal;
-extern const ccShowResults;
-extern const ccCopyResults;
-extern const ccSet;
+extern const int ccLocal;
+extern const int ccShowResults;
+extern const int ccCopyResults;
+extern const int ccSet;
 //---------------------------------------------------------------------------
-const soRecurse =        0x01;
-const soSynchronize =    0x02;
-const soSynchronizeAsk = 0x04;
+const int soRecurse =        0x01;
+const int soSynchronize =    0x02;
+const int soSynchronizeAsk = 0x04;
 //---------------------------------------------------------------------------
 class TGUICopyParamType : public TCopyParamType
 {
@@ -81,7 +81,7 @@ public:
 private:
   TCopyParamRuleData FData;
 
-  inline bool __fastcall Match(const AnsiString & Mask,
+  bool __fastcall Match(const AnsiString & Mask,
     const AnsiString & Value, bool Path, bool Local = true) const;
   bool __fastcall GetEmpty() const;
 };

@@ -181,8 +181,8 @@ protected:
   void __fastcall TerminalPromptUser(TTerminal * Terminal, TPromptKind Kind,
     AnsiString Name, AnsiString Instructions, TStrings * Prompts,
     TStrings * Results, bool & Result, void * Arg);
-  inline bool __fastcall Synchronizing();
-  inline void __fastcall ShowPendingProgress();
+  bool __fastcall Synchronizing();
+  void __fastcall ShowPendingProgress();
 
   void __fastcall ExitProc(TScriptProcParams * Parameters);
   void __fastcall OpenProc(TScriptProcParams * Parameters);

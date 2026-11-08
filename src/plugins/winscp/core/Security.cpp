@@ -40,17 +40,17 @@ AnsiString EncryptPassword(AnsiString Password, AnsiString Key, Integer /* Algor
   if (!RandSeed) Randomize();
   Password = Key + Password;
   Shift = (Password.Length() < PWALG_SIMPLE_MAXLEN) ?
-    (unsigned char)random(PWALG_SIMPLE_MAXLEN - Password.Length()) : 0;
-  Result += SimpleEncryptChar((Char)PWALG_SIMPLE_FLAG); // Flag
-  Result += SimpleEncryptChar((Char)PWALG_SIMPLE_INTERNAL); // Dummy
-  Result += SimpleEncryptChar((Char)Password.Length());
-  Result += SimpleEncryptChar((Char)Shift);
+    (unsigned char)Random(PWALG_SIMPLE_MAXLEN - Password.Length()) : 0;
+  Result += SimpleEncryptChar((char)PWALG_SIMPLE_FLAG); // Flag
+  Result += SimpleEncryptChar((char)PWALG_SIMPLE_INTERNAL); // Dummy
+  Result += SimpleEncryptChar((char)Password.Length());
+  Result += SimpleEncryptChar((char)Shift);
   for (Index = 0; Index < Shift; Index++)
-    Result += SimpleEncryptChar((unsigned char)random(256));
+    Result += SimpleEncryptChar((unsigned char)Random(256));
   for (Index = 0; Index < Password.Length(); Index++)
     Result += SimpleEncryptChar(Password.c_str()[Index]);
   while (Result.Length() < PWALG_SIMPLE_MAXLEN * 2)
-    Result += SimpleEncryptChar((unsigned char)random(256));
+    Result += SimpleEncryptChar((unsigned char)Random(256));
   return Result;
 }
 //---------------------------------------------------------------------------
@@ -81,8 +81,8 @@ AnsiString DecryptPassword(AnsiString Password, AnsiString Key, Integer /* Algor
 AnsiString SetExternalEncryptedPassword(AnsiString Password, bool HasPasswordManagerSignature)
 {
   AnsiString Result;
-  Result += SimpleEncryptChar((Char)PWALG_SIMPLE_FLAG);
-  Result += SimpleEncryptChar((Char)(HasPasswordManagerSignature ?
+  Result += SimpleEncryptChar((char)PWALG_SIMPLE_FLAG);
+  Result += SimpleEncryptChar((char)(HasPasswordManagerSignature ?
     PWALG_SIMPLE_EXTERNAL_V108 : PWALG_SIMPLE_EXTERNAL));
   Result += StrToHex(Password);
   return Result;
@@ -94,7 +94,7 @@ bool GetExternalEncryptedPassword(AnsiString Encrypted, AnsiString & Password,
   if (HasPasswordManagerSignature != NULL)
     *HasPasswordManagerSignature = false;
   bool Result = (SimpleDecryptNextChar(Encrypted) == PWALG_SIMPLE_FLAG);
-  Char Kind = Result ? SimpleDecryptNextChar(Encrypted) : 0;
+  char Kind = Result ? SimpleDecryptNextChar(Encrypted) : 0;
   Result = Result && (Kind == PWALG_SIMPLE_EXTERNAL ||
                       Kind == PWALG_SIMPLE_EXTERNAL_V108);
   if (Result)

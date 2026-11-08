@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Dialogs.hpp>
@@ -214,8 +215,10 @@ __fastcall TSaveSessionDialog::TSaveSessionDialog(
   // parent has to be set before following
   InstallPathWordBreakProc(SessionNameCombo);
   SessionNameCombo->Items->BeginUpdate();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    SessionNameCombo->Items->EndUpdate();
+  });
     for (int Index = 0; Index < StoredSessions->Count; Index++)
     {
       TSessionData * Data = StoredSessions->Sessions[Index];
@@ -224,10 +227,6 @@ __fastcall TSaveSessionDialog::TSaveSessionDialog(
         SessionNameCombo->Items->Add(Data->Name);
       }
     }
-  }
-  __finally
-  {
-    SessionNameCombo->Items->EndUpdate();
   }
 
   SavePasswordCheck = new TCheckBox(this);
@@ -286,18 +285,16 @@ bool __fastcall DoSaveSessionDialog(AnsiString & SessionName,
   bool Result;
   TSaveSessionDialog * Dialog = new TSaveSessionDialog(
     OriginalSession, (SavePassword != NULL));
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Dialog;
+  });
     bool Dummy = false;
     if (SavePassword == NULL)
     {
       SavePassword = &Dummy;
     }
     Result = Dialog->Execute(SessionName, *SavePassword);
-  }
-  __finally
-  {
-    delete Dialog;
   }
   return Result;
 }
@@ -361,13 +358,11 @@ bool __fastcall DoShortCutDialog(TShortCut & ShortCut,
 {
   bool Result;
   TShortCutDialog * Dialog = new TShortCutDialog(ShortCuts, HelpKeyword);
-  try
-  {
-    Result = Dialog->Execute(ShortCut);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     delete Dialog;
+  });
+    Result = Dialog->Execute(ShortCut);
   }
   return Result;
 }

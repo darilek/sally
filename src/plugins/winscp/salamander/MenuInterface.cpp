@@ -90,24 +90,36 @@ BOOL WINAPI CPluginInterfaceForMenuExt::ExecuteMenuItem(
 //---------------------------------------------------------------------------
 BOOL WINAPI CPluginInterfaceForMenuExt::HelpForMenuItem(HWND /*Parent*/, int Id)
 {
-    int HelpID = 0;
-    switch (Id)
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-    case pmConnect:
-        HelpID = IDH_UI_LOGIN;
-        break;
-    case pmDisconnectF12:
-        HelpID = IDH_DISCONNECT_F12;
-        break;
-    case pmFullSynchronize:
-        HelpID = IDH_DIR_SYNCHRONIZE;
-        break;
-    case pmSynchronize:
-        HelpID = IDH_KEEPUPTODATE_SYNCHRONIZE;
-        break;
+        int HelpID = 0;
+        switch (Id)
+        {
+        case pmConnect:
+            HelpID = IDH_UI_LOGIN;
+            break;
+        case pmDisconnectF12:
+            HelpID = IDH_DISCONNECT_F12;
+            break;
+        case pmFullSynchronize:
+            HelpID = IDH_DIR_SYNCHRONIZE;
+            break;
+        case pmSynchronize:
+            HelpID = IDH_KEEPUPTODATE_SYNCHRONIZE;
+            break;
+        }
+        if (HelpID != 0)
+            PluginInterface.HelpContext(HelpID);
+        return HelpID != 0;
     }
-    if (HelpID != 0)
-        PluginInterface.HelpContext(HelpID);
-    return HelpID != 0;
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginInterfaceForMenuExt::HelpForMenuItem", &E, false);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginInterfaceForMenuExt::HelpForMenuItem", NULL, false);
+    }
+    return FALSE;
 }
 //---------------------------------------------------------------------------

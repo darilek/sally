@@ -43,12 +43,14 @@ void __fastcall TSalamandForm::DoShow()
 {
     TForm::DoShow();
 
-    if (Showing)
+    // GetSalamanderGeneral() is NULL until CPluginInterface::Init has obtained it
+    // (e.g. an error message shown from a failing Init); skip centering then.
+    CSalamanderGeneralAbstract* General = PluginInterface.GetSalamanderGeneral();
+    if (Showing && (General != NULL))
     {
         HWND HParent =
-            (Parent != NULL ? Parent->Handle : (FPreviousForm != NULL ? FPreviousForm->Handle : PluginInterface.GetSalamanderGeneral()->GetMainWindowHWND()));
-        PluginInterface.GetSalamanderGeneral()->MultiMonCenterWindow(
-            Handle, HParent, TRUE);
+            (Parent != NULL ? Parent->Handle : (FPreviousForm != NULL ? FPreviousForm->Handle : General->GetMainWindowHWND()));
+        General->MultiMonCenterWindow(Handle, HParent, TRUE);
     }
 }
 //---------------------------------------------------------------------------

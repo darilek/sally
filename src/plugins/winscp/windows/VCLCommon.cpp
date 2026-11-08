@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include "WinInterface.h"
@@ -12,13 +13,13 @@
 #include <Tools.h>
 
 #include <FileCtrl.hpp>
-#include <ThemeMgr.hpp>
+#include <Vcl.Themes.hpp>
 #include <PathLabel.hpp>
 #include <PasTools.hpp>
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 //---------------------------------------------------------------------------
-static TThemeManager * ThemeManager = NULL;
+// ThemeManager (BCB6/XP era) removed: VCL has native theming now
 //---------------------------------------------------------------------------
 void __fastcall AdjustListColumnsWidth(TListView* ListView, int RowCount, int RightPad)
 {
@@ -68,8 +69,7 @@ void __fastcall AdjustListColumnsWidth(TListView* ListView, int RowCount, int Ri
 static void __fastcall SetParentColor(TControl * Control)
 {
   TColor Color;
-  assert(ThemeManager != NULL);
-  if (ThemeManager->ThemesEnabled)
+  if (StyleServices()->Enabled)
   {
     bool OnTabSheet = false;
     TWinControl * Parent = Control->Parent;
@@ -79,15 +79,7 @@ static void __fastcall SetParentColor(TControl * Control)
       OnTabSheet = (TabSheet != NULL) && TabSheet->TabVisible;
       Parent = Parent->Parent;
     }
-
-    if (OnTabSheet)
-    {
-      Color = ThemeManager->GetColor(teTab, ::TABP_BODY, 0, ::TMT_FILLCOLORHINT);
-    }
-    else
-    {
-      Color = ThemeManager->GetColor(teWindow, ::WP_DIALOG, 0, ::TMT_FILLCOLOR);
-    }
+    Color = StyleServices()->GetSystemColor(OnTabSheet ? clWindow : clBtnFace);
   }
   else
   {
@@ -152,17 +144,6 @@ struct TSavedSystemSettings
   TWndMethod OldWndProc;
 };
 //---------------------------------------------------------------------------
-static void __fastcall ThemeManagerAllowSubclassing(void * /*Data*/,
-  TThemeManager * /*Sender*/, TControl * Control, bool & Allow)
-{
-  TPathLabel * PathLabel = dynamic_cast<TPathLabel *>(Control);
-  // intent is to only exclude path labels on the main window
-  if ((PathLabel != NULL) && (PathLabel->FocusControl != NULL))
-  {
-    Allow = false;
-  }
-}
-//---------------------------------------------------------------------------
 class TPublicControl : public TWinControl
 {
 friend TWndMethod __fastcall ControlWndProc(TWinControl * Control);
@@ -174,7 +155,7 @@ TWndMethod __fastcall ControlWndProc(TWinControl * Control)
   return &PublicControl->WndProc;
 }
 //---------------------------------------------------------------------------
-static TMonitor * LastMonitor = NULL;
+static Vcl::Forms::TMonitor * LastMonitor = NULL;
 //---------------------------------------------------------------------------
 inline void __fastcall DoFormWindowProc(TCustomForm * Form, TWndMethod WndProc,
   TMessage & Message)
@@ -295,27 +276,12 @@ static void __fastcall FormWindowProcEx(void * Data, TMessage & Message)
 //---------------------------------------------------------------------------
 void __fastcall InitializeSystemSettings()
 {
-  if (ThemeManager == NULL)
-  {
-    ThemeManager = new TThemeManager(Application);
-    ThemeManager->Name = "ThemeManager";
-    // ListView subclassing breaks TDirView
-    ThemeManager->Options = (ThemeManager->Options >> toSubclassListView);
-    // Speed Button subclassing on rights frame does not work somehow
-    // and they are not used elsewhere
-    ThemeManager->Options = (ThemeManager->Options >> toSubclassSpeedButtons);
-    TAllowSubclassingEvent OnAllowSubclassing;
-    ((TMethod*)&OnAllowSubclassing)->Code = ThemeManagerAllowSubclassing;
-    ThemeManager->OnAllowSubclassing = OnAllowSubclassing;
-  }
+  // nothing to do, VCL handles themes natively
 }
 //---------------------------------------------------------------------------
 void __fastcall FinalizeSystemSettings()
 {
-  if (ThemeManager != NULL)
-  {
-    SAFE_DESTROY(ThemeManager);
-  }
+  // nothing to do
 }
 //---------------------------------------------------------------------------
 // Settings that must be set as soon as possible.
@@ -335,12 +301,12 @@ void __fastcall UseSystemSettingsPre(TCustomForm * Control, void ** Settings)
     SSettings->OldWndProc = Control->WindowProc;
 
     ((TMethod*)&WindowProc)->Data = SSettings;
-    ((TMethod*)&WindowProc)->Code = FormWindowProcEx;
+    ((TMethod*)&WindowProc)->Code = reinterpret_cast<void *>(FormWindowProcEx);
   }
   else
   {
     ((TMethod*)&WindowProc)->Data = Control;
-    ((TMethod*)&WindowProc)->Code = FormWindowProc;
+    ((TMethod*)&WindowProc)->Code = reinterpret_cast<void *>(FormWindowProc);
   }
 
   Control->WindowProc = WindowProc;
@@ -354,11 +320,6 @@ void __fastcall UseSystemSettingsPre(TCustomForm * Control, void ** Settings)
     Control->HelpKeyword = "start";
   }
 
-  // especially on login dialog, we need to reapply themes with language change
-  if ((ThemeManager != NULL) && ThemeManager->ThemesEnabled)
-  {
-    ThemeManager->CollectForms(Control);
-  }
 };
 //---------------------------------------------------------------------------
 // Settings that must be set only after whole form is constructed
@@ -421,18 +382,15 @@ friend void __fastcall HideAsModal(TForm * Form, void *& Storage);
 struct TShowAsModalStorage
 {
   void * FocusWindowList;
-  void * FocusActiveWindow;
+  HWND FocusActiveWindow;
   TFocusState FocusState;
 };
 //---------------------------------------------------------------------------
-static TCustomForm ** __fastcall FocusedForm()
-{
-  return reinterpret_cast<TCustomForm **>(reinterpret_cast<char *>(Screen) + 0x78);
-}
-//---------------------------------------------------------------------------
+// BCB6 code accessed TScreen private fields at hard-coded 32-bit offsets
+// (0x78 FFocusedForm, 0x7C FSaveFocusedList); modern VCL exposes them as properties.
 static TList * __fastcall SaveFocusedList()
 {
-  return *reinterpret_cast<TList **>(reinterpret_cast<char *>(Screen) + 0x7C);
+  return Screen->SaveFocusedList;
 }
 //---------------------------------------------------------------------------
 void __fastcall ShowAsModal(TForm * Form, void *& Storage)
@@ -447,8 +405,8 @@ void __fastcall ShowAsModal(TForm * Form, void *& Storage)
 
   AStorage->FocusActiveWindow = GetActiveWindow();
   AStorage->FocusState = SaveFocusState();
-  SaveFocusedList()->Insert(0, *FocusedForm());
-  *FocusedForm() = Form;
+  SaveFocusedList()->Insert(0, Screen->FocusedForm);
+  Screen->FocusedForm = Form;
   AStorage->FocusWindowList = DisableTaskWindows(0);
   Form->Show();
   SendMessage(Form->Handle, CM_ACTIVATE, 0, 0);
@@ -465,22 +423,22 @@ void __fastcall HideAsModal(TForm * Form, void *& Storage)
   SendMessage(Form->Handle, CM_DEACTIVATE, 0, 0);
   if (GetActiveWindow() != Form->Handle)
   {
-    AStorage->FocusActiveWindow = 0;
+    AStorage->FocusActiveWindow = NULL;
   }
   Form->Hide();
 
   EnableTaskWindows(AStorage->FocusWindowList);
 
   TList * ASaveFocusedList = SaveFocusedList();
-  TCustomForm ** AFocusedForm = FocusedForm();
   if (ASaveFocusedList->Count > 0)
   {
-    *AFocusedForm = static_cast<TCustomForm *>(ASaveFocusedList->First());
-    ASaveFocusedList->Remove(*AFocusedForm);
+    TCustomForm * AFocusedForm = static_cast<TCustomForm *>(ASaveFocusedList->First());
+    ASaveFocusedList->Remove(AFocusedForm);
+    Screen->FocusedForm = AFocusedForm;
   }
   else
   {
-    *AFocusedForm = NULL;
+    Screen->FocusedForm = NULL;
   }
 
   if (AStorage->FocusActiveWindow != 0)
@@ -510,9 +468,11 @@ bool __fastcall SelectDirectory(AnsiString & Path, const AnsiString Prompt,
   unsigned int ErrorMode;
   ErrorMode = SetErrorMode(SEM_NOOPENFILEERRORBOX | SEM_FAILCRITICALERRORS);
 
-  try
-  {
-    AnsiString Directory;
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    SetErrorMode(ErrorMode);
+  });
+    UnicodeString Directory;
     AnsiString FileName;
     if (!PreserveFileName || DirectoryExists(Path))
     {
@@ -532,10 +492,6 @@ bool __fastcall SelectDirectory(AnsiString & Path, const AnsiString Prompt,
         Path = IncludeTrailingBackslash(Path) + FileName;
       }
     }
-  }
-  __finally
-  {
-    SetErrorMode(ErrorMode);
   }
 
   return Result;
@@ -579,16 +535,14 @@ void __fastcall ComboAutoSwitchInitialize(TComboBox * ComboBox)
 {
   int PrevIndex = ComboBox->ItemIndex;
   ComboBox->Items->BeginUpdate();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    ComboBox->Items->EndUpdate();
+  });
     ComboBox->Clear();
     ComboBox->Items->Add(LoadStr(AUTO_SWITCH_AUTO));
     ComboBox->Items->Add(LoadStr(AUTO_SWITCH_OFF));
     ComboBox->Items->Add(LoadStr(AUTO_SWITCH_ON));
-  }
-  __finally
-  {
-    ComboBox->Items->EndUpdate();
   }
   assert(PrevIndex < ComboBox->Items->Count);
   ComboBox->ItemIndex = PrevIndex;
@@ -754,8 +708,10 @@ void __fastcall SetVerticalControlsOrder(TControl ** ControlsOrder, int Count)
   {
     TWinControl * CommonParent = ControlsOrder[0]->Parent;
     CommonParent->DisableAlign();
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      CommonParent->EnableAlign();
+    });
       int Top = 0;
       for (int Index = 0; Index < Count; Index++)
       {
@@ -777,10 +733,6 @@ void __fastcall SetVerticalControlsOrder(TControl ** ControlsOrder, int Count)
         }
       }
     }
-    __finally
-    {
-      CommonParent->EnableAlign();
-    }
   }
 }
 //---------------------------------------------------------------------------
@@ -792,8 +744,10 @@ void __fastcall SetHorizontalControlsOrder(TControl ** ControlsOrder, int Count)
   {
     TWinControl * CommonParent = ControlsOrder[0]->Parent;
     CommonParent->DisableAlign();
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      CommonParent->EnableAlign();
+    });
       int Left = 0;
       for (int Index = 0; Index < Count; Index++)
       {
@@ -823,20 +777,16 @@ void __fastcall SetHorizontalControlsOrder(TControl ** ControlsOrder, int Count)
         }
       }
     }
-    __finally
-    {
-      CommonParent->EnableAlign();
-    }
   }
 }
 //---------------------------------------------------------------------------
 TPoint __fastcall GetAveCharSize(TCanvas* Canvas)
 {
   Integer I;
-  Char Buffer[52];
+  char Buffer[52];
   TSize Result;
-  for (I = 0; I <= 25; I++) Buffer[I] = (Char)('A' + I);
-  for (I = 0; I <= 25; I++) Buffer[I+26] = (Char)('a' + I);
+  for (I = 0; I <= 25; I++) Buffer[I] = (char)('A' + I);
+  for (I = 0; I <= 25; I++) Buffer[I+26] = (char)('a' + I);
   GetTextExtentPoint(Canvas->Handle, Buffer, 52, &Result);
   return TPoint(Result.cx / 52, Result.cy);
 }
@@ -1019,7 +969,7 @@ void __fastcall InvokeHelp(TWinControl * Control)
   HelpInfo.dwContextId = 0;
   HelpInfo.MousePos.x = 0;
   HelpInfo.MousePos.y = 0;
-  SendMessage(Control->Handle, WM_HELP, NULL, reinterpret_cast<long>(&HelpInfo));
+  SendMessage(Control->Handle, WM_HELP, NULL, reinterpret_cast<LPARAM>(&HelpInfo));
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
@@ -1027,8 +977,13 @@ static void __fastcall FocusableLabelCanvas(TStaticText * StaticText,
   TControlCanvas ** ACanvas, TRect & R)
 {
   TControlCanvas * Canvas = new TControlCanvas();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    if (ACanvas == NULL)
+    {
+      delete Canvas;
+    }
+  });
     Canvas->Control = StaticText;
 
     R = StaticText->ClientRect;
@@ -1066,13 +1021,6 @@ static void __fastcall FocusableLabelCanvas(TStaticText * StaticText,
           R.Right -= Diff - (Diff / 2);
         }
         break;
-    }
-  }
-  __finally
-  {
-    if (ACanvas == NULL)
-    {
-      delete Canvas;
     }
   }
 
@@ -1138,8 +1086,10 @@ static void __fastcall FocusableLabelWindowProc(void * Data, TMessage & Message,
     TRect R;
     TControlCanvas * Canvas;
     FocusableLabelCanvas(StaticText, &Canvas, R);
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete Canvas;
+    });
       if (StaticText->Focused())
       {
         Canvas->DrawFocusRect(R);
@@ -1158,10 +1108,6 @@ static void __fastcall FocusableLabelWindowProc(void * Data, TMessage & Message,
         Canvas->MoveTo(R.Left + 1, R.Bottom - 1);
         Canvas->LineTo(R.Right, R.Bottom - 1);
       }
-    }
-    __finally
-    {
-      delete Canvas;
     }
   }
   else if ((Message.Msg == WM_SETFOCUS) || (Message.Msg == WM_KILLFOCUS) ||
@@ -1306,7 +1252,7 @@ void __fastcall HintLabel(TStaticText * StaticText, AnsiString Hint)
 
   TWndMethod WindowProc;
   ((TMethod*)&WindowProc)->Data = StaticText;
-  ((TMethod*)&WindowProc)->Code = HintLabelWindowProc;
+  ((TMethod*)&WindowProc)->Code = reinterpret_cast<void *>(HintLabelWindowProc);
   StaticText->WindowProc = WindowProc;
 }
 //---------------------------------------------------------------------------
@@ -1324,12 +1270,8 @@ static void __fastcall ComboBoxFixWindowProc(void * Data, TMessage & Message)
   if (Message.Msg == WM_SIZE)
   {
     AnsiString Text = ComboBox->Text;
-    try
-    {
-      ControlWndProc(ComboBox)(Message);
-    }
-    __finally
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
       // workaround for bug in combo box, that causes it to change text to any
       // item from drop down list which starts with current text,
       // after control is resized (unless the text is in drop down list as well)
@@ -1339,6 +1281,8 @@ static void __fastcall ComboBoxFixWindowProc(void * Data, TMessage & Message)
       {
         ComboBox->SelLength = 0;
       }
+    });
+      ControlWndProc(ComboBox)(Message);
     }
   }
   else
@@ -1351,7 +1295,7 @@ void __fastcall FixComboBoxResizeBug(TCustomComboBox * ComboBox)
 {
   TWndMethod WindowProc;
   ((TMethod*)&WindowProc)->Data = ComboBox;
-  ((TMethod*)&WindowProc)->Code = ComboBoxFixWindowProc;
+  ((TMethod*)&WindowProc)->Code = reinterpret_cast<void *>(ComboBoxFixWindowProc);
   ComboBox->WindowProc = WindowProc;
 }
 //---------------------------------------------------------------------------
@@ -1455,7 +1399,7 @@ void __fastcall LinkLabel(TStaticText * StaticText, AnsiString Url,
     {
       TNotifyEvent ContextMenuOnClick;
       ((TMethod*)&ContextMenuOnClick)->Data = StaticText;
-      ((TMethod*)&ContextMenuOnClick)->Code = LinkLabelContextMenuClick;
+      ((TMethod*)&ContextMenuOnClick)->Code = reinterpret_cast<void *>(LinkLabelContextMenuClick);
 
       TMenuItem * Item;
 
@@ -1483,13 +1427,13 @@ void __fastcall LinkLabel(TStaticText * StaticText, AnsiString Url,
 
   TWndMethod WindowProc;
   ((TMethod*)&WindowProc)->Data = StaticText;
-  ((TMethod*)&WindowProc)->Code = LinkLabelWindowProc;
+  ((TMethod*)&WindowProc)->Code = reinterpret_cast<void *>(LinkLabelWindowProc);
   StaticText->WindowProc = WindowProc;
 }
 //---------------------------------------------------------------------------
-TMonitor *  __fastcall FormMonitor(TCustomForm * Form)
+Vcl::Forms::TMonitor *  __fastcall FormMonitor(TCustomForm * Form)
 {
-  TMonitor * Result;
+  Vcl::Forms::TMonitor * Result;
   if ((Application->MainForm != NULL) && (Application->MainForm != Form))
   {
     Result = Application->MainForm->Monitor;
@@ -1535,6 +1479,32 @@ void __fastcall SetLastMonitor(int MonitorNum)
   }
 }
 //---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+static BOOL CALLBACK FlushThreadPaintProc(HWND Wnd, LPARAM)
+{
+  if (IsWindowVisible(Wnd))
+  {
+    RedrawWindow(Wnd, NULL, NULL, RDW_UPDATENOW | RDW_ALLCHILDREN);
+  }
+  return TRUE;
+}
+//---------------------------------------------------------------------------
+void __fastcall FlushThreadPaint()
+{
+  // synchronously repaint every visible top-level window of this thread
+  // (Sally main window, panels, toolbars) ...
+  EnumThreadWindows(GetCurrentThreadId(), FlushThreadPaintProc, 0);
+  // ... and dispatch whatever WM_PAINT is still queued (bounded, in case some
+  // window does not validate its update region)
+  MSG Msg;
+  for (int i = 0; (i < 64) && PeekMessage(&Msg, NULL, WM_PAINT, WM_PAINT, PM_REMOVE); i++)
+  {
+    DispatchMessage(&Msg);
+  }
+  GdiFlush();
+
+}
+//---------------------------------------------------------------------------
 TForm * __fastcall _SafeFormCreate(TMetaClass * FormClass, TComponent * Owner)
 {
   // we do ignore owner atm, as we do not know how to set it,
@@ -1565,9 +1535,9 @@ TForm * __fastcall _SafeFormCreate(TMetaClass * FormClass, TComponent * Owner)
 //---------------------------------------------------------------------------
 TImageList * __fastcall SharedSystemImageList(bool Large)
 {
-  TSHFileInfo FileInfo;
+  SHFILEINFOA FileInfo;
   TImageList * Result = new TImageList(Application);
-  int ImageListHandle = SHGetFileInfo("", 0, &FileInfo, sizeof(FileInfo),
+  DWORD_PTR ImageListHandle = SHGetFileInfoA("", 0, &FileInfo, sizeof(FileInfo),
     SHGFI_SYSICONINDEX | (Large ? SHGFI_LARGEICON : SHGFI_SMALLICON));
   if (ImageListHandle != 0)
   {

@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <SysUtils.hpp>
@@ -20,14 +21,12 @@ void __fastcall DoAboutDialog(TConfiguration * Configuration,
   bool AllowLicense)
 {
   TAboutDialog * AboutDialog = NULL;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete AboutDialog;
+  });
     AboutDialog = new TAboutDialog(Application, Configuration, AllowLicense);
     AboutDialog->ShowModal();
-  }
-  __finally
-  {
-    delete AboutDialog;
   }
 }
 //---------------------------------------------------------------------------

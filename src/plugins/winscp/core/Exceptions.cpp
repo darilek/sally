@@ -168,7 +168,7 @@ AnsiString __fastcall LastSysErrorMessage()
   AnsiString Result;
   if (LastError != 0)
   {
-    Result = FORMAT(Sysconst_SOSError, (LastError, SysErrorMessage(LastError)));
+    Result = FORMAT(LoadResourceString(&System::Sysconst::_SOSError), (LastError, SysErrorMessage(LastError)));
   }
   return Result;
 }

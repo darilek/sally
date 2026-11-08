@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Common.h>
@@ -22,13 +23,11 @@ void __fastcall DoFileSystemInfoDialog(
 {
   TFileSystemInfoDialog * Dialog = new TFileSystemInfoDialog(Application,
     OnGetSpaceAvailable);
-  try
-  {
-    Dialog->Execute(SessionInfo, FileSystemInfo, SpaceAvailablePath);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     delete Dialog;
+  });
+    Dialog->Execute(SessionInfo, FileSystemInfo, SpaceAvailablePath);
   }
 }
 //---------------------------------------------------------------------
@@ -306,17 +305,15 @@ void __fastcall TFileSystemInfoDialog::CheckSpaceAvailable()
   FSpaceAvailableLoaded = true;
 
   bool DoClose = false;
-  try
-  {
-    FOnGetSpaceAvailable(SpaceAvailablePathEdit->Text, FSpaceAvailable, DoClose);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     FeedControls();
     if (DoClose)
     {
       Close();
     }
+  });
+    FOnGetSpaceAvailable(SpaceAvailablePathEdit->Text, FSpaceAvailable, DoClose);
   }
 }
 //---------------------------------------------------------------------------

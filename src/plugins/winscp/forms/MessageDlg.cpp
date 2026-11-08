@@ -43,7 +43,7 @@ __fastcall TMessageForm::TMessageForm(TComponent * AOwner) : TForm(AOwner, 0)
   NonClientMetrics.cbSize = sizeof(NonClientMetrics);
   if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, 0, &NonClientMetrics, 0))
   {
-    Font->Handle = CreateFontIndirect(&NonClientMetrics.lfMessageFont);
+    Font->Handle = CreateFontIndirectW(&NonClientMetrics.lfMessageFont);
   }
   Position = poMainFormCenter;
   UseSystemSettingsPre(this);
@@ -202,7 +202,7 @@ TForm * __fastcall TMessageForm::Create(const AnsiString & Msg,
   int ButtonWidth = MulDiv(mcButtonWidth, DialogUnits.x, 4);
   TButton * ButtonControls[ButtonCount + 1];
   int ButtonControlsCount = 0;
-  for (unsigned int B = mbYes; B <= mbHelp; B++)
+  for (unsigned int B = static_cast<unsigned int>(mbYes); B <= static_cast<unsigned int>(mbHelp); B++)
   {
     assert(B < ButtonCount);
     if (Buttons.Contains(TMsgDlgBtn(B)))
@@ -238,7 +238,7 @@ TForm * __fastcall TMessageForm::Create(const AnsiString & Msg,
       TButton * Button = new TButton(Result);
 
       AnsiString MeasureCaption = Caption;
-      if ((TimeoutButton != NULL) && (B == TimeoutResult))
+      if ((TimeoutButton != NULL) && (B == static_cast<unsigned int>(TimeoutResult)))
       {
         MeasureCaption = FMTLOAD(TIMEOUT_BUTTON, (MeasureCaption, 99));
         *TimeoutButton = Button;
@@ -254,7 +254,7 @@ TForm * __fastcall TMessageForm::Create(const AnsiString & Msg,
         ButtonWidth = CurButtonWidth;
       }
 
-      Button->Name = ButtonNames[TMsgDlgBtn(B)];
+      Button->Name = ButtonNames[B];
       Button->Parent = Result;
       Button->Caption = Caption;
       if (OnClick != NULL)
@@ -264,14 +264,14 @@ TForm * __fastcall TMessageForm::Create(const AnsiString & Msg,
       else
       {
         Button->ModalResult = ModalResults[B];
-        Button->Default = (B == DefaultButton);
-        Button->Cancel = (B == CancelButton);
+        Button->Default = (B == static_cast<unsigned int>(DefaultButton));
+        Button->Cancel = (B == static_cast<unsigned int>(CancelButton));
       }
       if (MoreMessages != NULL)
       {
         Button->Anchors = TAnchors() << akBottom << akLeft;
       }
-      if (B == mbHelp)
+      if (B == static_cast<unsigned int>(mbHelp))
       {
         Button->OnClick = Result->HelpButtonClick;
       }
@@ -293,7 +293,7 @@ TForm * __fastcall TMessageForm::Create(const AnsiString & Msg,
     // this will truncate the text, we should implement something smarter eventually
     TextRect.right = MaxWidth;
   }
-  const char * IconID = IconIDs[DlgType];
+  const char * IconID = IconIDs[static_cast<int>(DlgType)];
   int IconTextWidth = TextRect.Right;
   int IconTextHeight = TextRect.Bottom;
   if (IconID != NULL)
@@ -342,7 +342,7 @@ TForm * __fastcall TMessageForm::Create(const AnsiString & Msg,
   Result->Top = (Screen->Height / 2) - (Result->Height / 2);
   if (DlgType != mtCustom)
   {
-    Result->Caption = LoadResourceString(Captions[DlgType]);
+    Result->Caption = LoadResourceString(Captions[static_cast<int>(DlgType)]);
   }
   else
   {

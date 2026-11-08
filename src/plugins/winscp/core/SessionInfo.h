@@ -2,6 +2,8 @@
 #ifndef SessionInfoH
 #define SessionInfoH
 
+// forward declarations for friend classes (required by Clang)
+class TSessionAction;
 #include "SessionData.h"
 #include "Interface.h"
 //---------------------------------------------------------------------------
@@ -220,7 +222,7 @@ public:
 protected:
   void __fastcall CloseLogFile();
   bool __fastcall LogToFile();
-  inline void __fastcall AddPendingAction(TSessionActionRecord * Action);
+  void __fastcall AddPendingAction(TSessionActionRecord * Action);
   void __fastcall RecordPendingActions();
 
 private:

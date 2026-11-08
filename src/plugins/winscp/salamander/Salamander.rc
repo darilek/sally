@@ -1,4 +1,4 @@
-﻿#include "Salamander.rh"
+#include "Salamander.rh"
 
 #include "..\\resource\\TextsCore1.rc"
 #include "..\\resource\\TextsCore2.rc"

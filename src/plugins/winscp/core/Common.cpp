@@ -1,6 +1,7 @@
 ﻿//---------------------------------------------------------------------------
 #define NO_WIN32_LEAN_AND_MEAN
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include "Common.h"
@@ -9,7 +10,7 @@
 #include "Interface.h"
 #include <StrUtils.hpp>
 #include <math.h>
-#include <shfolder.h>
+#include <shlobj.h>
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 //---------------------------------------------------------------------------
@@ -73,14 +74,14 @@ const char EngShortMonthNames[12][4] =
   {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 //---------------------------------------------------------------------------
-AnsiString ReplaceChar(AnsiString Str, Char A, Char B)
+AnsiString ReplaceChar(AnsiString Str, char A, char B)
 {
   for (Integer Index = 0; Index < Str.Length(); Index++)
     if (Str[Index+1] == A) Str[Index+1] = B;
   return Str;
 }
 //---------------------------------------------------------------------------
-AnsiString DeleteChar(AnsiString Str, Char C)
+AnsiString DeleteChar(AnsiString Str, char C)
 {
   int P;
   while ((P = Str.Pos(C)) > 0)
@@ -159,7 +160,7 @@ AnsiString DefaultStr(const AnsiString & Str, const AnsiString & Default)
   }
 }
 //---------------------------------------------------------------------------
-AnsiString CutToChar(AnsiString &Str, Char Ch, bool Trim)
+AnsiString CutToChar(AnsiString &Str, char Ch, bool Trim)
 {
   Integer P = Str.Pos(Ch);
   AnsiString Result;
@@ -266,9 +267,9 @@ AnsiString ExceptionLogString(Exception *E)
   }
   else
   {
-    char Buffer[1024];
-    ExceptionErrorMessage(ExceptObject(), ExceptAddr(), Buffer, sizeof(Buffer));
-    return AnsiString(Buffer);
+    wchar_t Buffer[1024];
+    ExceptionErrorMessage(ExceptObject(), ExceptAddr(), Buffer, LENOF(Buffer));
+    return AnsiString(UnicodeString(Buffer));
   }
 }
 //---------------------------------------------------------------------------
@@ -292,6 +293,7 @@ AnsiString __fastcall GetShellFolderPath(int CSIdl)
   HMODULE Shell32Lib = LoadLibrary("SHELL32.DLL");
   if (Shell32Lib != NULL)
   {
+    typedef HRESULT (WINAPI * PFNSHGETFOLDERPATH)(HWND, int, HANDLE, DWORD, LPSTR);
     PFNSHGETFOLDERPATH SHGetFolderPath = (PFNSHGETFOLDERPATH)
       GetProcAddress(Shell32Lib, "SHGetFolderPathA");
     if (SHGetFolderPath != NULL)
@@ -693,8 +695,10 @@ void __fastcall ProcessLocalDirectory(AnsiString DirName,
   DirName = IncludeTrailingBackslash(DirName);
   if (FindFirst(DirName + "*.*", FindAttrs, SearchRec) == 0)
   {
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      FindClose(SearchRec);
+    });
       do
       {
         if ((SearchRec.Name != ".") && (SearchRec.Name != ".."))
@@ -703,10 +707,6 @@ void __fastcall ProcessLocalDirectory(AnsiString DirName,
         }
 
       } while (FindNext(SearchRec) == 0);
-    }
-    __finally
-    {
-      FindClose(SearchRec);
     }
   }
 }
@@ -1359,7 +1359,7 @@ AnsiString __fastcall LoadStr(int Ident, unsigned int MaxLength)
 
   AnsiString Result;
   Result.SetLength(MaxLength);
-  int Length = LoadString(MainModule->ResInstance, Ident, Result.c_str(), MaxLength);
+  int Length = LoadString(reinterpret_cast<HINSTANCE>(MainModule->ResInstance), Ident, Result.c_str(), MaxLength);
   Result.SetLength(Length);
 
   return Result;
@@ -1558,20 +1558,20 @@ void __fastcall AddToList(AnsiString & List, const AnsiString & Value, char Deli
 //---------------------------------------------------------------------------
 bool __fastcall Is2000()
 {
-  return (Win32MajorVersion >= 5);
+  return (Win32MajorVersion() >= 5);
 }
 //---------------------------------------------------------------------------
 bool __fastcall IsWin7()
 {
   return
-    (Win32MajorVersion > 6) ||
-    ((Win32MajorVersion == 6) && (Win32MinorVersion >= 1));
+    (Win32MajorVersion() > 6) ||
+    ((Win32MajorVersion() == 6) && (Win32MinorVersion() >= 1));
 }
 //---------------------------------------------------------------------------
 bool __fastcall IsExactly2008R2()
 {
-  HANDLE Kernel32 = GetModuleHandle(kernel32);
-  typedef BOOL WINAPI (* TGetProductInfo)(DWORD, DWORD, DWORD, DWORD, PDWORD);
+  HMODULE Kernel32 = GetModuleHandle("kernel32.dll");
+  typedef BOOL (WINAPI * TGetProductInfo)(DWORD, DWORD, DWORD, DWORD, PDWORD);
   TGetProductInfo GetProductInfo =
       (TGetProductInfo)GetProcAddress(Kernel32, "GetProductInfo");
   bool Result;
@@ -1582,7 +1582,7 @@ bool __fastcall IsExactly2008R2()
   else
   {
     DWORD Type;
-    GetProductInfo(Win32MajorVersion, Win32MinorVersion, 0, 0, &Type);
+    GetProductInfo(Win32MajorVersion(), Win32MinorVersion(), 0, 0, &Type);
     switch (Type)
     {
       case 0x0008 /*PRODUCT_DATACENTER_SERVER*/:

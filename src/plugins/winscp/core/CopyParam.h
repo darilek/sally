@@ -51,9 +51,11 @@ private:
   bool FNegativeExclude;
   bool FClearArchive;
   unsigned long FCPSLimit;
-  static const char TokenPrefix = '%';
-  static const char NoReplacement = char(false);
-  static const char TokenReplacement = char(true);
+public:
+  static constexpr char TokenPrefix = '%';
+  static constexpr char NoReplacement = char(false);
+  static constexpr char TokenReplacement = char(true);
+private:
 
   static AnsiString __fastcall Untokenize(AnsiString FileName);
   void __fastcall SetLocalInvalidChars(AnsiString value);

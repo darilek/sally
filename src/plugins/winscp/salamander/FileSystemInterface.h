@@ -12,9 +12,9 @@ class TSessionData;
 class CPluginInterface;
 class CPluginFSInterfaceAbstract;
 //---------------------------------------------------------------------------
-const fsmClose = 0x00;
-const fsmFullSynchronize = 0x01;
-const fsmSynchronize = 0x02;
+const int fsmClose = 0x00;
+const int fsmFullSynchronize = 0x01;
+const int fsmSynchronize = 0x02;
 //---------------------------------------------------------------------------
 class CPluginInterfaceForFS : public CPluginInterfaceForFSAbstract,
                               protected CSalamanderGeneralLocal
@@ -26,14 +26,14 @@ public:
     void __fastcall ConnectFileSystem(int Panel);
     void __fastcall RecryptPasswords();
 
-    virtual CPluginFSInterfaceAbstract* WINAPI OpenFS(const char* fsName, int fsNameIndex);
+    virtual CPluginFSInterfaceAbstract* WINAPI OpenFS(const wchar_t* fsName, int fsNameIndex);
     virtual void WINAPI CloseFS(CPluginFSInterfaceAbstract* FS);
 
     virtual void WINAPI ExecuteOnFS(int Panel,
-                                    CPluginFSInterfaceAbstract* PluginFS, const char* PluginFSName,
+                                    CPluginFSInterfaceAbstract* PluginFS, const wchar_t* PluginFSName,
                                     int PluginFSNameIndex, CFileData& File, int IsDir);
     virtual BOOL WINAPI DisconnectFS(HWND Parent, BOOL IsInPanel, int Panel,
-                                     CPluginFSInterfaceAbstract* PluginFS, const char* PluginFSName,
+                                     CPluginFSInterfaceAbstract* PluginFS, const wchar_t* PluginFSName,
                                      int PluginFSNameIndex);
 
     virtual BOOL WINAPI ConvertPathToInternal(const wchar_t* fsName, int fsNameIndex,
@@ -47,12 +47,12 @@ public:
         return fsUserPart != NULL && sally::plugin_abi::IsValidStringBuffer(*fsUserPart);
     }
 
-    virtual void WINAPI EnsureShareExistsOnServer(int panel, const char* server,
-                                                  const char* share) {}
+    virtual void WINAPI EnsureShareExistsOnServer(int panel, const wchar_t* server,
+                                                  const wchar_t* share) {}
 
     virtual void WINAPI ExecuteChangeDriveMenuItem(int Panel);
     virtual BOOL WINAPI ChangeDriveMenuItemContextMenu(HWND Parent, int Panel,
-                                                       int X, int Y, CPluginFSInterfaceAbstract* PluginFS, const char* PluginFSName,
+                                                       int X, int Y, CPluginFSInterfaceAbstract* PluginFS, const wchar_t* PluginFSName,
                                                        int PluginFSNameIndex, BOOL IsDetachedFS, BOOL& RefreshMenu,
                                                        BOOL& CloseMenu, int& PostCmd, void*& PostCmdParam);
     virtual void WINAPI ExecuteChangeDrivePostCommand(int Panel, int PostCmd,

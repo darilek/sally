@@ -5,6 +5,7 @@
 //---------------------------------------------------------------------------
 #define NO_WIN32_LEAN_AND_MEAN
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include "Common.h"
@@ -23,6 +24,7 @@
 #include <GUIConfiguration.h>
 #include "winliblt.h"
 #include "spl_gui.h"
+#include "SalamandText.h"
 
 #define WM_WINSCP_CLOSE_DLG (WM_APP + 3300)
 #define WM_WINSCP_UPDATE_DLG (WM_APP + 3301)
@@ -39,7 +41,7 @@ public:
     bool Execute(AnsiString& Password);
 
 protected:
-    virtual BOOL DialogProc(UINT Msg, WPARAM WParam, LPARAM LParam);
+    virtual INT_PTR DialogProc(UINT Msg, WPARAM WParam, LPARAM LParam);
 
 private:
     AnsiString FPassword;
@@ -69,7 +71,7 @@ bool TPasswordDialog::Execute(AnsiString& Password)
     return Result;
 }
 //---------------------------------------------------------------------------
-BOOL TPasswordDialog::DialogProc(UINT Msg, WPARAM WParam, LPARAM LParam)
+INT_PTR TPasswordDialog::DialogProc(UINT Msg, WPARAM WParam, LPARAM LParam)
 {
     CALL_STACK_MESSAGE5("TPasswordDialog::DialogProc(%p, %d, %d, %d)",
                         this, Msg, WParam, LParam);
@@ -78,8 +80,8 @@ BOOL TPasswordDialog::DialogProc(UINT Msg, WPARAM WParam, LPARAM LParam)
     {
     case WM_INITDIALOG:
         SalamanderGeneral()->MultiMonCenterWindow(HWindow, Parent, TRUE);
-        SetDlgItemText(HWindow, IDC_PASSWORD_LABEL, FPrompt.c_str());
-        SendMessage(HWindow, WM_SETTEXT, 0, reinterpret_cast<long>(FName.c_str()));
+        SetDlgItemTextA(HWindow, IDC_PASSWORD_LABEL, FPrompt.c_str());
+        SendMessage(HWindow, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(FName.c_str()));
         break;
 
     case WM_COMMAND:
@@ -90,7 +92,7 @@ BOOL TPasswordDialog::DialogProc(UINT Msg, WPARAM WParam, LPARAM LParam)
             FPassword.SetLength(
                 SendDlgItemMessage(HWindow, IDC_PASSWORD_EDIT, WM_GETTEXTLENGTH, 0, 0) + 1);
             SendDlgItemMessage(HWindow, IDC_PASSWORD_EDIT, WM_GETTEXT,
-                               FPassword.Length(), reinterpret_cast<long>(FPassword.c_str()));
+                               FPassword.Length(), reinterpret_cast<LPARAM>(FPassword.c_str()));
         }
         }
     }
@@ -131,7 +133,7 @@ protected:
     CGUIStaticTextAbstract* TimeElapsedLabel;
     CGUIStaticTextAbstract* CPSLabel;
 
-    virtual BOOL DialogProc(UINT Msg, WPARAM WParam, LPARAM LParam);
+    virtual INT_PTR DialogProc(UINT Msg, WPARAM WParam, LPARAM LParam);
 
     bool InitDialog();
     void UpdateControls(bool Init);
@@ -179,7 +181,7 @@ TSalamandProgressForm::TSalamandProgressForm(HWND Parent,
     FConfigCalculateSize = GUIConfiguration->DefaultCopyParam.CalculateSize;
 }
 //---------------------------------------------------------------------------
-BOOL TSalamandProgressForm::DialogProc(UINT Msg, WPARAM WParam, LPARAM LParam)
+INT_PTR TSalamandProgressForm::DialogProc(UINT Msg, WPARAM WParam, LPARAM LParam)
 {
     CALL_STACK_MESSAGE5("TSalamandProgressForm::DialogProc(%p, %d, %d, %d)",
                         this, Msg, WParam, LParam);
@@ -269,12 +271,12 @@ bool TSalamandProgressForm::InitDialog()
 
         SetForegroundWindow(HWindow);
 
-        SetDlgItemText(HWindow, IDC_PROGRESS_FILE_LABEL_LABEL, SalLoadStr(SAL_PROGRESS_FILE_LABEL));
-        SetDlgItemText(HWindow, IDC_PROGRESS_TARGET_PATH_LABEL_LABEL, SalLoadStr(SAL_PROGRESS_TARGET_PATH_LABEL));
-        SetDlgItemText(HWindow, IDC_PROGRESS_BYTES_TRANSFERRED_LABEL_LABEL, SalLoadStr(SAL_PROGRESS_BYTES_TRANSFERRED_LABEL));
-        SetDlgItemText(HWindow, IDC_PROGRESS_TIME_ELAPSED_LABEL_LABEL, SalLoadStr(SAL_PROGRESS_TIME_ELAPSED_LABEL));
-        SetDlgItemText(HWindow, IDC_PROGRESS_CPS_LABEL_LABEL, SalLoadStr(SAL_PROGRESS_SPEED_LABEL));
-        SetDlgItemText(HWindow, IDCANCEL, LoadResourceString(&_SMsgDlgCancel).c_str());
+        SetDlgItemTextA(HWindow, IDC_PROGRESS_FILE_LABEL_LABEL, SalLoadStr(SAL_PROGRESS_FILE_LABEL));
+        SetDlgItemTextA(HWindow, IDC_PROGRESS_TARGET_PATH_LABEL_LABEL, SalLoadStr(SAL_PROGRESS_TARGET_PATH_LABEL));
+        SetDlgItemTextA(HWindow, IDC_PROGRESS_BYTES_TRANSFERRED_LABEL_LABEL, SalLoadStr(SAL_PROGRESS_BYTES_TRANSFERRED_LABEL));
+        SetDlgItemTextA(HWindow, IDC_PROGRESS_TIME_ELAPSED_LABEL_LABEL, SalLoadStr(SAL_PROGRESS_TIME_ELAPSED_LABEL));
+        SetDlgItemTextA(HWindow, IDC_PROGRESS_CPS_LABEL_LABEL, SalLoadStr(SAL_PROGRESS_SPEED_LABEL));
+        SetDlgItemTextW(HWindow, IDCANCEL, LoadResourceString(&_SMsgDlgCancel).c_str());
     }
 
     return Result;
@@ -296,7 +298,7 @@ void TSalamandProgressForm::UpdateControls(bool Init)
     {
         FLastTotalSizeKnown = TotalSizeKnown;
 
-        SetDlgItemText(HWindow, IDC_PROGRESS_TIME_LABEL_LABEL,
+        SetDlgItemTextA(HWindow, IDC_PROGRESS_TIME_LABEL_LABEL,
                        SalLoadStr(TotalSizeKnown ? SAL_PROGRESS_TIME_LEFT_LABEL : SAL_PROGRESS_START_TIME_LABEL));
     }
 
@@ -311,7 +313,7 @@ void TSalamandProgressForm::UpdateControls(bool Init)
         {
             TargetPath = ExtractFileDir(Info->Destination);
         }
-        TargetPathLabel->SetText(TargetPath.c_str());
+        TargetPathLabel->SetText(SalWS(TargetPath).c_str());
     }
 
     AnsiString Caption;
@@ -319,7 +321,7 @@ void TSalamandProgressForm::UpdateControls(bool Init)
 
     if (ProgressData == NULL)
     {
-        FileLabel->SetText("");
+        FileLabel->SetText(L"");
         if ((FQueueItem->Status == TQueueItem::qsPending) ||
             (FQueueItem->Status == TQueueItem::qsConnecting) ||
             TQueueItem::IsUserActionStatus(FQueueItem->Status))
@@ -329,7 +331,7 @@ void TSalamandProgressForm::UpdateControls(bool Init)
     }
     else
     {
-        FileLabel->SetText(ProgressData->FileName.c_str());
+        FileLabel->SetText(SalWS(ProgressData->FileName).c_str());
 
         if (ProgressData->Operation == Info->Operation)
         {
@@ -337,24 +339,24 @@ void TSalamandProgressForm::UpdateControls(bool Init)
             Caption = FORMAT("%d%% %s", (OverallProgress,
                                          TProgressForm::OperationName(Info->Operation)));
 
-            OperationProgress->SetProgress(OverallProgress * 10, "");
-            FileProgress->SetProgress(ProgressData->TransferProgress() * 10, "");
+            OperationProgress->SetProgress(OverallProgress * 10, L"");
+            FileProgress->SetProgress(ProgressData->TransferProgress() * 10, L"");
 
             if (TotalSizeKnown)
             {
-                TimeLabel->SetText(FormatDateTimeSpan(Configuration->TimeFormat.c_str(),
+                TimeLabel->SetText(SalWS(FormatDateTimeSpan(Configuration->TimeFormat.c_str(),
                                                       ProgressData->TotalTimeLeft())
-                                       .c_str());
+                                       ).c_str());
             }
             else
             {
-                TimeLabel->SetText(ProgressData->StartTime.TimeString().c_str());
+                TimeLabel->SetText(SalWS(ProgressData->StartTime.TimeString()).c_str());
             }
-            TimeElapsedLabel->SetText(FormatDateTimeSpan(Configuration->TimeFormat.c_str(),
+            TimeElapsedLabel->SetText(SalWS(FormatDateTimeSpan(Configuration->TimeFormat.c_str(),
                                                          ProgressData->TimeElapsed())
-                                          .c_str());
-            BytesTransferedLabel->SetText(FormatBytes(ProgressData->TotalTransfered).c_str());
-            CPSLabel->SetText(FORMAT("%s/s", (FormatBytes(ProgressData->CPS()))).c_str());
+                                          ).c_str());
+            BytesTransferedLabel->SetText(SalWS(FormatBytes(ProgressData->TotalTransfered)).c_str());
+            CPSLabel->SetText(SalWS(FORMAT("%s/s", (FormatBytes(ProgressData->CPS())))).c_str());
 
             Clear = false;
         }
@@ -366,13 +368,13 @@ void TSalamandProgressForm::UpdateControls(bool Init)
 
     if (Clear)
     {
-        OperationProgress->SetProgress(0, "");
-        FileProgress->SetProgress(0, "");
+        OperationProgress->SetProgress(0, L"");
+        FileProgress->SetProgress(0, L"");
 
-        TimeLabel->SetText("");
-        TimeElapsedLabel->SetText("");
-        BytesTransferedLabel->SetText("");
-        CPSLabel->SetText("");
+        TimeLabel->SetText(L"");
+        TimeElapsedLabel->SetText(L"");
+        BytesTransferedLabel->SetText(L"");
+        CPSLabel->SetText(L"");
     }
 
     if (Caption.IsEmpty())
@@ -383,7 +385,7 @@ void TSalamandProgressForm::UpdateControls(bool Init)
     if (Init || (FLastCaption != Caption))
     {
         FLastCaption = Caption;
-        SendMessage(HWindow, WM_SETTEXT, 0, reinterpret_cast<long>(Caption.c_str()));
+        SendMessage(HWindow, WM_SETTEXT, 0, reinterpret_cast<LPARAM>(Caption.c_str()));
     }
 
     FLastUpdate = Now();
@@ -510,14 +512,12 @@ void __fastcall TSalamandProgressThread::Execute()
     CALL_STACK_MESSAGE2("TSalamandProgressThread::Execute(%p)", this);
 
     FForm = new TSalamandProgressForm(FParent, FPlugin, FAlwaysOnTop, this, FQueueItem);
-    try
-    {
-        FForm->Execute();
-    }
-    __finally
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
         delete FForm;
         FForm = NULL;
+    });
+        FForm->Execute();
     }
 }
 //---------------------------------------------------------------------------

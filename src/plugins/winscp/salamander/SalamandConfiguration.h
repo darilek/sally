@@ -9,11 +9,11 @@
 //---------------------------------------------------------------------------
 class CPluginInterface;
 //---------------------------------------------------------------------------
-const pcRights = 1;
-const pcOwner = 2;
-const pcGroup = 3;
-const pcLinkTo = 4;
-const pcLast = pcLinkTo;
+const int pcRights = 1;
+const int pcOwner = 2;
+const int pcGroup = 3;
+const int pcLinkTo = 4;
+const int pcLast = pcLinkTo;
 extern const int ColumnNames[pcLast];
 extern const int ColumnDescs[pcLast];
 //---------------------------------------------------------------------------

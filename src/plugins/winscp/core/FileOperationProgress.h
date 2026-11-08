@@ -38,7 +38,7 @@ private:
 
 protected:
   void __fastcall ClearTransfer();
-  inline void __fastcall DoProgress();
+  void __fastcall DoProgress();
 
 public:
   // common data

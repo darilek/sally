@@ -1,6 +1,8 @@
 ﻿//---------------------------------------------------------------------------
 #ifndef FileMasksH
 #define FileMasksH
+// forward declarations for friend classes (required by Clang)
+class TInteractiveCustomCommand;
 //---------------------------------------------------------------------------
 #include <vector>
 #include <Masks.hpp>
@@ -76,14 +78,14 @@ private:
   void __fastcall SetMasks(const AnsiString value);
   void __fastcall CreateMaskMask(const AnsiString & Mask, int Start, int End, bool Ex,
     TMaskMask & MaskMask);
-  static inline void __fastcall ReleaseMaskMask(TMaskMask & MaskMask);
-  inline void __fastcall Clear();
+  static void __fastcall ReleaseMaskMask(TMaskMask & MaskMask);
+  void __fastcall Clear();
   static void __fastcall Clear(TMasks & Masks);
   static void __fastcall TrimEx(AnsiString & Str, int & Start, int & End);
   static bool __fastcall MatchesMasks(const AnsiString FileName, bool Directory,
     const AnsiString Path, const TParams * Params, const TMasks & Masks);
-  static inline bool __fastcall MatchesMaskMask(const TMaskMask & MaskMask, const AnsiString & Str);
-  static inline bool __fastcall IsAnyMask(const AnsiString & Mask);
+  static bool __fastcall MatchesMaskMask(const TMaskMask & MaskMask, const AnsiString & Str);
+  static bool __fastcall IsAnyMask(const AnsiString & Mask);
   void __fastcall ThrowError(int Start, int End);
 };
 //---------------------------------------------------------------------------

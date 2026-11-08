@@ -212,7 +212,7 @@ void __fastcall TQueueController::ExecuteOperation(TQueueOperation Operation,
         break;
 
       case qoItemSpeed:
-        QueueItem->SetCPSLimit(reinterpret_cast<unsigned long>(Param));
+        QueueItem->SetCPSLimit((unsigned long)reinterpret_cast<NativeUInt>(Param));
         break;
 
       case qoPauseAll:
@@ -306,8 +306,8 @@ void __fastcall TQueueController::FillQueueViewItem(TListItem * Item,
     State = ((Info->Side == osLocal) ? 1 : 0);
 
     // cannot use ProgressData->Temp as it is set only after the transfer actually starts
-    Values[0] = Info->Source.IsEmpty() ? LoadStr(PROGRESS_TEMP_DIR) : Info->Source;
-    Values[1] = Info->Destination.IsEmpty() ? LoadStr(PROGRESS_TEMP_DIR) : Info->Destination;
+    Values[0] = Info->Source.IsEmpty() ? AnsiString(LoadStr(PROGRESS_TEMP_DIR)) : Info->Source;
+    Values[1] = Info->Destination.IsEmpty() ? AnsiString(LoadStr(PROGRESS_TEMP_DIR)) : Info->Destination;
 
     if (ProgressData != NULL)
     {

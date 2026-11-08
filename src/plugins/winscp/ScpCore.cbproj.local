@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899.12.30 00:00:00.000.887,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\SftpFileSystem.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.836,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\PuttyIntf.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.812,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\FileOperationProgress.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.807,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\FileMasks.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.824,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\HierarchicalStorage.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.075,=C:\Users\mdarilek\OneDrive\Dokumenty\Embarcadero\Studio\Projects\Project1PCH1.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.450,C:\Users\mdarilek\OneDrive\Dokumenty\Embarcadero\Studio\Projects\Project1PCH1.h=C:\Users\mdarilek\OneDrive\Dokumenty\Embarcadero\Studio\Projects\ScpCorePCH1.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.840,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\Queue.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.794,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\Cryptography.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.779,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\Common.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.878,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\SessionInfo.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.847,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\RemoteFiles.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.852,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\ScpFileSystem.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.788,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\CoreMain.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.077,=C:\Users\mdarilek\OneDrive\Dokumenty\Embarcadero\Studio\Projects\File1.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.801,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\FileBuffer.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.553,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\resource\TextsWin.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.798,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\Exceptions.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.866,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\Security.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.831,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\NamedObjs.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.304,C:\Users\mdarilek\OneDrive\Dokumenty\Embarcadero\Studio\Projects\ScpCore.cbproj=C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.828,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\KeyGen.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.786,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\CopyParam.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.871,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\SessionData.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.558,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\resource\TextsCore.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.783,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\Configuration.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.803,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\FileInfo.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.896,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\Terminal.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.863,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\SecureShell.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.773,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\Bookmarks.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.814,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\FileSystems.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.563,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\resource\HelpCore.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.833,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\Option.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.858,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\Script.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.561,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\resource\HelpWin.h</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.820,=C:\Development\GitHub\darilek\sally\src\plugins\winscp\core\FtpFileSystem.cpp</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.455,C:\Users\mdarilek\OneDrive\Dokumenty\Embarcadero\Studio\Projects\Project1.cbproj=C:\Users\mdarilek\OneDrive\Dokumenty\Embarcadero\Studio\Projects\ScpCore.cbproj</Transaction>
+  </Transactions>
+</BorlandProject>

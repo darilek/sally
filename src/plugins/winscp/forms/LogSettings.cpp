@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Common.h>
@@ -64,8 +65,10 @@ void __fastcall TLoggingFrame::LoadConfiguration()
 void __fastcall TLoggingFrame::SaveConfiguration()
 {
   Configuration->BeginUpdate();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    Configuration->EndUpdate();
+  });
     Configuration->Logging = LoggingOnButton->Checked || LoggingActionsButton->Checked;
     Configuration->LogActions = LoggingActionsButton->Checked;
     Configuration->LogProtocol = LogProtocolCombo->ItemIndex;
@@ -84,10 +87,6 @@ void __fastcall TLoggingFrame::SaveConfiguration()
         Configuration->LogWindowLines = LogWindowLinesEdit->AsInteger;
       }
     }
-  }
-  __finally
-  {
-    Configuration->EndUpdate();
   }
 }
 //---------------------------------------------------------------------------
@@ -149,16 +148,26 @@ void __fastcall TLoggingFrame::SetEnableLogWindow(bool value)
 }
 //---------------------------------------------------------------------------
 void __fastcall TLoggingFrame::LogFileNameEdit2BeforeDialog(TObject * /*Sender*/,
-  AnsiString & Name, bool & /*Action*/)
+  UnicodeString & NameU, bool & /*Action*/)
 {
+  // VCL passes UnicodeString& (BCB6 passed AnsiString&): work on an ANSI copy,
+  // write back only when changed so untouched non-ANSI text survives
+  const AnsiString Name_Orig = NameU;
+  AnsiString Name = Name_Orig;
+  FINALLY_GUARD([&]() { if (Name != Name_Orig) { NameU = Name; } });
   FBeforeDialogPath = Name;
   Name = ExpandEnvironmentVariables(Name);
   LogFileNameEdit2->DefaultExt = GetLogFileExt();
 }
 //---------------------------------------------------------------------------
 void __fastcall TLoggingFrame::LogFileNameEdit2AfterDialog(TObject * /*Sender*/,
-  AnsiString & Name, bool & /*Action*/)
+  UnicodeString & NameU, bool & /*Action*/)
 {
+  // VCL passes UnicodeString& (BCB6 passed AnsiString&): work on an ANSI copy,
+  // write back only when changed so untouched non-ANSI text survives
+  const AnsiString Name_Orig = NameU;
+  AnsiString Name = Name_Orig;
+  FINALLY_GUARD([&]() { if (Name != Name_Orig) { NameU = Name; } });
   if (CompareFileName(Name, ExpandEnvironmentVariables(FBeforeDialogPath)))
   {
     Name = FBeforeDialogPath;

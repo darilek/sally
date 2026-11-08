@@ -2,16 +2,16 @@
 #ifndef LoginH
 #define LoginH
 //----------------------------------------------------------------------------
-#include <vcl\System.hpp>
-#include <vcl\Windows.hpp>
-#include <vcl\SysUtils.hpp>
-#include <vcl\Classes.hpp>
-#include <vcl\Graphics.hpp>
-#include <vcl\StdCtrls.hpp>
-#include <vcl\Forms.hpp>
-#include <vcl\Controls.hpp>
-#include <vcl\Buttons.hpp>
-#include <vcl\ExtCtrls.hpp>
+#include <System.hpp>
+#include <Windows.hpp>
+#include <SysUtils.hpp>
+#include <Classes.hpp>
+#include <Graphics.hpp>
+#include <StdCtrls.hpp>
+#include <Forms.hpp>
+#include <Controls.hpp>
+#include <Buttons.hpp>
+#include <ExtCtrls.hpp>
 #include <ComCtrls.hpp>
 #include <Mask.hpp>
 #include <ComboEdit.hpp>
@@ -326,13 +326,13 @@ __published:
   void __fastcall KexButtonClick(TObject *Sender);
   void __fastcall HelpButtonClick(TObject *Sender);
   void __fastcall PrivateKeyEditAfterDialog(TObject *Sender,
-    AnsiString &Name, bool &Action);
+    UnicodeString &NameU, bool &Action);
   void __fastcall FormCloseQuery(TObject *Sender, bool &CanClose);
   void __fastcall ColorButtonClick(TObject *Sender);
   void __fastcall ColorDefaultItemClick(TObject *Sender);
   void __fastcall PickColorItemClick(TObject *Sender);
   void __fastcall RenameSessionActionExecute(TObject * Sender);
-  void __fastcall PathEditBeforeDialog(TObject *Sender, AnsiString &Name,
+  void __fastcall PathEditBeforeDialog(TObject *Sender, UnicodeString &NameU,
     bool &Action);
   void __fastcall TransferProtocolComboChange(TObject *Sender);
   void __fastcall NavigationTreeCollapsing(TObject *Sender,
@@ -342,7 +342,7 @@ __published:
   void __fastcall ProxyLocalCommandBrowseButtonClick(TObject *Sender);
   void __fastcall SessionTreeChange(TObject *Sender, TTreeNode *Node);
   void __fastcall SessionTreeEdited(TObject *Sender, TTreeNode *Node,
-    AnsiString &S);
+    UnicodeString &SU);
   void __fastcall SessionTreeEditing(TObject *Sender, TTreeNode *Node,
     bool &AllowEdit);
   void __fastcall SessionTreeCustomDrawItem(TCustomTreeView *Sender,

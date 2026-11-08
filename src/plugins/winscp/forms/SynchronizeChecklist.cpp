@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Common.h>
@@ -28,13 +29,11 @@ bool __fastcall DoSynchronizeChecklistDialog(TSynchronizeChecklist * Checklist,
   bool Result;
   TSynchronizeChecklistDialog * Dialog = new TSynchronizeChecklistDialog(
     Application, Mode, Params, LocalDirectory, RemoteDirectory, OnCustomCommandMenu);
-  try
-  {
-    Result = Dialog->Execute(Checklist);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     delete Dialog;
+  });
+    Result = Dialog->Execute(Checklist);
   }
   return Result;
 }
@@ -298,21 +297,21 @@ void __fastcall TSynchronizeChecklistDialog::LoadList()
   FChecked[0] = 0;
 
   ListView->Items->BeginUpdate();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    ListView->Items->EndUpdate();
+  });
     ListView->Items->Clear();
     for (int Index = 0; Index < FChecklist->Count; Index++)
     {
       const TSynchronizeChecklist::TItem * ChecklistItem =
         FChecklist->Item[ListView->Items->Count];
       FChangingItemIgnore = true;
-      try
-      {
-        LoadItem(ListView->Items->Add());
-      }
-      __finally
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
         FChangingItemIgnore = false;
+      });
+        LoadItem(ListView->Items->Add());
       }
       FTotals[int(ChecklistItem->Action)]++;
       if (ChecklistItem->Checked)
@@ -321,10 +320,6 @@ void __fastcall TSynchronizeChecklistDialog::LoadList()
         FChecked[0]++;
       }
     }
-  }
-  __finally
-  {
-    ListView->Items->EndUpdate();
   }
 
   ListView->AlphaSort();
@@ -542,16 +537,14 @@ void __fastcall TSynchronizeChecklistDialog::ListViewChanging(
 void __fastcall TSynchronizeChecklistDialog::CheckAll(bool Check)
 {
   FChangingItemMass = true;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    FChangingItemMass = false;
+  });
     for (int Index = 0; Index < ListView->Items->Count; Index++)
     {
       ListView->Items->Item[Index]->Checked = Check;
     }
-  }
-  __finally
-  {
-    FChangingItemMass = false;
   }
   UpdateControls();
 }
@@ -565,8 +558,10 @@ void __fastcall TSynchronizeChecklistDialog::CheckButtonClick(
   TObject * Sender)
 {
   FChangingItemMass = true;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    FChangingItemMass = false;
+  });
     TListItem * Item = ListView->Selected;
     while (Item != NULL)
     {
@@ -575,10 +570,6 @@ void __fastcall TSynchronizeChecklistDialog::CheckButtonClick(
       Item->Checked = (Component->Tag != 0);
       Item = ListView->GetNextItem(Item, sdAll, TItemStates() << isSelected);
     }
-  }
-  __finally
-  {
-    FChangingItemMass = false;
   }
   UpdateControls();
 }

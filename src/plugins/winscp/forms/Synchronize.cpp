@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Common.h>
@@ -34,8 +35,10 @@ bool __fastcall DoSynchronizeDialog(TSynchronizeParamType & Params,
   bool Result;
   TSynchronizeDialog * Dialog = new TSynchronizeDialog(Application,
     OnStartStop, OnGetOptions, Start);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Dialog;
+  });
     Dialog->Options = Options;
     Dialog->CopyParamAttrs = CopyParamAttrs;
     Dialog->Params = Params;
@@ -48,15 +51,11 @@ bool __fastcall DoSynchronizeDialog(TSynchronizeParamType & Params,
       Params = Dialog->Params;
     }
   }
-  __finally
-  {
-    delete Dialog;
-  }
 
   return Result;
 }
 //---------------------------------------------------------------------------
-const TSynchronizeDialog::MaxLogItems = 1000;
+const int TSynchronizeDialog::MaxLogItems = 1000;
 //---------------------------------------------------------------------------
 __fastcall TSynchronizeDialog::TSynchronizeDialog(TComponent * Owner,
   TSynchronizeStartStopEvent OnStartStop, TGetSynchronizeOptionsEvent OnGetOptions,
@@ -286,8 +285,15 @@ void __fastcall TSynchronizeDialog::DoLog(TSynchronizeController * /*Controller*
   TSynchronizeLogEntry Entry, const AnsiString Message)
 {
   LogView->Items->BeginUpdate();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    LogView->Items->EndUpdate();
+    if (Entry == slScan)
+    {
+      // redraw log before the scanning block update
+      LogView->Repaint();
+    }
+  });
     TListItem * Item = LogView->Items->Add();
     Item->Caption = Now().TimeString();
     Item->SubItems->Add(Message);
@@ -295,15 +301,6 @@ void __fastcall TSynchronizeDialog::DoLog(TSynchronizeController * /*Controller*
     while (LogView->Items->Count > MaxLogItems)
     {
       LogView->Items->Delete(0);
-    }
-  }
-  __finally
-  {
-    LogView->Items->EndUpdate();
-    if (Entry == slScan)
-    {
-      // redraw log before the scanning block update
-      LogView->Repaint();
     }
   }
 }

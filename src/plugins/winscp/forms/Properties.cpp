@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include "WinInterface.h"
@@ -30,13 +31,11 @@ bool __fastcall DoPropertiesDialog(TStrings * FileList,
   TPropertiesDialog * PropertiesDialog = new TPropertiesDialog(Application,
     FileList, Directory, GroupList, UserList, AllowedChanges, UserGroupByID,
     OnCalculateSize, OnCalculateChecksum);
-  try
-  {
-    Result = PropertiesDialog->Execute(*Properties);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     delete PropertiesDialog;
+  });
+    Result = PropertiesDialog->Execute(*Properties);
   }
   return Result;
 }
@@ -161,8 +160,10 @@ void __fastcall TPropertiesDialog::LoadRemoteTokens(TComboBox * ComboBox,
 {
   TStrings * Items = ComboBox->Items;
   Items->BeginUpdate();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    Items->EndUpdate();
+  });
     Items->Clear();
     if (List != NULL)
     {
@@ -172,10 +173,6 @@ void __fastcall TPropertiesDialog::LoadRemoteTokens(TComboBox * ComboBox,
         Items->Add(LoadRemoteToken(*List->Token(Index)));
       }
     }
-  }
-  __finally
-  {
-    Items->EndUpdate();
   }
 }
 //---------------------------------------------------------------------------
@@ -239,18 +236,16 @@ void __fastcall TPropertiesDialog::LoadInfo()
     // large icons are enabled, on vista can be even larger).
     // so we stretch (shrink) the icon to 32x32 here to be sure.
     Graphics::TBitmap * Bitmap = new Graphics::TBitmap;
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete Bitmap;
+    });
       FShellImageList->GetBitmap(File->IconIndex, Bitmap);
       FileIconImage->Picture->Bitmap->Width = FileIconImage->Width;
       FileIconImage->Picture->Bitmap->Height = FileIconImage->Height;
       FileIconImage->Picture->Bitmap->Canvas->StretchDraw(
         TRect(0, 0, FileIconImage->Width, FileIconImage->Height),
         Bitmap);
-    }
-    __finally
-    {
-      delete Bitmap;
     }
 
     LinksToLabelLabel->Visible = File->IsSymLink;
@@ -542,20 +537,18 @@ void __fastcall TPropertiesDialog::CalculateSizeButtonClick(
   assert(FOnCalculateSize != NULL);
 
   bool DoClose = false;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    if (DoClose)
+    {
+      Close();
+    }
+  });
     __int64 Size;
     TCalculateSizeStats Stats;
     FOnCalculateSize(FFileList, Size, Stats, DoClose);
     FStatsNotCalculated = false;
     LoadStats(Size, Stats);
-  }
-  __finally
-  {
-    if (DoClose)
-    {
-      Close();
-    }
   }
 }
 //---------------------------------------------------------------------------
@@ -578,16 +571,14 @@ void __fastcall TPropertiesDialog::CalculateChecksum()
   FChecksumLoaded = true;
 
   bool DoClose = false;
-  try
-  {
-    FOnCalculateChecksum(ChecksumAlgEdit->Text, FFileList, CalculatedChecksum, DoClose);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     if (DoClose)
     {
       Close();
     }
+  });
+    FOnCalculateChecksum(ChecksumAlgEdit->Text, FFileList, CalculatedChecksum, DoClose);
   }
 }
 //---------------------------------------------------------------------------

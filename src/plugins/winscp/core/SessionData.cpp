@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include "SessionData.h"
@@ -80,7 +81,7 @@ void __fastcall TSessionData::Default()
   TcpNoDelay = true;
   HostKey = "";
 
-  ProxyMethod = pmNone;
+  ProxyMethod = ::pmNone;
   ProxyHost = "proxy";
   ProxyPort = 80;
   ProxyUsername = "";
@@ -443,7 +444,7 @@ void __fastcall TSessionData::Load(THierarchicalStorage * Storage)
           break;
         default:
         case pxNone:
-          ProxyMethod = pmNone;
+          ProxyMethod = ::pmNone;
           break;
       }
     }
@@ -717,7 +718,7 @@ void __fastcall TSessionData::Save(THierarchicalStorage * Storage,
           ProxySOCKSVersion = 4;
           break;
         default:
-        case pmNone:
+        case ::pmNone:
           ProxyType = pxNone;
           break;
       }
@@ -905,17 +906,15 @@ void __fastcall TSessionData::SaveRecryptedPasswords(THierarchicalStorage * Stor
 void __fastcall TSessionData::Remove()
 {
   THierarchicalStorage * Storage = Configuration->CreateScpStorage(true);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Storage;
+  });
     Storage->Explicit = true;
     if (Storage->OpenSubKey(Configuration->StoredSessionsSubKey, false))
     {
       Storage->RecursiveDeleteSubKey(InternalStorageKey);
     }
-  }
-  __finally
-  {
-    delete Storage;
   }
 }
 //---------------------------------------------------------------------
@@ -1164,7 +1163,7 @@ void __fastcall TSessionData::ConfigureTunnel(int APortNumber)
   HostName = "127.0.0.1";
   PortNumber = APortNumber;
   // proxy settings is used for tunnel
-  ProxyMethod = pmNone;
+  ProxyMethod = ::pmNone;
 }
 //---------------------------------------------------------------------
 void __fastcall TSessionData::RollbackTunnel()
@@ -2127,8 +2126,11 @@ void __fastcall TStoredSessionList::Load(THierarchicalStorage * Storage,
 {
   TStringList *SubKeys = new TStringList();
   TList * Loaded = new TList;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete SubKeys;
+    delete Loaded;
+  });
     Storage->GetSubKeyNames(SubKeys);
     for (int Index = 0; Index < SubKeys->Count; Index++)
     {
@@ -2186,31 +2188,28 @@ void __fastcall TStoredSessionList::Load(THierarchicalStorage * Storage,
       }
     }
   }
-  __finally
-  {
-    delete SubKeys;
-    delete Loaded;
-  }
 }
 //---------------------------------------------------------------------
 void __fastcall TStoredSessionList::Load(AnsiString aKey, bool UseDefaults)
 {
   TRegistryStorage * Storage = new TRegistryStorage(aKey);
-  try {
-    if (Storage->OpenRootKey(False)) Load(Storage, false, UseDefaults);
-  } __finally {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     delete Storage;
+  });
+    if (Storage->OpenRootKey(False)) Load(Storage, false, UseDefaults);
   }
 }
 //---------------------------------------------------------------------
 void __fastcall TStoredSessionList::Load()
 {
   THierarchicalStorage * Storage = Configuration->CreateScpStorage(true);
-  try {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Storage;
+  });
     if (Storage->OpenSubKey(Configuration->StoredSessionsSubKey, False))
       Load(Storage);
-  } __finally {
-    delete Storage;
   }
 }
 //---------------------------------------------------------------------
@@ -2235,18 +2234,16 @@ void __fastcall TStoredSessionList::DoSave(THierarchicalStorage * Storage,
   bool All, bool RecryptPasswordOnly)
 {
   TSessionData * FactoryDefaults = new TSessionData("");
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete FactoryDefaults;
+  });
     DoSave(Storage, FDefaultSettings, All, RecryptPasswordOnly, FactoryDefaults);
     for (int Index = 0; Index < Count+HiddenCount; Index++)
     {
       TSessionData * SessionData = (TSessionData *)Items[Index];
       DoSave(Storage, SessionData, All, RecryptPasswordOnly, FactoryDefaults);
     }
-  }
-  __finally
-  {
-    delete FactoryDefaults;
   }
 }
 //---------------------------------------------------------------------
@@ -2258,18 +2255,16 @@ void __fastcall TStoredSessionList::Save(THierarchicalStorage * Storage, bool Al
 void __fastcall TStoredSessionList::DoSave(bool All, bool Explicit, bool RecryptPasswordOnly)
 {
   THierarchicalStorage * Storage = Configuration->CreateScpStorage(true);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Storage;
+  });
     Storage->AccessMode = smReadWrite;
     Storage->Explicit = Explicit;
     if (Storage->OpenSubKey(Configuration->StoredSessionsSubKey, true))
     {
       DoSave(Storage, All, RecryptPasswordOnly);
     }
-  }
-  __finally
-  {
-    delete Storage;
   }
 
   Saved();
@@ -2297,17 +2292,15 @@ void __fastcall TStoredSessionList::Saved()
 void __fastcall TStoredSessionList::Export(const AnsiString FileName)
 {
   THierarchicalStorage * Storage = new TIniFileStorage(FileName);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Storage;
+  });
     Storage->AccessMode = smReadWrite;
     if (Storage->OpenSubKey(Configuration->StoredSessionsSubKey, true))
     {
       Save(Storage, true);
     }
-  }
-  __finally
-  {
-    delete Storage;
   }
 }
 //---------------------------------------------------------------------
@@ -2351,12 +2344,13 @@ void __fastcall TStoredSessionList::Cleanup()
   try {
     if (Configuration->Storage == stRegistry) Clear();
     TRegistryStorage * Storage = new TRegistryStorage(Configuration->RegistryStorageKey);
-    try {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete Storage;
+    });
       Storage->AccessMode = smReadWrite;
       if (Storage->OpenRootKey(False))
         Storage->RecursiveDeleteSubKey(Configuration->StoredSessionsSubKey);
-    } __finally {
-      delete Storage;
     }
   } catch (Exception &E) {
     throw ExtException(&E, CLEANUP_SESSIONS_ERROR);
@@ -2418,8 +2412,12 @@ void __fastcall TStoredSessionList::ImportHostKeys(const AnsiString TargetKey,
   TRegistryStorage * SourceStorage = NULL;
   TRegistryStorage * TargetStorage = NULL;
   TStringList * KeyList = NULL;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete SourceStorage;
+    delete TargetStorage;
+    delete KeyList;
+  });
     SourceStorage = new TRegistryStorage(SourceKey);
     TargetStorage = new TRegistryStorage(TargetKey);
     TargetStorage->AccessMode = smReadWrite;
@@ -2453,12 +2451,6 @@ void __fastcall TStoredSessionList::ImportHostKeys(const AnsiString TargetKey,
         }
       }
     }
-  }
-  __finally
-  {
-    delete SourceStorage;
-    delete TargetStorage;
-    delete KeyList;
   }
 }
 //---------------------------------------------------------------------------

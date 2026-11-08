@@ -1,0 +1,935 @@
+Building ScpCore.cbproj [Release|Win64x] using C:\Program Files (x86)\Embarcadero\Studio\37.0\bin\rsvars.bat 
+Vytv ýen¡ sestaven¡ bylo zah jeno 07.11.2026 18:09:47.
+Project "C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj" on node 1 (Build target(s)).
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\Bookmarks.o -dependency-file .\Win64x\Release\Bookmarks.d -MT .\Win64x\Release\Bookmarks.o -PD -sys-header-deps  core\Bookmarks.cpp 
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\Common.o -dependency-file .\Win64x\Release\Common.d -MT .\Win64x\Release\Common.o -PD -sys-header-deps  core\Common.cpp 
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\Configuration.o -dependency-file .\Win64x\Release\Configuration.d -MT .\Win64x\Release\Configuration.o -PD -sys-header-deps  core\Configuration.cpp 
+  In file included from core\Configuration.cpp:11:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:26:
+putty\puttyps.h(10,10): warning W1290: non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     10 | #include "winstuff.h"
+        |          ^~~~~~~~~~~~
+        |          "WINSTUFF.H"
+  In file included from core\Configuration.cpp:11:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:26:
+  In file included from putty\puttyps.h:10:
+putty\windows\winstuff.h(14,10): warning W1290: non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     14 | #include "tree234.h"
+        |          ^~~~~~~~~~~
+        |          "TREE234.H"
+  In file included from core\Configuration.cpp:11:
+  In file included from core\PuttyIntf.h:15:
+putty\putty.h(27,10): warning W1290: non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     27 | #include "network.h"
+        |          ^~~~~~~~~~~
+        |          "NETWORK.H"
+putty\putty.h(28,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     28 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\Configuration.cpp:11:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:28:
+putty\misc.h(8,10): warning W1290: non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      8 | #include "puttymem.h"
+        |          ^~~~~~~~~~~~
+        |          "PUTTYMEM.H"
+  In file included from core\Configuration.cpp:11:
+  In file included from core\PuttyIntf.h:15:
+putty\putty.h(1018,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+   1018 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\Configuration.cpp:11:
+core\PuttyIntf.h(16,10): warning W1290: non-portable path to file '<PUTTYEXP.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     16 | #include <puttyexp.h>
+        |          ^~~~~~~~~~~~
+        |          <PUTTYEXP.H>
+  In file included from core\Configuration.cpp:11:
+  In file included from core\PuttyIntf.h:16:
+putty\puttyexp.h(28,10): warning W1290: non-portable path to file '"SSHGSS.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     28 | #include "sshgss.h"
+        |          ^~~~~~~~~~
+        |          "SSHGSS.H"
+  In file included from core\Configuration.cpp:11:
+  In file included from core\PuttyIntf.h:16:
+  In file included from putty\puttyexp.h:28:
+putty\sshgss.h(4,10): warning W1290: non-portable path to file '"PGSSAPI.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      4 | #include "pgssapi.h"
+        |          ^~~~~~~~~~~
+        |          "PGSSAPI.H"
+  In file included from core\Configuration.cpp:11:
+  In file included from core\PuttyIntf.h:16:
+putty\puttyexp.h(39,10): warning W1290: non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     39 | #include "winstuff.h"
+        |          ^~~~~~~~~~~~
+        |          "WINSTUFF.H"
+putty\puttyexp.h(61,10): warning W1290: non-portable path to file '"charset/CHARSET.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     61 | #include "charset/charset.h"
+        |          ^~~~~~~~~~~~~~~~~~~
+        |          "charset/CHARSET.H"
+  In file included from core\Configuration.cpp:11:
+core\PuttyIntf.h(17,10): warning W1290: non-portable path to file '<SSH.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     17 | #include <ssh.h>
+        |          ^~~~~~~
+        |          <SSH.H>
+  In file included from core\Configuration.cpp:11:
+  In file included from core\PuttyIntf.h:17:
+putty\ssh.h(4,10): warning W1290: non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      4 | #include "puttymem.h"
+        |          ^~~~~~~~~~~~
+        |          "PUTTYMEM.H"
+putty\ssh.h(5,10): warning W1290: non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      5 | #include "tree234.h"
+        |          ^~~~~~~~~~~
+        |          "TREE234.H"
+putty\ssh.h(6,10): warning W1290: non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      6 | #include "network.h"
+        |          ^~~~~~~~~~~
+        |          "NETWORK.H"
+putty\ssh.h(7,10): warning W1290: non-portable path to file '"INT64.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      7 | #include "int64.h"
+        |          ^~~~~~~~~
+        |          "INT64.H"
+putty\ssh.h(8,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      8 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\Configuration.cpp:11:
+core\PuttyIntf.h(18,10): warning W1290: non-portable path to file '<PROXY.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     18 | #include <proxy.h>
+        |          ^~~~~~~~~
+        |          <PROXY.H>
+core\PuttyIntf.h(19,10): warning W1290: non-portable path to file '<STORAGE.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     19 | #include <storage.h>
+        |          ^~~~~~~~~~~
+        |          <STORAGE.H>
+core\Configuration.cpp(547,7): warning W6645: 'GetVersionExA' is deprecated [-Wdeprecated-declarations] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    547 |   if (GetVersionEx(&OSVersionInfo) != 0)
+        |       ^
+C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk\sysinfoapi.h(415,23): Hint warning H0: expanded from macro 'GetVersionEx' [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    415 | #define GetVersionEx  GetVersionExA
+        |                       ^
+C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk\sysinfoapi.h(394,1): Hint warning H5652: 'GetVersionExA' has been explicitly marked deprecated here [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    394 | NOT_BUILD_WINDOWS_DEPRECATE
+        | ^
+C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk\sysinfoapi.h(38,49): Hint warning H0: expanded from macro 'NOT_BUILD_WINDOWS_DEPRECATE' [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     38 | # define NOT_BUILD_WINDOWS_DEPRECATE __declspec(deprecated)
+        |                                                 ^
+  20 warnings generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\CopyParam.o -dependency-file .\Win64x\Release\CopyParam.d -MT .\Win64x\Release\CopyParam.o -PD -sys-header-deps  core\CopyParam.cpp 
+core\CopyParam.cpp(244,32): warning W6498: comparison of different enumeration types ('TStringMbcsByteType' and 'System::Sysutils::TMbcsByteType') is deprecated [-Wdeprecated-enum-compare] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    244 |   if (FileName.ByteType(Index) == mbSingleByte)
+        |       ~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~
+core\CopyParam.cpp(321,37): warning W6498: comparison of different enumeration types ('TStringMbcsByteType' and 'System::Sysutils::TMbcsByteType') is deprecated [-Wdeprecated-enum-compare] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    321 |           (FileName.ByteType(Index) == mbSingleByte) &&
+        |            ~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~
+core\CopyParam.cpp(322,41): warning W6498: comparison of different enumeration types ('TStringMbcsByteType' and 'System::Sysutils::TMbcsByteType') is deprecated [-Wdeprecated-enum-compare] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    322 |           (FileName.ByteType(Index + 1) == mbSingleByte) &&
+        |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~
+core\CopyParam.cpp(323,41): warning W6498: comparison of different enumeration types ('TStringMbcsByteType' and 'System::Sysutils::TMbcsByteType') is deprecated [-Wdeprecated-enum-compare] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    323 |           (FileName.ByteType(Index + 2) == mbSingleByte))
+        |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^  ~~~~~~~~~~~~
+  4 warnings generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\CoreMain.o -dependency-file .\Win64x\Release\CoreMain.d -MT .\Win64x\Release\CoreMain.o -PD -sys-header-deps  core\CoreMain.cpp 
+  In file included from core\CoreMain.cpp:11:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:26:
+putty\puttyps.h(10,10): warning W1290: non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     10 | #include "winstuff.h"
+        |          ^~~~~~~~~~~~
+        |          "WINSTUFF.H"
+  In file included from core\CoreMain.cpp:11:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:26:
+  In file included from putty\puttyps.h:10:
+putty\windows\winstuff.h(14,10): warning W1290: non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     14 | #include "tree234.h"
+        |          ^~~~~~~~~~~
+        |          "TREE234.H"
+  In file included from core\CoreMain.cpp:11:
+  In file included from core\PuttyIntf.h:15:
+putty\putty.h(27,10): warning W1290: non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     27 | #include "network.h"
+        |          ^~~~~~~~~~~
+        |          "NETWORK.H"
+putty\putty.h(28,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     28 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\CoreMain.cpp:11:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:28:
+putty\misc.h(8,10): warning W1290: non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      8 | #include "puttymem.h"
+        |          ^~~~~~~~~~~~
+        |          "PUTTYMEM.H"
+  In file included from core\CoreMain.cpp:11:
+  In file included from core\PuttyIntf.h:15:
+putty\putty.h(1018,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+   1018 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\CoreMain.cpp:11:
+core\PuttyIntf.h(16,10): warning W1290: non-portable path to file '<PUTTYEXP.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     16 | #include <puttyexp.h>
+        |          ^~~~~~~~~~~~
+        |          <PUTTYEXP.H>
+  In file included from core\CoreMain.cpp:11:
+  In file included from core\PuttyIntf.h:16:
+putty\puttyexp.h(28,10): warning W1290: non-portable path to file '"SSHGSS.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     28 | #include "sshgss.h"
+        |          ^~~~~~~~~~
+        |          "SSHGSS.H"
+  In file included from core\CoreMain.cpp:11:
+  In file included from core\PuttyIntf.h:16:
+  In file included from putty\puttyexp.h:28:
+putty\sshgss.h(4,10): warning W1290: non-portable path to file '"PGSSAPI.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      4 | #include "pgssapi.h"
+        |          ^~~~~~~~~~~
+        |          "PGSSAPI.H"
+  In file included from core\CoreMain.cpp:11:
+  In file included from core\PuttyIntf.h:16:
+putty\puttyexp.h(39,10): warning W1290: non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     39 | #include "winstuff.h"
+        |          ^~~~~~~~~~~~
+        |          "WINSTUFF.H"
+putty\puttyexp.h(61,10): warning W1290: non-portable path to file '"charset/CHARSET.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     61 | #include "charset/charset.h"
+        |          ^~~~~~~~~~~~~~~~~~~
+        |          "charset/CHARSET.H"
+  In file included from core\CoreMain.cpp:11:
+core\PuttyIntf.h(17,10): warning W1290: non-portable path to file '<SSH.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     17 | #include <ssh.h>
+        |          ^~~~~~~
+        |          <SSH.H>
+  In file included from core\CoreMain.cpp:11:
+  In file included from core\PuttyIntf.h:17:
+putty\ssh.h(4,10): warning W1290: non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      4 | #include "puttymem.h"
+        |          ^~~~~~~~~~~~
+        |          "PUTTYMEM.H"
+putty\ssh.h(5,10): warning W1290: non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      5 | #include "tree234.h"
+        |          ^~~~~~~~~~~
+        |          "TREE234.H"
+putty\ssh.h(6,10): warning W1290: non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      6 | #include "network.h"
+        |          ^~~~~~~~~~~
+        |          "NETWORK.H"
+putty\ssh.h(7,10): warning W1290: non-portable path to file '"INT64.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      7 | #include "int64.h"
+        |          ^~~~~~~~~
+        |          "INT64.H"
+putty\ssh.h(8,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      8 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\CoreMain.cpp:11:
+core\PuttyIntf.h(18,10): warning W1290: non-portable path to file '<PROXY.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     18 | #include <proxy.h>
+        |          ^~~~~~~~~
+        |          <PROXY.H>
+core\PuttyIntf.h(19,10): warning W1290: non-portable path to file '<STORAGE.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     19 | #include <storage.h>
+        |          ^~~~~~~~~~~
+        |          <STORAGE.H>
+  19 warnings generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\Cryptography.o -dependency-file .\Win64x\Release\Cryptography.d -MT .\Win64x\Release\Cryptography.o -PD -sys-header-deps  core\Cryptography.cpp 
+  In file included from core\Cryptography.cpp:6:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:26:
+putty\puttyps.h(10,10): warning W1290: non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     10 | #include "winstuff.h"
+        |          ^~~~~~~~~~~~
+        |          "WINSTUFF.H"
+  In file included from core\Cryptography.cpp:6:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:26:
+  In file included from putty\puttyps.h:10:
+putty\windows\winstuff.h(14,10): warning W1290: non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     14 | #include "tree234.h"
+        |          ^~~~~~~~~~~
+        |          "TREE234.H"
+  In file included from core\Cryptography.cpp:6:
+  In file included from core\PuttyIntf.h:15:
+putty\putty.h(27,10): warning W1290: non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     27 | #include "network.h"
+        |          ^~~~~~~~~~~
+        |          "NETWORK.H"
+putty\putty.h(28,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     28 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\Cryptography.cpp:6:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:28:
+putty\misc.h(8,10): warning W1290: non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      8 | #include "puttymem.h"
+        |          ^~~~~~~~~~~~
+        |          "PUTTYMEM.H"
+  In file included from core\Cryptography.cpp:6:
+  In file included from core\PuttyIntf.h:15:
+putty\putty.h(1018,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+   1018 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\Cryptography.cpp:6:
+core\PuttyIntf.h(16,10): warning W1290: non-portable path to file '<PUTTYEXP.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     16 | #include <puttyexp.h>
+        |          ^~~~~~~~~~~~
+        |          <PUTTYEXP.H>
+  In file included from core\Cryptography.cpp:6:
+  In file included from core\PuttyIntf.h:16:
+putty\puttyexp.h(28,10): warning W1290: non-portable path to file '"SSHGSS.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     28 | #include "sshgss.h"
+        |          ^~~~~~~~~~
+        |          "SSHGSS.H"
+  In file included from core\Cryptography.cpp:6:
+  In file included from core\PuttyIntf.h:16:
+  In file included from putty\puttyexp.h:28:
+putty\sshgss.h(4,10): warning W1290: non-portable path to file '"PGSSAPI.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      4 | #include "pgssapi.h"
+        |          ^~~~~~~~~~~
+        |          "PGSSAPI.H"
+  In file included from core\Cryptography.cpp:6:
+  In file included from core\PuttyIntf.h:16:
+putty\puttyexp.h(39,10): warning W1290: non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     39 | #include "winstuff.h"
+        |          ^~~~~~~~~~~~
+        |          "WINSTUFF.H"
+putty\puttyexp.h(61,10): warning W1290: non-portable path to file '"charset/CHARSET.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     61 | #include "charset/charset.h"
+        |          ^~~~~~~~~~~~~~~~~~~
+        |          "charset/CHARSET.H"
+  In file included from core\Cryptography.cpp:6:
+core\PuttyIntf.h(17,10): warning W1290: non-portable path to file '<SSH.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     17 | #include <ssh.h>
+        |          ^~~~~~~
+        |          <SSH.H>
+  In file included from core\Cryptography.cpp:6:
+  In file included from core\PuttyIntf.h:17:
+putty\ssh.h(4,10): warning W1290: non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      4 | #include "puttymem.h"
+        |          ^~~~~~~~~~~~
+        |          "PUTTYMEM.H"
+putty\ssh.h(5,10): warning W1290: non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      5 | #include "tree234.h"
+        |          ^~~~~~~~~~~
+        |          "TREE234.H"
+putty\ssh.h(6,10): warning W1290: non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      6 | #include "network.h"
+        |          ^~~~~~~~~~~
+        |          "NETWORK.H"
+putty\ssh.h(7,10): warning W1290: non-portable path to file '"INT64.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      7 | #include "int64.h"
+        |          ^~~~~~~~~
+        |          "INT64.H"
+putty\ssh.h(8,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      8 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\Cryptography.cpp:6:
+core\PuttyIntf.h(18,10): warning W1290: non-portable path to file '<PROXY.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     18 | #include <proxy.h>
+        |          ^~~~~~~~~
+        |          <PROXY.H>
+core\PuttyIntf.h(19,10): warning W1290: non-portable path to file '<STORAGE.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     19 | #include <storage.h>
+        |          ^~~~~~~~~~~
+        |          <STORAGE.H>
+  19 warnings generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\Exceptions.o -dependency-file .\Win64x\Release\Exceptions.d -MT .\Win64x\Release\Exceptions.o -PD -sys-header-deps  core\Exceptions.cpp 
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\FileBuffer.o -dependency-file .\Win64x\Release\FileBuffer.d -MT .\Win64x\Release\FileBuffer.o -PD -sys-header-deps  core\FileBuffer.cpp 
+core\FileBuffer.cpp(13,24): warning W5383: ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     13 |     case eolLF: return "\n";
+        |                        ^
+core\FileBuffer.cpp(14,26): warning W5383: ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     14 |     case eolCRLF: return "\r\n";
+        |                          ^
+core\FileBuffer.cpp(15,24): warning W5383: ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     15 |     case eolCR: return "\r";
+        |                        ^
+core\FileBuffer.cpp(16,36): warning W5383: ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     16 |     default: assert(false); return "";
+        |                                    ^
+  4 warnings generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\FileInfo.o -dependency-file .\Win64x\Release\FileInfo.d -MT .\Win64x\Release\FileInfo.o -PD -sys-header-deps  core\FileInfo.cpp 
+core\FileInfo.cpp(168,7): warning W5382: cannot delete expression with pointer-to-'void' type 'void *' [-Wdelete-incomplete] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    168 |       delete[] Result;
+        |       ^        ~~~~~~
+core\FileInfo.cpp(181,3): warning W5382: cannot delete expression with pointer-to-'void' type 'void *' [-Wdelete-incomplete] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    181 |   delete[] FileInfo;
+        |   ^        ~~~~~~~~
+  2 warnings generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\FileMasks.o -dependency-file .\Win64x\Release\FileMasks.d -MT .\Win64x\Release\FileMasks.o -PD -sys-header-deps  core\FileMasks.cpp 
+  In file included from core\FileMasks.cpp:11:
+core\Terminal.h(126,35): warning W6689: interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    126 | class TTerminal : public TObject, public TSessionUI
+        |                                   ^
+  1 warning generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\FileOperationProgress.o -dependency-file .\Win64x\Release\FileOperationProgress.d -MT .\Win64x\Release\FileOperationProgress.o -PD -sys-header-deps  core\FileOperationProgress.cpp 
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\FileSystems.o -dependency-file .\Win64x\Release\FileSystems.d -MT .\Win64x\Release\FileSystems.o -PD -sys-header-deps  core\FileSystems.cpp 
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\FtpFileSystem.o -dependency-file .\Win64x\Release\FtpFileSystem.d -MT .\Win64x\Release\FtpFileSystem.o -PD -sys-header-deps  core\FtpFileSystem.cpp 
+core\FtpFileSystem.cpp(3405,8): warning W1236: extra tokens at end of #endif directive [-Wextra-tokens] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+   3405 | #endif NO_FILEZILLA
+        |        ^
+        |        //
+  1 warning generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\HierarchicalStorage.o -dependency-file .\Win64x\Release\HierarchicalStorage.d -MT .\Win64x\Release\HierarchicalStorage.o -PD -sys-header-deps  core\HierarchicalStorage.cpp 
+  In file included from core\HierarchicalStorage.cpp:8:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:26:
+putty\puttyps.h(10,10): warning W1290: non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     10 | #include "winstuff.h"
+        |          ^~~~~~~~~~~~
+        |          "WINSTUFF.H"
+  In file included from core\HierarchicalStorage.cpp:8:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:26:
+  In file included from putty\puttyps.h:10:
+putty\windows\winstuff.h(14,10): warning W1290: non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     14 | #include "tree234.h"
+        |          ^~~~~~~~~~~
+        |          "TREE234.H"
+  In file included from core\HierarchicalStorage.cpp:8:
+  In file included from core\PuttyIntf.h:15:
+putty\putty.h(27,10): warning W1290: non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     27 | #include "network.h"
+        |          ^~~~~~~~~~~
+        |          "NETWORK.H"
+putty\putty.h(28,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     28 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\HierarchicalStorage.cpp:8:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:28:
+putty\misc.h(8,10): warning W1290: non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      8 | #include "puttymem.h"
+        |          ^~~~~~~~~~~~
+        |          "PUTTYMEM.H"
+  In file included from core\HierarchicalStorage.cpp:8:
+  In file included from core\PuttyIntf.h:15:
+putty\putty.h(1018,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+   1018 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\HierarchicalStorage.cpp:8:
+core\PuttyIntf.h(16,10): warning W1290: non-portable path to file '<PUTTYEXP.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     16 | #include <puttyexp.h>
+        |          ^~~~~~~~~~~~
+        |          <PUTTYEXP.H>
+  In file included from core\HierarchicalStorage.cpp:8:
+  In file included from core\PuttyIntf.h:16:
+putty\puttyexp.h(28,10): warning W1290: non-portable path to file '"SSHGSS.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     28 | #include "sshgss.h"
+        |          ^~~~~~~~~~
+        |          "SSHGSS.H"
+  In file included from core\HierarchicalStorage.cpp:8:
+  In file included from core\PuttyIntf.h:16:
+  In file included from putty\puttyexp.h:28:
+putty\sshgss.h(4,10): warning W1290: non-portable path to file '"PGSSAPI.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      4 | #include "pgssapi.h"
+        |          ^~~~~~~~~~~
+        |          "PGSSAPI.H"
+  In file included from core\HierarchicalStorage.cpp:8:
+  In file included from core\PuttyIntf.h:16:
+putty\puttyexp.h(39,10): warning W1290: non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     39 | #include "winstuff.h"
+        |          ^~~~~~~~~~~~
+        |          "WINSTUFF.H"
+putty\puttyexp.h(61,10): warning W1290: non-portable path to file '"charset/CHARSET.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     61 | #include "charset/charset.h"
+        |          ^~~~~~~~~~~~~~~~~~~
+        |          "charset/CHARSET.H"
+  In file included from core\HierarchicalStorage.cpp:8:
+core\PuttyIntf.h(17,10): warning W1290: non-portable path to file '<SSH.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     17 | #include <ssh.h>
+        |          ^~~~~~~
+        |          <SSH.H>
+  In file included from core\HierarchicalStorage.cpp:8:
+  In file included from core\PuttyIntf.h:17:
+putty\ssh.h(4,10): warning W1290: non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      4 | #include "puttymem.h"
+        |          ^~~~~~~~~~~~
+        |          "PUTTYMEM.H"
+putty\ssh.h(5,10): warning W1290: non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      5 | #include "tree234.h"
+        |          ^~~~~~~~~~~
+        |          "TREE234.H"
+putty\ssh.h(6,10): warning W1290: non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      6 | #include "network.h"
+        |          ^~~~~~~~~~~
+        |          "NETWORK.H"
+putty\ssh.h(7,10): warning W1290: non-portable path to file '"INT64.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      7 | #include "int64.h"
+        |          ^~~~~~~~~
+        |          "INT64.H"
+putty\ssh.h(8,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      8 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\HierarchicalStorage.cpp:8:
+core\PuttyIntf.h(18,10): warning W1290: non-portable path to file '<PROXY.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     18 | #include <proxy.h>
+        |          ^~~~~~~~~
+        |          <PROXY.H>
+core\PuttyIntf.h(19,10): warning W1290: non-portable path to file '<STORAGE.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     19 | #include <storage.h>
+        |          ^~~~~~~~~~~
+        |          <STORAGE.H>
+core\HierarchicalStorage.cpp(370,20): warning W7040: result of comparison of constant 234 with expression of type 'bool' is always false [-Wtautological-constant-out-of-range-compare] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    370 |         if (Result == ERROR_MORE_DATA)
+        |             ~~~~~~ ^  ~~~~~~~~~~~~~~~
+core\HierarchicalStorage.cpp(877,16): warning W6619: first argument in call to 'memcpy' is a pointer to non-trivially copyable type 'TDateTime' [-Wnontrivial-memcall] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    877 |         memcpy(&Result, Raw.c_str(), sizeof(Result));
+        |                ^
+core\HierarchicalStorage.cpp(877,16): Hint warning H5654: explicitly cast the pointer to silence this warning [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    877 |         memcpy(&Result, Raw.c_str(), sizeof(Result));
+        |                ^
+        |                (void*)
+  21 warnings generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\NamedObjs.o -dependency-file .\Win64x\Release\NamedObjs.d -MT .\Win64x\Release\NamedObjs.o -PD -sys-header-deps  core\NamedObjs.cpp 
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\Option.o -dependency-file .\Win64x\Release\Option.d -MT .\Win64x\Release\Option.o -PD -sys-header-deps  core\Option.cpp 
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\PuttyIntf.o -dependency-file .\Win64x\Release\PuttyIntf.d -MT .\Win64x\Release\PuttyIntf.o -PD -sys-header-deps  core\PuttyIntf.cpp 
+  In file included from core\PuttyIntf.cpp:7:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:26:
+putty\puttyps.h(10,10): warning W1290: non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     10 | #include "winstuff.h"
+        |          ^~~~~~~~~~~~
+        |          "WINSTUFF.H"
+  In file included from core\PuttyIntf.cpp:7:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:26:
+  In file included from putty\puttyps.h:10:
+putty\windows\winstuff.h(14,10): warning W1290: non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     14 | #include "tree234.h"
+        |          ^~~~~~~~~~~
+        |          "TREE234.H"
+  In file included from core\PuttyIntf.cpp:7:
+  In file included from core\PuttyIntf.h:15:
+putty\putty.h(27,10): warning W1290: non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     27 | #include "network.h"
+        |          ^~~~~~~~~~~
+        |          "NETWORK.H"
+putty\putty.h(28,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     28 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\PuttyIntf.cpp:7:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:28:
+putty\misc.h(8,10): warning W1290: non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      8 | #include "puttymem.h"
+        |          ^~~~~~~~~~~~
+        |          "PUTTYMEM.H"
+  In file included from core\PuttyIntf.cpp:7:
+  In file included from core\PuttyIntf.h:15:
+putty\putty.h(1018,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+   1018 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\PuttyIntf.cpp:7:
+core\PuttyIntf.h(16,10): warning W1290: non-portable path to file '<PUTTYEXP.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     16 | #include <puttyexp.h>
+        |          ^~~~~~~~~~~~
+        |          <PUTTYEXP.H>
+  In file included from core\PuttyIntf.cpp:7:
+  In file included from core\PuttyIntf.h:16:
+putty\puttyexp.h(28,10): warning W1290: non-portable path to file '"SSHGSS.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     28 | #include "sshgss.h"
+        |          ^~~~~~~~~~
+        |          "SSHGSS.H"
+  In file included from core\PuttyIntf.cpp:7:
+  In file included from core\PuttyIntf.h:16:
+  In file included from putty\puttyexp.h:28:
+putty\sshgss.h(4,10): warning W1290: non-portable path to file '"PGSSAPI.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      4 | #include "pgssapi.h"
+        |          ^~~~~~~~~~~
+        |          "PGSSAPI.H"
+  In file included from core\PuttyIntf.cpp:7:
+  In file included from core\PuttyIntf.h:16:
+putty\puttyexp.h(39,10): warning W1290: non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     39 | #include "winstuff.h"
+        |          ^~~~~~~~~~~~
+        |          "WINSTUFF.H"
+putty\puttyexp.h(61,10): warning W1290: non-portable path to file '"charset/CHARSET.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     61 | #include "charset/charset.h"
+        |          ^~~~~~~~~~~~~~~~~~~
+        |          "charset/CHARSET.H"
+  In file included from core\PuttyIntf.cpp:7:
+core\PuttyIntf.h(17,10): warning W1290: non-portable path to file '<SSH.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     17 | #include <ssh.h>
+        |          ^~~~~~~
+        |          <SSH.H>
+  In file included from core\PuttyIntf.cpp:7:
+  In file included from core\PuttyIntf.h:17:
+putty\ssh.h(4,10): warning W1290: non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      4 | #include "puttymem.h"
+        |          ^~~~~~~~~~~~
+        |          "PUTTYMEM.H"
+putty\ssh.h(5,10): warning W1290: non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      5 | #include "tree234.h"
+        |          ^~~~~~~~~~~
+        |          "TREE234.H"
+putty\ssh.h(6,10): warning W1290: non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      6 | #include "network.h"
+        |          ^~~~~~~~~~~
+        |          "NETWORK.H"
+putty\ssh.h(7,10): warning W1290: non-portable path to file '"INT64.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      7 | #include "int64.h"
+        |          ^~~~~~~~~
+        |          "INT64.H"
+putty\ssh.h(8,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      8 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\PuttyIntf.cpp:7:
+core\PuttyIntf.h(18,10): warning W1290: non-portable path to file '<PROXY.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     18 | #include <proxy.h>
+        |          ^~~~~~~~~
+        |          <PROXY.H>
+core\PuttyIntf.h(19,10): warning W1290: non-portable path to file '<STORAGE.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     19 | #include <storage.h>
+        |          ^~~~~~~~~~~
+        |          <STORAGE.H>
+core\PuttyIntf.cpp(143,42): warning W6865: cast to 'System::TObject *' from smaller integer type 'int' [-Wint-to-pointer-cast] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    143 |       Prompts->AddObject(Prompt->prompt, (TObject *)Prompt->echo);
+        |                                          ^~~~~~~~~~~~~~~~~~~~~~~
+  20 warnings generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\Queue.o -dependency-file .\Win64x\Release\Queue.d -MT .\Win64x\Release\Queue.o -PD -sys-header-deps  core\Queue.cpp 
+  In file included from core\Queue.cpp:7:
+core\Terminal.h(126,35): warning W6689: interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    126 | class TTerminal : public TObject, public TSessionUI
+        |                                   ^
+  1 warning generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\RemoteFiles.o -dependency-file .\Win64x\Release\RemoteFiles.d -MT .\Win64x\Release\RemoteFiles.o -PD -sys-header-deps  core\RemoteFiles.cpp 
+  In file included from core\RemoteFiles.cpp:13:
+core\Terminal.h(126,35): warning W6689: interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    126 | class TTerminal : public TObject, public TSessionUI
+        |                                   ^
+core\RemoteFiles.cpp(2315,15): warning W6913: enumeration value 'rsUndef' not handled in switch [-Wswitch] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+   2315 |       switch (RightUndef[Right])
+        |               ^~~~~~~~~~~~~~~~~
+core\RemoteFiles.cpp(2329,13): warning W6913: enumeration value 'rsUndef' not handled in switch [-Wswitch] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+   2329 |     switch (RightUndef[Right])
+        |             ^~~~~~~~~~~~~~~~~
+core\RemoteFiles.cpp(2527,12): warning W6619: first argument in call to 'memcpy' is a pointer to non-trivially copyable type 'TValidProperties' (aka 'Set<TValidProperty, vpRights, vpLastAccess>') [-Wnontrivial-memcall] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+   2527 |     memcpy(&Valid, Buf, sizeof(Valid));
+        |            ^
+core\RemoteFiles.cpp(2527,12): Hint warning H5654: explicitly cast the pointer to silence this warning [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+   2527 |     memcpy(&Valid, Buf, sizeof(Valid));
+        |            ^
+        |            (void*)
+  4 warnings generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\ScpFileSystem.o -dependency-file .\Win64x\Release\ScpFileSystem.d -MT .\Win64x\Release\ScpFileSystem.o -PD -sys-header-deps  core\ScpFileSystem.cpp 
+  In file included from core\ScpFileSystem.cpp:8:
+core\Terminal.h(126,35): warning W6689: interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    126 | class TTerminal : public TObject, public TSessionUI
+        |                                   ^
+  1 warning generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\Script.o -dependency-file .\Win64x\Release\Script.d -MT .\Win64x\Release\Script.o -PD -sys-header-deps  core\Script.cpp 
+  In file included from core\Script.cpp:11:
+  In file included from core\Script.h:7:
+core\Terminal.h(126,35): warning W6689: interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    126 | class TTerminal : public TObject, public TSessionUI
+        |                                   ^
+  1 warning generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\SecureShell.o -dependency-file .\Win64x\Release\SecureShell.d -MT .\Win64x\Release\SecureShell.o -PD -sys-header-deps  core\SecureShell.cpp 
+  In file included from core\SecureShell.cpp:6:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:26:
+putty\puttyps.h(10,10): warning W1290: non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     10 | #include "winstuff.h"
+        |          ^~~~~~~~~~~~
+        |          "WINSTUFF.H"
+  In file included from core\SecureShell.cpp:6:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:26:
+  In file included from putty\puttyps.h:10:
+putty\windows\winstuff.h(14,10): warning W1290: non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     14 | #include "tree234.h"
+        |          ^~~~~~~~~~~
+        |          "TREE234.H"
+  In file included from core\SecureShell.cpp:6:
+  In file included from core\PuttyIntf.h:15:
+putty\putty.h(27,10): warning W1290: non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     27 | #include "network.h"
+        |          ^~~~~~~~~~~
+        |          "NETWORK.H"
+putty\putty.h(28,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     28 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\SecureShell.cpp:6:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:28:
+putty\misc.h(8,10): warning W1290: non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      8 | #include "puttymem.h"
+        |          ^~~~~~~~~~~~
+        |          "PUTTYMEM.H"
+  In file included from core\SecureShell.cpp:6:
+  In file included from core\PuttyIntf.h:15:
+putty\putty.h(1018,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+   1018 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\SecureShell.cpp:6:
+core\PuttyIntf.h(16,10): warning W1290: non-portable path to file '<PUTTYEXP.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     16 | #include <puttyexp.h>
+        |          ^~~~~~~~~~~~
+        |          <PUTTYEXP.H>
+  In file included from core\SecureShell.cpp:6:
+  In file included from core\PuttyIntf.h:16:
+putty\puttyexp.h(28,10): warning W1290: non-portable path to file '"SSHGSS.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     28 | #include "sshgss.h"
+        |          ^~~~~~~~~~
+        |          "SSHGSS.H"
+  In file included from core\SecureShell.cpp:6:
+  In file included from core\PuttyIntf.h:16:
+  In file included from putty\puttyexp.h:28:
+putty\sshgss.h(4,10): warning W1290: non-portable path to file '"PGSSAPI.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      4 | #include "pgssapi.h"
+        |          ^~~~~~~~~~~
+        |          "PGSSAPI.H"
+  In file included from core\SecureShell.cpp:6:
+  In file included from core\PuttyIntf.h:16:
+putty\puttyexp.h(39,10): warning W1290: non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     39 | #include "winstuff.h"
+        |          ^~~~~~~~~~~~
+        |          "WINSTUFF.H"
+putty\puttyexp.h(61,10): warning W1290: non-portable path to file '"charset/CHARSET.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     61 | #include "charset/charset.h"
+        |          ^~~~~~~~~~~~~~~~~~~
+        |          "charset/CHARSET.H"
+  In file included from core\SecureShell.cpp:6:
+core\PuttyIntf.h(17,10): warning W1290: non-portable path to file '<SSH.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     17 | #include <ssh.h>
+        |          ^~~~~~~
+        |          <SSH.H>
+  In file included from core\SecureShell.cpp:6:
+  In file included from core\PuttyIntf.h:17:
+putty\ssh.h(4,10): warning W1290: non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      4 | #include "puttymem.h"
+        |          ^~~~~~~~~~~~
+        |          "PUTTYMEM.H"
+putty\ssh.h(5,10): warning W1290: non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      5 | #include "tree234.h"
+        |          ^~~~~~~~~~~
+        |          "TREE234.H"
+putty\ssh.h(6,10): warning W1290: non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      6 | #include "network.h"
+        |          ^~~~~~~~~~~
+        |          "NETWORK.H"
+putty\ssh.h(7,10): warning W1290: non-portable path to file '"INT64.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      7 | #include "int64.h"
+        |          ^~~~~~~~~
+        |          "INT64.H"
+putty\ssh.h(8,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      8 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\SecureShell.cpp:6:
+core\PuttyIntf.h(18,10): warning W1290: non-portable path to file '<PROXY.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     18 | #include <proxy.h>
+        |          ^~~~~~~~~
+        |          <PROXY.H>
+core\PuttyIntf.h(19,10): warning W1290: non-portable path to file '<STORAGE.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     19 | #include <storage.h>
+        |          ^~~~~~~~~~~
+        |          <STORAGE.H>
+  19 warnings generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\Security.o -dependency-file .\Win64x\Release\Security.d -MT .\Win64x\Release\Security.o -PD -sys-header-deps  core\Security.cpp 
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\SessionData.o -dependency-file .\Win64x\Release\SessionData.d -MT .\Win64x\Release\SessionData.o -PD -sys-header-deps  core\SessionData.cpp 
+  In file included from core\SessionData.cpp:13:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:26:
+putty\puttyps.h(10,10): warning W1290: non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     10 | #include "winstuff.h"
+        |          ^~~~~~~~~~~~
+        |          "WINSTUFF.H"
+  In file included from core\SessionData.cpp:13:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:26:
+  In file included from putty\puttyps.h:10:
+putty\windows\winstuff.h(14,10): warning W1290: non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     14 | #include "tree234.h"
+        |          ^~~~~~~~~~~
+        |          "TREE234.H"
+  In file included from core\SessionData.cpp:13:
+  In file included from core\PuttyIntf.h:15:
+putty\putty.h(27,10): warning W1290: non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     27 | #include "network.h"
+        |          ^~~~~~~~~~~
+        |          "NETWORK.H"
+putty\putty.h(28,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     28 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\SessionData.cpp:13:
+  In file included from core\PuttyIntf.h:15:
+  In file included from putty\putty.h:28:
+putty\misc.h(8,10): warning W1290: non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      8 | #include "puttymem.h"
+        |          ^~~~~~~~~~~~
+        |          "PUTTYMEM.H"
+  In file included from core\SessionData.cpp:13:
+  In file included from core\PuttyIntf.h:15:
+putty\putty.h(1018,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+   1018 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\SessionData.cpp:13:
+core\PuttyIntf.h(16,10): warning W1290: non-portable path to file '<PUTTYEXP.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     16 | #include <puttyexp.h>
+        |          ^~~~~~~~~~~~
+        |          <PUTTYEXP.H>
+  In file included from core\SessionData.cpp:13:
+  In file included from core\PuttyIntf.h:16:
+putty\puttyexp.h(28,10): warning W1290: non-portable path to file '"SSHGSS.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     28 | #include "sshgss.h"
+        |          ^~~~~~~~~~
+        |          "SSHGSS.H"
+  In file included from core\SessionData.cpp:13:
+  In file included from core\PuttyIntf.h:16:
+  In file included from putty\puttyexp.h:28:
+putty\sshgss.h(4,10): warning W1290: non-portable path to file '"PGSSAPI.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      4 | #include "pgssapi.h"
+        |          ^~~~~~~~~~~
+        |          "PGSSAPI.H"
+  In file included from core\SessionData.cpp:13:
+  In file included from core\PuttyIntf.h:16:
+putty\puttyexp.h(39,10): warning W1290: non-portable path to file '"WINSTUFF.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     39 | #include "winstuff.h"
+        |          ^~~~~~~~~~~~
+        |          "WINSTUFF.H"
+putty\puttyexp.h(61,10): warning W1290: non-portable path to file '"charset/CHARSET.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     61 | #include "charset/charset.h"
+        |          ^~~~~~~~~~~~~~~~~~~
+        |          "charset/CHARSET.H"
+  In file included from core\SessionData.cpp:13:
+core\PuttyIntf.h(17,10): warning W1290: non-portable path to file '<SSH.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     17 | #include <ssh.h>
+        |          ^~~~~~~
+        |          <SSH.H>
+  In file included from core\SessionData.cpp:13:
+  In file included from core\PuttyIntf.h:17:
+putty\ssh.h(4,10): warning W1290: non-portable path to file '"PUTTYMEM.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      4 | #include "puttymem.h"
+        |          ^~~~~~~~~~~~
+        |          "PUTTYMEM.H"
+putty\ssh.h(5,10): warning W1290: non-portable path to file '"TREE234.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      5 | #include "tree234.h"
+        |          ^~~~~~~~~~~
+        |          "TREE234.H"
+putty\ssh.h(6,10): warning W1290: non-portable path to file '"NETWORK.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      6 | #include "network.h"
+        |          ^~~~~~~~~~~
+        |          "NETWORK.H"
+putty\ssh.h(7,10): warning W1290: non-portable path to file '"INT64.H"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      7 | #include "int64.h"
+        |          ^~~~~~~~~
+        |          "INT64.H"
+putty\ssh.h(8,10): warning W1290: non-portable path to file '"MISC.h"'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+      8 | #include "misc.h"
+        |          ^~~~~~~~
+        |          "MISC.h"
+  In file included from core\SessionData.cpp:13:
+core\PuttyIntf.h(18,10): warning W1290: non-portable path to file '<PROXY.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     18 | #include <proxy.h>
+        |          ^~~~~~~~~
+        |          <PROXY.H>
+core\PuttyIntf.h(19,10): warning W1290: non-portable path to file '<STORAGE.H>'; specified path differs in case from file name on disk [-Wnonportable-include-path] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     19 | #include <storage.h>
+        |          ^~~~~~~~~~~
+        |          <STORAGE.H>
+  19 warnings generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\SessionInfo.o -dependency-file .\Win64x\Release\SessionInfo.d -MT .\Win64x\Release\SessionInfo.o -PD -sys-header-deps  core\SessionInfo.cpp 
+core\SessionInfo.cpp(943,24): warning W5383: ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    943 |     char * PingTypes = "-NC";
+        |                        ^
+  1 warning generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\SftpFileSystem.o -dependency-file .\Win64x\Release\SftpFileSystem.d -MT .\Win64x\Release\SftpFileSystem.o -PD -sys-header-deps  core\SftpFileSystem.cpp 
+  In file included from core\SftpFileSystem.cpp:12:
+core\Terminal.h(126,35): warning W6689: interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    126 | class TTerminal : public TObject, public TSessionUI
+        |                                   ^
+core\SftpFileSystem.cpp(593,28): warning W5383: ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    593 |       static char* Types = "U-DLSUOCBF";
+        |                            ^
+  2 warnings generated.
+_CLANGCoreCompile:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\bcc64x.exe -cc1 -D NDEBUG -D SSPI_MECH -D _WINDOWS -D NO_FILEZILLA -D NO_USING_NAMESPACE_SYSTEM_SYNCOBJS -D FRAMEWORK_VCL -D USEPACKAGES -output-dir .\Win64x\Release -I C:\Development\GitHub\darilek\sally\src\plugins\winscp -I core -I core -I windows -I putty -I putty\windows -I putty\charset -I resource -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1" -isystem "c:\program files (x86)\embarcadero\studio\37.0\lib\clang\20\include" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\sdk" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\rtl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\vcl" -isystem "C:\Program Files (x86)\Embarcadero\Studio\37.0\include\windows\fmx" -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -isystem C:\Users\Public\Documents\Embarcadero\Studio\37.0\hpp\Win64x -fcxx-exceptions -mframe-pointer=none -clear-ast-before-backend -ffp-contract=on -fno-rounding-math -mlong-double-64 -fgnuc-version=4.2.1 -mms-bitfields -fno-sized-deallocation -fno-use-init-array -fskip-odr-check-in-gmf -vectorize-loops -vectorize-slp -fborland-extensions -fdiagnostics-format borland -nobuiltininc -nostdsysteminc -triple x86_64-w64-windows-gnu -emit-obj -pic-level 2 -target-cpu x86-64 -tune-cpu generic -fexceptions -exception-model=seh -funwind-tables=2 -fno-spell-checking -fno-use-cxa-atexit -x c++ -std=c++23 -O2 -fmath-errno -tR -tM -o .\Win64x\Release\Terminal.o -dependency-file .\Win64x\Release\Terminal.d -MT .\Win64x\Release\Terminal.o -PD -sys-header-deps  core\Terminal.cpp 
+  In file included from core\Terminal.cpp:6:
+core\Terminal.h(126,35): warning W6689: interface 'TSessionUI' does not derive from IUnknown. (Interfaces should derive from IUnknown) [-Wborland] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    126 | class TTerminal : public TObject, public TSessionUI
+        |                                   ^
+core\Terminal.cpp(87,10): warning W6619: first argument in call to 'memset' is a pointer to non-trivially copyable type 'TSynchronizeOptions' [-Wnontrivial-memcall] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     87 |   memset(this, 0, sizeof(*this));
+        |          ^
+core\Terminal.cpp(87,10): Hint warning H5654: explicitly cast the pointer to silence this warning [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+     87 |   memset(this, 0, sizeof(*this));
+        |          ^
+        |          (void*)
+core\Terminal.cpp(998,32): warning W6865: cast to 'System::TObject *' from smaller integer type 'int' [-Wint-to-pointer-cast] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+    998 |     Results->AddObject(Result, (TObject *)MaxLen);
+        |                                ^~~~~~~~~~~~~~~~~
+core\Terminal.cpp(1193,11): warning W6913: 14 enumeration values not handled in switch: 'fsNull', 'fsVarValue', 'fsLastLine'... [-Wswitch] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+   1193 |   switch ((TFSCommand)Cmd) {
+        |           ^~~~~~~~~~~~~~~
+core\Terminal.cpp(1886,11): warning W6913: 4 enumeration values not handled in switch: 'boNo', 'boAll', 'boNone'... [-Wswitch] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+   1886 |   switch (BatchOverwrite)
+        |           ^~~~~~~~~~~~~~
+core\Terminal.cpp(1956,13): warning W6913: enumeration value 'boNo' not handled in switch [-Wswitch] [C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj]
+   1956 |     switch (BatchOverwrite)
+        |             ^~~~~~~~~~~~~~
+  6 warnings generated.
+BuildVersionResource:
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\cgrc.exe -c65001 -= resinator.exe .\Win64x\Release\ScpCore.vrc -fo.\Win64x\Release\ScpCore.res 
+  CodeGear Resource Compiler/Binder
+  Version 1.2.3 Copyright (c) 2008-2025 Embarcadero Technologies Inc.
+  
+  Deleting file ".\Win64x\Release\ScpCore.vrc".
+_PerformCLANGLDLink:
+  Deleting file ".\lib\Win64x\Release\ScpCore.lib".
+  C:\Program Files (x86)\Embarcadero\Studio\37.0\bin64\llvm-ar.exe rcs .\lib\Win64x\Release\ScpCore.lib .\Win64x\Release\Bookmarks.o .\Win64x\Release\Common.o .\Win64x\Release\Configuration.o .\Win64x\Release\CopyParam.o .\Win64x\Release\CoreMain.o .\Win64x\Release\Cryptography.o .\Win64x\Release\Exceptions.o .\Win64x\Release\FileBuffer.o .\Win64x\Release\FileInfo.o .\Win64x\Release\FileMasks.o .\Win64x\Release\FileOperationProgress.o .\Win64x\Release\FileSystems.o .\Win64x\Release\FtpFileSystem.o .\Win64x\Release\HierarchicalStorage.o .\Win64x\Release\NamedObjs.o .\Win64x\Release\Option.o .\Win64x\Release\PuttyIntf.o .\Win64x\Release\Queue.o .\Win64x\Release\RemoteFiles.o .\Win64x\Release\ScpFileSystem.o .\Win64x\Release\Script.o .\Win64x\Release\SecureShell.o .\Win64x\Release\Security.o .\Win64x\Release\SessionData.o .\Win64x\Release\SessionInfo.o .\Win64x\Release\SftpFileSystem.o .\Win64x\Release\Terminal.o 
+Done Building Project "C:\Development\GitHub\darilek\sally\src\plugins\winscp\ScpCore.cbproj" (Build target(s)).
+
+Vytv ýen¡ sestaven¡ bylo £spØçnØ dokonŸeno.
+
+Uplynulì Ÿas 00:02:26.06
+ 
+==== errors / warnings summary ==== 
+    370 |         if (Result == ERROR_MORE_DATA)
+==== errors / warnings summary ==== 
+Exit code 0 

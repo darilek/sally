@@ -1,0 +1,13 @@
+Comparing files layout-msvc.txt and LAYOUT-BCC.TXT
+***** layout-msvc.txt
+  offsetof(CSalamanderTextRangeBuffer, Reserve) = 24
+sizeof(CSalamanderStringBufferOwner) = 64
+sizeof(CSalamanderTextRangeBufferOwner) = 64
+sizeof(CSalBZIP2) = 48
+***** LAYOUT-BCC.TXT
+  offsetof(CSalamanderTextRangeBuffer, Reserve) = 24
+sizeof(CSalamanderStringBufferOwner) = 60
+sizeof(CSalamanderTextRangeBufferOwner) = 60
+sizeof(CSalBZIP2) = 48
+*****
+

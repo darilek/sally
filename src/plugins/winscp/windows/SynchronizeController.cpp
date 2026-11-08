@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Common.h>
@@ -105,8 +106,9 @@ void __fastcall TSynchronizeController::StartStop(TObject * Sender,
 }
 //---------------------------------------------------------------------------
 void __fastcall TSynchronizeController::SynchronizeChange(
-  TObject * /*Sender*/, const AnsiString Directory, bool & SubdirsChanged)
+  TObject * /*Sender*/, const UnicodeString DirectoryU, bool & SubdirsChanged)
 {
+  const AnsiString Directory = DirectoryU;
   try
   {
     AnsiString RemoteDirectory;
@@ -136,8 +138,10 @@ void __fastcall TSynchronizeController::SynchronizeChange(
         FSynchronizeParams, &Checklist, Options, false);
       if (Checklist != NULL)
       {
-        try
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
+          delete Checklist;
+        });
           if (FLAGSET(FSynchronizeParams.Options, soRecurse))
           {
             SubdirsChanged = false;
@@ -166,10 +170,6 @@ void __fastcall TSynchronizeController::SynchronizeChange(
           {
             SubdirsChanged = false;
           }
-        }
-        __finally
-        {
-          delete Checklist;
         }
       }
     }
@@ -224,8 +224,9 @@ void __fastcall TSynchronizeController::SynchronizeLog(TSynchronizeLogEntry Entr
 }
 //---------------------------------------------------------------------------
 void __fastcall TSynchronizeController::SynchronizeFilter(TObject * /*Sender*/,
-  const AnsiString DirectoryName, bool & Add)
+  const UnicodeString DirectoryNameU, bool & Add)
 {
+  const AnsiString DirectoryName = DirectoryNameU;
   if ((FOptions != NULL) && (FOptions->Filter != NULL))
   {
     if (IncludeTrailingBackslash(ExtractFilePath(DirectoryName)) ==
@@ -240,8 +241,10 @@ void __fastcall TSynchronizeController::SynchronizeFilter(TObject * /*Sender*/,
 }
 //---------------------------------------------------------------------------
 void __fastcall TSynchronizeController::SynchronizeInvalid(
-  TObject * /*Sender*/, const AnsiString Directory, const AnsiString ErrorStr)
+  TObject * /*Sender*/, const UnicodeString DirectoryU, const UnicodeString ErrorStrU)
 {
+  const AnsiString Directory = DirectoryU;
+  const AnsiString ErrorStr = ErrorStrU;
   if (FOnSynchronizeInvalid != NULL)
   {
     FOnSynchronizeInvalid(this, Directory, ErrorStr);

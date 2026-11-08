@@ -1,6 +1,7 @@
 ﻿//---------------------------------------------------------------------------
 #define NO_WIN32_LEAN_AND_MEAN
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Consts.hpp>
@@ -85,7 +86,7 @@ void __fastcall RestoreForm(AnsiString Data, TForm * Form)
   assert(Form);
   if (!Data.IsEmpty())
   {
-    TMonitor * Monitor = FormMonitor(Form);
+    Vcl::Forms::TMonitor * Monitor = FormMonitor(Form);
 
     TRect Bounds = Form->BoundsRect;
     int Left = StrToIntDef(::CutToChar(Data, ';', true), Bounds.Left);
@@ -247,8 +248,10 @@ void __fastcall CreateDesktopShortCut(const AnsiString & Name,
       if(SUCCEEDED(CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER,
           IID_IShellLink, (void **) &pLink)))
       {
-        try
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
+          pLink->Release();
+        });
           pLink->SetPath(File.c_str());
           pLink->SetDescription(Description.c_str());
           pLink->SetArguments(Params.c_str());
@@ -265,8 +268,10 @@ void __fastcall CreateDesktopShortCut(const AnsiString & Name,
 
           if (SUCCEEDED(pLink->QueryInterface(IID_IPersistFile, (void **)&pPersistFile)))
           {
-            try
-            {
+            { // try/__finally -> scope guard (bcc64x)
+              FINALLY_GUARD([&]() {
+              pPersistFile->Release();
+            });
               WideString strShortCutLocation(DesktopDir);
               // Name can contain even path (e.g. to create quick launch icon)
               strShortCutLocation += AnsiString("\\") + Name + ".lnk";
@@ -275,15 +280,7 @@ void __fastcall CreateDesktopShortCut(const AnsiString & Name,
                 RaiseLastOSError();
               }
             }
-            __finally
-            {
-              pPersistFile->Release();
-            }
           }
-        }
-        __finally
-        {
-          pLink->Release();
         }
       }
       CoUninitialize();
@@ -562,8 +559,10 @@ void __fastcall BrowseForExecutableT(T * Control, AnsiString Title,
   SplitCommand(Executable, Program, Params, Dir);
 
   TOpenDialog * FileDialog = CreateOpenDialog(Application);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete FileDialog;
+  });
     if (Escape)
     {
       Program = StringReplace(Program, "\\\\", "\\", TReplaceFlags() << rfReplaceAll);
@@ -577,8 +576,10 @@ void __fastcall BrowseForExecutableT(T * Control, AnsiString Title,
     {
       TNotifyEvent PrevOnChange = Control->OnChange;
       Control->OnChange = NULL;
-      try
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
+        Control->OnChange = PrevOnChange;
+      });
         // preserve unexpanded file, if the destination has not changed actually
         if (!CompareFileName(ExpandedProgram, FileDialog->FileName))
         {
@@ -590,20 +591,12 @@ void __fastcall BrowseForExecutableT(T * Control, AnsiString Title,
         }
         Control->Text = FormatCommand(Program, Params);
       }
-      __finally
-      {
-        Control->OnChange = PrevOnChange;
-      }
 
       if (Control->OnExit != NULL)
       {
         Control->OnExit(Control);
       }
     }
-  }
-  __finally
-  {
-    delete FileDialog;
   }
 }
 //---------------------------------------------------------------------------
@@ -623,8 +616,10 @@ bool __fastcall FontDialog(TFont * Font)
 {
   bool Result;
   TFontDialog * Dialog = new TChildFontDialog(Application);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Dialog;
+  });
     Dialog->Device = fdScreen;
     Dialog->Options = TFontDialogOptions() << fdForceFontExist;
     Dialog->Font = Font;
@@ -634,10 +629,6 @@ bool __fastcall FontDialog(TFont * Font)
       Font->Assign(Dialog->Font);
     }
   }
-  __finally
-  {
-    delete Dialog;
-  }
   return Result;
 }
 //---------------------------------------------------------------------------
@@ -646,8 +637,10 @@ bool __fastcall SaveDialog(AnsiString Title, AnsiString Filter,
 {
   bool Result;
   TSaveDialog * Dialog = new TChildSaveDialog(Application);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Dialog;
+  });
     Dialog->Title = Title;
     Dialog->Filter = Filter;
     Dialog->DefaultExt = DefaultExt;
@@ -660,10 +653,6 @@ bool __fastcall SaveDialog(AnsiString Title, AnsiString Filter,
       FileName = Dialog->FileName;
     }
   }
-  __finally
-  {
-    delete Dialog;
-  }
   return Result;
 }
 //---------------------------------------------------------------------------
@@ -674,21 +663,21 @@ void __fastcall CopyToClipboard(AnsiString Text)
 
   if (OpenClipboard(0))
   {
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      CloseClipboard();
+    });
       Data = GlobalAlloc(GMEM_MOVEABLE + GMEM_DDESHARE, Text.Length() + 1);
       try
       {
         DataPtr = GlobalLock(Data);
-        try
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
+          GlobalUnlock(Data);
+        });
           memcpy(DataPtr, Text.c_str(), Text.Length() + 1);
           EmptyClipboard();
           SetClipboardData(CF_TEXT, Data);
-        }
-        __finally
-        {
-          GlobalUnlock(Data);
         }
       }
       catch(...)
@@ -697,14 +686,10 @@ void __fastcall CopyToClipboard(AnsiString Text)
         throw;
       }
     }
-    __finally
-    {
-      CloseClipboard();
-    }
   }
   else
   {
-    throw Exception(Consts_SCannotOpenClipboard);
+    throw Exception(LoadResourceString(&Vcl::Consts::_SCannotOpenClipboard));
   }
 }
 //---------------------------------------------------------------------------
@@ -728,11 +713,11 @@ bool __fastcall IsWin64()
   static int Result = -1;
   if (Result < 0)
   {
-    typedef BOOL WINAPI (*IsWow64ProcessType)(HANDLE Process, PBOOL Wow64Process);
+    typedef BOOL (WINAPI * IsWow64ProcessType)(HANDLE Process, PBOOL Wow64Process);
 
     Result = 0;
 
-    HMODULE Kernel = GetModuleHandle(kernel32);
+    HMODULE Kernel = GetModuleHandle("kernel32.dll");
     if (Kernel != NULL)
     {
       IsWow64ProcessType IsWow64Process =
@@ -924,183 +909,47 @@ bool __fastcall AutodetectProxyUrl(AnsiString & Proxy)
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
-class TWinHelpTester : public TInterfacedObject, public IWinHelpTester
-{
-public:
-  virtual __fastcall ~TWinHelpTester();
-  virtual bool __fastcall CanShowALink(const AnsiString ALink, const AnsiString FileName);
-  virtual bool __fastcall CanShowTopic(const AnsiString Topic, const AnsiString FileName);
-  virtual bool __fastcall CanShowContext(const int Context, const AnsiString FileName);
-  virtual TStringList * __fastcall GetHelpStrings(const AnsiString ALink);
-  virtual AnsiString __fastcall GetHelpPath();
-  virtual AnsiString __fastcall GetDefaultHelpFile();
-
-  IUNKNOWN
-};
+// Help viewer registration.
+// The BCB6 code here poked at private THelpManager/THelpViewerNode fields using
+// hard-coded 32-bit offsets to unregister the WinHelp viewer. That crashes on
+// Win64 and is unnecessary now (the WinHelp viewer is not linked in), so only
+// the documented HelpIntfs API is used.
+static ICustomHelpViewer * CustomHelpViewer = NULL;
+// Kept in raw zeroed memory and never destroyed: assigning/destroying a
+// _di_IHelpManager calls Release(), which binds to IHelpManager::Release(int)
+// instead of IUnknown::Release() (name hiding) and does not compile.
+static _di_IHelpManager * PCustomHelpManager = NULL;
+static int CustomHelpViewerID = -1;
 //---------------------------------------------------------------------------
-ICustomHelpViewer * CustomHelpViewer = NULL;
-_di_IHelpManager * PHelpManager = NULL;
-IUnknown * HelpManagerUnknown = NULL;
-TObjectList * ViewerList = NULL;
-ICustomHelpViewer * WinHelpViewer = NULL;
-//---------------------------------------------------------------------------
-static int __fastcall ViewerID(int Index)
+void __fastcall SetCustomHelpViewerID(int ViewerID)
 {
-  // 8 is offset from THelpViewerNode to THelpViewerNode::FViewer
-  return
-    *reinterpret_cast<int *>(reinterpret_cast<char *>(ViewerList->Items[Index])
-    + 8);
-}
-//---------------------------------------------------------------------------
-static void __fastcall InternalShutdown(int Index)
-{
-  assert(PHelpManager != NULL);
-  if (PHelpManager != NULL)
-  {
-    // override conflict of two Release() methods by getting
-    // IHelpManager explicitly using operator *
-    (**PHelpManager).Release(ViewerID(Index));
-    // registration to help manager increases refcount by 2, but deregistration
-    // by one only
-    CustomHelpViewer->Release();
-  }
+  CustomHelpViewerID = ViewerID;
 }
 //---------------------------------------------------------------------------
 void __fastcall InitializeCustomHelp(ICustomHelpViewer * HelpViewer)
 {
-  assert(PHelpManager == NULL);
-
+  assert(CustomHelpViewer == NULL);
   CustomHelpViewer = HelpViewer;
-
-  // workaround
-  // _di_IHelpManager cannot be instantiated due to either bug in compiler or
-  // VCL code
-  PHelpManager = (_di_IHelpManager*)malloc(sizeof(_di_IHelpManager));
   // our own reference
   CustomHelpViewer->AddRef();
-  RegisterViewer(CustomHelpViewer, *PHelpManager);
-  HelpManagerUnknown = dynamic_cast<IUnknown *>(&**PHelpManager);
-
-  // 40 is offset from IHelpManager to THelpManager
-  // 16 is offset from THelpManager to THelpManager::FViewerList
-  ViewerList =
-    *reinterpret_cast<TObjectList **>(reinterpret_cast<char *>(&**PHelpManager)
-    - 40 + 16);
-  assert(ViewerList->Count == 2);
-
-  // gross hack
-  // Due to major bugs in VCL help system, unregister winhelp at all.
-  // To do this we must call RegisterViewer first to get HelpManager.
-  // Due to another bug, viewers must be unregistred in order reversed to
-  // registration order, so we must unregister our help viewer first
-  // and register it again at the end
-  InternalShutdown(1);
-  assert(ViewerList->Count == 1);
-  int WinHelpViewerID = ViewerID(0);
-  // 4 is offset from THelpViewerNode to THelpViewerNode::FViewer
-  WinHelpViewer =
-    *reinterpret_cast<_di_ICustomHelpViewer *>(reinterpret_cast<char *>(ViewerList->Items[0])
-    + 4);
-  // our reference
-  // we cannot release win help viewer completelly here as finalization code of
-  // WinHelpViewer expect it to exist
-  WinHelpViewer->AddRef();
-  (**PHelpManager).Release(WinHelpViewerID);
-  // remove forgoten 3 references of manager
-  WinHelpViewer->Release();
-  WinHelpViewer->Release();
-  WinHelpViewer->Release();
-  assert(ViewerList->Count == 0);
-  // this clears reference to manager in TWinHelpViewer::FHelpManager,
-  // preventing call to TWinHelpViewer::InternalShutdown from finalization code
-  // of WinHelpViewer
-  WinHelpViewer->ShutDown();
-
-  RegisterViewer(CustomHelpViewer, *PHelpManager);
-  // we've got second reference to the same pointer here, release it
-  HelpManagerUnknown->Release();
-  assert(ViewerList->Count == 1);
-
-  // now when winhelp is not registered, the tester is not used anyway
-  // for any real work, but we use it as a hook to be called after
-  // finalization of WinHelpViewer (see its finalization section)
-  WinHelpTester = new TWinHelpTester();
+  PCustomHelpManager = static_cast<_di_IHelpManager *>(calloc(1, sizeof(_di_IHelpManager)));
+  // the manager calls HelpViewer->NotifyID with the ID it assigned
+  RegisterViewer(CustomHelpViewer, *PCustomHelpManager);
 }
 //---------------------------------------------------------------------------
 void __fastcall FinalizeCustomHelp()
 {
   if (CustomHelpViewer != NULL)
   {
-    // unregister ourselves to release both references
-    InternalShutdown(0);
+    if ((PCustomHelpManager != NULL) && (*PCustomHelpManager != NULL) && (CustomHelpViewerID >= 0))
+    {
+      (**PCustomHelpManager).Release(CustomHelpViewerID);
+    }
+    // intentionally leaked (see above); the RTL help manager outlives the plugin anyway
+    PCustomHelpManager = NULL;
+    CustomHelpViewerID = -1;
     // our own reference
     CustomHelpViewer->Release();
+    CustomHelpViewer = NULL;
   }
-
-  if (PHelpManager != NULL)
-  {
-    assert(ViewerList->Count == 0);
-
-    // our reference
-    HelpManagerUnknown->Release();
-    free(PHelpManager);
-    PHelpManager = NULL;
-    HelpManagerUnknown = NULL;
-  }
-}
-//---------------------------------------------------------------------------
-void __fastcall CleanUpWinHelp()
-{
-  // WinHelpViewer finalization code should have been called by now already,
-  // so we can safely remove the last reference to destroy it
-  assert(WinHelpViewer != NULL);
-  WinHelpViewer->Release();
-}
-//---------------------------------------------------------------------------
-//---------------------------------------------------------------------------
-__fastcall TWinHelpTester::~TWinHelpTester()
-{
-  CleanUpWinHelp();
-}
-//---------------------------------------------------------------------------
-bool __fastcall TWinHelpTester::CanShowALink(const AnsiString ALink,
-  const AnsiString FileName)
-{
-  assert(false);
-  return !Application->HelpFile.IsEmpty();
-}
-//---------------------------------------------------------------------------
-bool __fastcall TWinHelpTester::CanShowTopic(const AnsiString Topic,
-  const AnsiString FileName)
-{
-  assert(false);
-  return !Application->HelpFile.IsEmpty();
-}
-//---------------------------------------------------------------------------
-bool __fastcall TWinHelpTester::CanShowContext(const int /*Context*/,
-  const AnsiString FileName)
-{
-  assert(false);
-  return !Application->HelpFile.IsEmpty();
-}
-//---------------------------------------------------------------------------
-TStringList * __fastcall TWinHelpTester::GetHelpStrings(const AnsiString ALink)
-{
-  assert(false);
-  TStringList * Result = new TStringList();
-  Result->Add(ViewerName + ": " + ALink);
-  return Result;
-}
-//---------------------------------------------------------------------------
-AnsiString __fastcall TWinHelpTester::GetHelpPath()
-{
-  assert(false);
-  // never called on windows anyway
-  return ExtractFilePath(Application->HelpFile);
-}
-//---------------------------------------------------------------------------
-AnsiString __fastcall TWinHelpTester::GetDefaultHelpFile()
-{
-  assert(false);
-  return Application->HelpFile;
 }

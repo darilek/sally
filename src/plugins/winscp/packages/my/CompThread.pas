@@ -14,7 +14,7 @@ type
   TCompThread = class
   private
     FHandle: THandle;
-    FThreadID: THandle;
+    FThreadID: TThreadID;
     FTerminated: Boolean;
     FSuspended: Boolean;
     FFreeOnTerminate: Boolean;
@@ -44,7 +44,7 @@ type
     property Handle: THandle read FHandle;
     property Priority: TThreadPriority read GetPriority write SetPriority;
     property Suspended: Boolean read FSuspended write SetSuspended;
-    property ThreadID: THandle read FThreadID;
+    property ThreadID: TThreadID read FThreadID;
     property OnTerminate: TNotifyEvent read FOnTerminate write FOnTerminate;
   end;
 
@@ -304,7 +304,7 @@ procedure TCompThread.Synchronize(Method: TThreadMethod);
 begin
   FSynchronizeException := nil;
   FMethod := Method;
-  SendMessage(ThreadWindow, CM_EXECPROC, 0, Longint(Self));
+  SendMessage(ThreadWindow, CM_EXECPROC, 0, LPARAM(Self));
   if Assigned(FSynchronizeException) then raise FSynchronizeException;
 end;
 

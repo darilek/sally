@@ -1,4 +1,4 @@
-﻿#ifndef SalamanderRH
+#ifndef SalamanderRH
 #define SalamanderRH 1 // when set to "1" HTML help compiler does not report error on this line (..\help\compile.bat)
 
 #define IDI_WINSCP              1001

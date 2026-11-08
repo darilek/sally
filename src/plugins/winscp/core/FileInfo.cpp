@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Common.h>
@@ -36,24 +37,31 @@ unsigned int VERSION_GetFileVersionInfo_PE(const char * FileName, unsigned int D
   }
   else
   {
-    try
-    {
-      HANDLE Rsrc = FindResource(Module, MAKEINTRESOURCE(VS_VERSION_INFO),
-        MAKEINTRESOURCE(VS_FILE_INFO));
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      if (NeedFree)
+      {
+        FreeLibrary(Module);
+      }
+    });
+      HRSRC Rsrc = FindResource(Module, MAKEINTRESOURCE(VS_VERSION_INFO),
+        VS_FILE_INFO);
       if (Rsrc == NULL)
       {
       }
       else
       {
         Len = SizeofResource(Module, Rsrc);
-        HANDLE Mem = LoadResource(Module, Rsrc);
+        HGLOBAL Mem = LoadResource(Module, Rsrc);
         if (Mem == NULL)
         {
         }
         else
         {
-          try
-          {
+          { // try/__finally -> scope guard (bcc64x)
+            FINALLY_GUARD([&]() {
+            FreeResource(Mem);
+          });
             VS_VERSION_INFO_STRUCT32 * VersionInfo = (VS_VERSION_INFO_STRUCT32 *)LockResource(Mem);
             const VS_FIXEDFILEINFO * FixedInfo =
               (VS_FIXEDFILEINFO *)DWORD_ALIGN(VersionInfo, VersionInfo->szKey + wcslen(VersionInfo->szKey) + 1);
@@ -77,18 +85,7 @@ unsigned int VERSION_GetFileVersionInfo_PE(const char * FileName, unsigned int D
               }
             }
           }
-          __finally
-          {
-            FreeResource(Mem);
-          }
         }
-      }
-    }
-    __finally
-    {
-      if (NeedFree)
-      {
-        FreeLibrary(Module);
       }
     }
   }
@@ -224,7 +221,7 @@ TTranslation __fastcall GetTranslation(void * FileInfo, unsigned i)
 AnsiString __fastcall GetLanguage(Word Language)
 {
   UINT Len;
-  Char P[256];
+  char P[256];
 
   Len = VerLanguageName(Language, P, sizeof(P));
   if (Len > sizeof(P))

@@ -31,3 +31,34 @@ inline bool SalNarrowExact(const wchar_t* text, std::string& bytes)
     }
     return sally::plugin_text::EncodeAcpExact(text, bytes);
 }
+
+// Convenience: code-page AnsiString/char* -> UTF-16 for passing to the Sally SDK.
+inline std::wstring SalW(const char* text)
+{
+    return SalWide(text);
+}
+
+// UTF-16 from the Sally SDK -> code-page AnsiString for the WinSCP core (lossy chars become '?').
+inline AnsiString SalA(const wchar_t* text)
+{
+    std::string bytes;
+    if (text == NULL)
+        return AnsiString();
+    if (!SalNarrowExact(text, bytes))
+    {
+        bytes.clear();
+        sally::plugin_text::EncodeAcpLossy(text, bytes);
+    }
+    return AnsiString(bytes.c_str(), static_cast<int>(bytes.size()));
+}
+
+// AnsiString (code page) or UnicodeString -> std::wstring, for SDK calls taking const wchar_t*.
+inline std::wstring SalWS(const AnsiString& text)
+{
+    return SalWide(text.c_str());
+}
+
+inline std::wstring SalWS(const UnicodeString& text)
+{
+    return std::wstring(text.c_str(), static_cast<size_t>(text.Length()));
+}

@@ -50,9 +50,12 @@ void __fastcall ResizeForm(TCustomForm * Form, int Width, int Height);
 HWND __fastcall GetCorrectFormParent();
 void __fastcall SetCorrectFormParent(TForm * Form);
 void __fastcall InvokeHelp(TWinControl * Control);
-TMonitor *  __fastcall FormMonitor(TCustomForm * Form);
+Vcl::Forms::TMonitor *  __fastcall FormMonitor(TCustomForm * Form);
 int __fastcall GetLastMonitor();
 void __fastcall SetLastMonitor(int MonitorNum);
+// Paints all pending invalid regions of this thread's windows (e.g. Sally panels)
+// before a long blocking operation such as building a form.
+void __fastcall FlushThreadPaint();
 TForm * __fastcall _SafeFormCreate(TMetaClass * FormClass, TComponent * Owner);
 template<class FormType>
 FormType * __fastcall SafeFormCreate(TComponent * Owner = Application)

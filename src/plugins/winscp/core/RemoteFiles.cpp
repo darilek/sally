@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include "RemoteFiles.h"
@@ -394,7 +395,7 @@ int __fastcall FakeFileImageIndex(AnsiString FileName, unsigned long Attrs,
 {
   Attrs |= FILE_ATTRIBUTE_NORMAL;
 
-  TSHFileInfo SHFileInfo;
+  SHFILEINFOA SHFileInfo;
   // On Win2k we get icon of "ZIP drive" for ".." (parent directory)
   if ((FileName == "..") ||
       ((FileName.Length() == 2) && (FileName[2] == ':') &&
@@ -550,7 +551,7 @@ AnsiString __fastcall TRemoteToken::GetDisplayText() const
   }
   else if (FIDValid)
   {
-    return IntToStr(FID);
+    return IntToStr((__int64)FID);
   }
   else
   {
@@ -864,8 +865,8 @@ void __fastcall TRemoteFile::SetType(char AType)
 {
   FType = AType;
   // Allow even non-standard file types (e.g. 'S')
-  // if (!AnsiString("-DL").Pos((Char)toupper(FType))) Abort();
-  FIsSymLink = ((Char)toupper(FType) == FILETYPE_SYMLINK);
+  // if (!AnsiString("-DL").Pos((char)toupper(FType))) Abort();
+  FIsSymLink = ((char)toupper(FType) == FILETYPE_SYMLINK);
 }
 //---------------------------------------------------------------------------
 TRemoteFile * __fastcall TRemoteFile::GetLinkedFile()
@@ -1259,13 +1260,11 @@ void __fastcall TRemoteFile::FindLinkedFile()
     Terminal->ExceptionOnFail = true;
     try
     {
-      try
-      {
-        Terminal->ReadSymlink(this, FLinkedFile);
-      }
-      __finally
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
         Terminal->ExceptionOnFail = false;
+      });
+        Terminal->ReadSymlink(this, FLinkedFile);
       }
     }
     catch (Exception &E)
@@ -1553,7 +1552,7 @@ __fastcall TRemoteDirectoryCache::TRemoteDirectoryCache(): TStringList()
 {
   FSection = new TCriticalSection();
   Sorted = true;
-  Duplicates = dupError;
+  Duplicates = System::Classes::dupError;
   CaseSensitive = true;
 }
 //---------------------------------------------------------------------------
@@ -1567,17 +1566,15 @@ void __fastcall TRemoteDirectoryCache::Clear()
 {
   TGuard Guard(FSection);
 
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    TStringList::Clear();
+  });
     for (int Index = 0; Index < Count; Index++)
     {
       delete (TRemoteFileList *)Objects[Index];
       Objects[Index] = NULL;
     }
-  }
-  __finally
-  {
-    TStringList::Clear();
   }
 }
 //---------------------------------------------------------------------------
@@ -1803,8 +1800,10 @@ void __fastcall TRemoteDirectoryChangesCache::Serialize(AnsiString & Data)
   if (ACount > FMaxSize)
   {
     TStrings * Limited = new TStringList();
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete Limited;
+    });
       int Index = ACount - FMaxSize;
       while (Index < ACount)
       {
@@ -1812,10 +1811,6 @@ void __fastcall TRemoteDirectoryChangesCache::Serialize(AnsiString & Data)
         Index++;
       }
       Data += Limited->Text;
-    }
-    __finally
-    {
-      delete Limited;
     }
   }
   else

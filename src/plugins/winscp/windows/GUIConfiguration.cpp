@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 #include <LanguagesDEPfix.hpp>
 #include "GUIConfiguration.h"
@@ -12,10 +13,10 @@
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 //---------------------------------------------------------------------------
-const ccLocal = ccUser;
-const ccShowResults = ccUser << 1;
-const ccCopyResults = ccUser << 2;
-const ccSet = 0x80000000;
+const int ccLocal = ccUser;
+const int ccShowResults = ccUser << 1;
+const int ccCopyResults = ccUser << 2;
+const int ccSet = 0x80000000;
 //---------------------------------------------------------------------------
 static const unsigned int AdditionaLanguageMask = 0xFFFFFF00;
 static const AnsiString AdditionaLanguagePrefix("XX");
@@ -411,8 +412,10 @@ void __fastcall TCopyParamList::Load(THierarchicalStorage * Storage, int ACount)
     {
       if (Storage->OpenSubKey(Name, false))
       {
-        try
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
+          Storage->CloseSubKey();
+        });
           Name = Storage->ReadString("Name", Name);
           CopyParam->Load(Storage);
 
@@ -421,10 +424,6 @@ void __fastcall TCopyParamList::Load(THierarchicalStorage * Storage, int ACount)
             Rule = new TCopyParamRule();
             Rule->Load(Storage);
           }
-        }
-        __finally
-        {
-          Storage->CloseSubKey();
         }
       }
     }
@@ -449,8 +448,10 @@ void __fastcall TCopyParamList::Save(THierarchicalStorage * Storage) const
   {
     if (Storage->OpenSubKey(IntToStr(Index), true))
     {
-      try
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
+        Storage->CloseSubKey();
+      });
         const TCopyParamType * CopyParam = CopyParams[Index];
         const TCopyParamRule * Rule = Rules[Index];
 
@@ -461,10 +462,6 @@ void __fastcall TCopyParamList::Save(THierarchicalStorage * Storage) const
         {
           Rule->Save(Storage);
         }
-      }
-      __finally
-      {
-        Storage->CloseSubKey();
       }
     }
   }
@@ -616,7 +613,7 @@ AnsiString __fastcall TGUIConfiguration::PropertyToKey(const AnsiString Property
 //---------------------------------------------------------------------------
 // duplicated from core\configuration.cpp
 #define BLOCK(KEY, CANCREATE, BLOCK) \
-  if (Storage->OpenSubKey(KEY, CANCREATE, true)) try { BLOCK } __finally { Storage->CloseSubKey(); }
+  if (Storage->OpenSubKey(KEY, CANCREATE, true)) { FINALLY_GUARD([&]() { Storage->CloseSubKey(); }); BLOCK }
 #define REGCONFIG(CANCREATE) \
   BLOCK("Interface", CANCREATE, \
     KEY(Bool,     ContinueOnError); \
@@ -652,8 +649,10 @@ void __fastcall TGUIConfiguration::SaveData(THierarchicalStorage * Storage, bool
   #undef KEY
 
   if (Storage->OpenSubKey("Interface\\CopyParam", true, true))
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    Storage->CloseSubKey();
+  });
     FDefaultCopyParam.Save(Storage);
 
     if (FCopyParamListDefaults)
@@ -667,19 +666,13 @@ void __fastcall TGUIConfiguration::SaveData(THierarchicalStorage * Storage, bool
       FCopyParamList->Save(Storage);
     }
   }
-  __finally
-  {
-    Storage->CloseSubKey();
-  }
 
   if (Storage->OpenSubKey("Interface\\NewDirectory2", true, true))
-  try
-  {
-    FNewDirectoryProperties.Save(Storage);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     Storage->CloseSubKey();
+  });
+    FNewDirectoryProperties.Save(Storage);
   }
 }
 //---------------------------------------------------------------------------
@@ -695,8 +688,10 @@ void __fastcall TGUIConfiguration::LoadData(THierarchicalStorage * Storage)
   #undef KEY
 
   if (Storage->OpenSubKey("Interface\\CopyParam", false, true))
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    Storage->CloseSubKey();
+  });
     // must be loaded before eventual setting defaults for CopyParamList
     FDefaultCopyParam.Load(Storage);
 
@@ -714,10 +709,6 @@ void __fastcall TGUIConfiguration::LoadData(THierarchicalStorage * Storage)
     }
     FCopyParamList->Reset();
   }
-  __finally
-  {
-    Storage->CloseSubKey();
-  }
 
   // Make it compatible with versions prior to 3.7.1 that have not saved PuttyPath
   // with quotes. First check for absence of quotes.
@@ -734,13 +725,11 @@ void __fastcall TGUIConfiguration::LoadData(THierarchicalStorage * Storage)
   }
 
   if (Storage->OpenSubKey("Interface\\NewDirectory2", false, true))
-  try
-  {
-    FNewDirectoryProperties.Load(Storage);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     Storage->CloseSubKey();
+  });
+    FNewDirectoryProperties.Load(Storage);
   }
 }
 //---------------------------------------------------------------------------
@@ -922,8 +911,10 @@ TStrings * __fastcall TGUIConfiguration::GetLocales()
 {
   AnsiString LocalesExts;
   TStringList * Exts = new TStringList();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Exts;
+  });
     Exts->Sorted = true;
     Exts->CaseSensitive = false;
 
@@ -933,8 +924,10 @@ TStrings * __fastcall TGUIConfiguration::GetLocales()
 
     Found = (bool)(FindFirst(ChangeFileExt(ModuleFileName(), ".*"),
       FindAttrs, SearchRec) == 0);
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      FindClose(SearchRec);
+    });
       AnsiString Ext;
       while (Found)
       {
@@ -948,10 +941,6 @@ TStrings * __fastcall TGUIConfiguration::GetLocales()
         }
         Found = (FindNext(SearchRec) == 0);
       }
-    }
-    __finally
-    {
-      FindClose(SearchRec);
     }
 
     if (FLastLocalesExts != LocalesExts)
@@ -1027,10 +1016,6 @@ TStrings * __fastcall TGUIConfiguration::GetLocales()
         }
       }
     }
-  }
-  __finally
-  {
-    delete Exts;
   }
 
   return FLocales;

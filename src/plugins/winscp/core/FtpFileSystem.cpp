@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #ifndef NO_FILEZILLA
@@ -493,8 +494,10 @@ void __fastcall TFTPFileSystem::Idle()
       FLastDataSent = Now();
 
       TRemoteDirectory * Files = new TRemoteDirectory(FTerminal);
-      try
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
+        delete Files;
+      });
         try
         {
           Files->Directory = CurrentDirectory;
@@ -509,10 +512,6 @@ void __fastcall TFTPFileSystem::Idle()
             throw;
           }
         }
-      }
-      __finally
-      {
-        delete Files;
       }
     }
   }
@@ -577,15 +576,13 @@ void __fastcall TFTPFileSystem::AnyCommand(const AnsiString Command,
 
   assert(FOnCaptureOutput == NULL);
   FOnCaptureOutput = OutputEvent;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    FOnCaptureOutput = NULL;
+  });
     FFileZillaIntf->CustomCommand(Command.c_str());
 
     GotReply(WaitForCommandReply(), REPLY_2XX_CODE);
-  }
-  __finally
-  {
-    FOnCaptureOutput = NULL;
   }
 }
 //---------------------------------------------------------------------------
@@ -660,8 +657,10 @@ void __fastcall TFTPFileSystem::ChangeFileProperties(const AnsiString AFileName,
 
     TRemoteFile * OwnedFile = NULL;
 
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete OwnedFile;
+    });
       AnsiString FileName = AbsolutePath(AFileName, false);
 
       if (File == NULL)
@@ -704,10 +703,6 @@ void __fastcall TFTPFileSystem::ChangeFileProperties(const AnsiString AFileName,
       FFileZillaIntf->Chmod(Rights.NumberDecadic, FileNameOnly.c_str(), FilePath.c_str());
 
       GotReply(WaitForCommandReply(), REPLY_2XX_CODE);
-    }
-    __finally
-    {
-      delete OwnedFile;
     }
   }
   else
@@ -949,8 +944,10 @@ void __fastcall TFTPFileSystem::CopyToLocal(TStrings * FilesToCopy,
     const TRemoteFile * File = dynamic_cast<const TRemoteFile *>(FilesToCopy->Objects[Index]);
     bool Success = false;
 
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      OperationProgress->Finish(FileName, Success, OnceDoneOperation);
+    });
       try
       {
         SinkRobust(AbsolutePath(FileName, false), File, FullTargetDir, CopyParam, Params,
@@ -964,10 +961,6 @@ void __fastcall TFTPFileSystem::CopyToLocal(TStrings * FilesToCopy,
           if (!FTerminal->HandleException(&E)) throw;
         );
       }
-    }
-    __finally
-    {
-      OperationProgress->Finish(FileName, Success, OnceDoneOperation);
     }
     Index++;
   }
@@ -1216,8 +1209,10 @@ void __fastcall TFTPFileSystem::CopyToRemote(TStrings * FilesToCopy,
     FileName = FilesToCopy->Strings[Index];
     FileNameOnly = ExtractFileName(FileName);
 
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      OperationProgress->Finish(FileName, Success, OnceDoneOperation);
+    });
       try
       {
         if (FTerminal->SessionData->CacheDirectories)
@@ -1240,10 +1235,6 @@ void __fastcall TFTPFileSystem::CopyToRemote(TStrings * FilesToCopy,
           if (!FTerminal->HandleException(&E)) throw;
         );
       }
-    }
-    __finally
-    {
-      OperationProgress->Finish(FileName, Success, OnceDoneOperation);
     }
     Index++;
   }
@@ -1429,8 +1420,10 @@ void __fastcall TFTPFileSystem::DirectorySource(const AnsiString DirectoryName,
 
   bool CreateDir = true;
 
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    FindClose(SearchRec);
+  });
     while (FindOK && !OperationProgress->Cancel)
     {
       AnsiString FileName = DirectoryName + SearchRec.Name;
@@ -1463,10 +1456,6 @@ void __fastcall TFTPFileSystem::DirectorySource(const AnsiString DirectoryName,
       );
     };
   }
-  __finally
-  {
-    FindClose(SearchRec);
-  }
 
   if (CreateDir)
   {
@@ -1480,13 +1469,11 @@ void __fastcall TFTPFileSystem::DirectorySource(const AnsiString DirectoryName,
     try
     {
       FTerminal->ExceptionOnFail = true;
-      try
-      {
-        FTerminal->CreateDirectory(DestFullName, &Properties);
-      }
-      __finally
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
         FTerminal->ExceptionOnFail = false;
+      });
+        FTerminal->CreateDirectory(DestFullName, &Properties);
       }
     }
     catch(...)
@@ -1603,8 +1590,10 @@ void __fastcall TFTPFileSystem::CustomCommandOnFile(const AnsiString /*FileName*
 void __fastcall TFTPFileSystem::DoStartup()
 {
   TStrings * PostLoginCommands = new TStringList();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete PostLoginCommands;
+  });
     PostLoginCommands->Text = FTerminal->SessionData->PostLoginCommands;
     for (int Index = 0; Index < PostLoginCommands->Count; Index++)
     {
@@ -1616,10 +1605,6 @@ void __fastcall TFTPFileSystem::DoStartup()
         GotReply(WaitForCommandReply(), REPLY_2XX_CODE);
       }
     }
-  }
-  __finally
-  {
-    delete PostLoginCommands;
   }
 
   // retrieve initialize working directory to save it as home directory
@@ -1695,8 +1680,10 @@ void __fastcall TFTPFileSystem::ReadCurrentDirectory()
     TStrings * Response = NULL;
     GotReply(WaitForCommandReply(), REPLY_2XX_CODE, "", &Code, &Response);
 
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete Response;
+    });
       assert(Response != NULL);
       bool Result = false;
 
@@ -1732,10 +1719,6 @@ void __fastcall TFTPFileSystem::ReadCurrentDirectory()
       {
         throw Exception(FMTLOAD(FTP_PWD_RESPONSE_ERROR, (Response->Text)));
       }
-    }
-    __finally
-    {
-      delete Response;
     }
   }
 }
@@ -2032,7 +2015,7 @@ int __fastcall TFTPFileSystem::GetOptionVal(int OptionID) const
     case OPTION_PROXYTYPE:
       switch (Data->ProxyMethod)
       {
-        case pmNone:
+        case ::pmNone:
           Result = 0; // PROXYTYPE_NOPROXY;
           break;
 
@@ -2218,20 +2201,18 @@ void __fastcall TFTPFileSystem::PoolForFatalNonCommandReply()
 
   unsigned int Reply;
 
-  try
-  {
-    // discard up to one reply
-    // (it should not happen here that two replies are posted anyway)
-    while (ProcessMessage() && (FReply == 0));
-    Reply = FReply;
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     FReply = 0;
     assert(FCommandReply == 0);
     FCommandReply = 0;
     assert(FWaitingForReply);
     FWaitingForReply = false;
+  });
+    // discard up to one reply
+    // (it should not happen here that two replies are posted anyway)
+    while (ProcessMessage() && (FReply == 0));
+    Reply = FReply;
   }
 
   if (Reply != 0)
@@ -2305,19 +2286,17 @@ unsigned int __fastcall TFTPFileSystem::WaitForReply(bool Command, bool WantLast
 
   unsigned int Reply;
 
-  try
-  {
-    unsigned int & ReplyToAwait = (Command ? FCommandReply : FReply);
-    DoWaitForReply(ReplyToAwait, WantLastCode);
-
-    Reply = ReplyToAwait;
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     FReply = 0;
     FCommandReply = 0;
     assert(FWaitingForReply);
     FWaitingForReply = false;
+  });
+    unsigned int & ReplyToAwait = (Command ? FCommandReply : FReply);
+    DoWaitForReply(ReplyToAwait, WantLastCode);
+
+    Reply = ReplyToAwait;
   }
 
   return Reply;
@@ -2355,8 +2334,10 @@ void __fastcall TFTPFileSystem::GotNonCommandReply(unsigned int Reply)
 void __fastcall TFTPFileSystem::GotReply(unsigned int Reply, unsigned int Flags,
   AnsiString Error, unsigned int * Code, TStrings ** Response)
 {
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    ResetReply();
+  });
     if (FLAGSET(Reply, TFileZillaIntf::REPLY_OK))
     {
       assert(Reply == TFileZillaIntf::REPLY_OK);
@@ -2481,13 +2462,11 @@ void __fastcall TFTPFileSystem::GotReply(unsigned int Reply, unsigned int Flags,
         // for fatal error, it is essential that there is some message
         assert(!Error.IsEmpty());
         ExtException * E = new ExtException(Error, MoreMessages, true);
-        try
-        {
-          FTerminal->FatalError(E, "");
-        }
-        __finally
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
           delete E;
+        });
+          FTerminal->FatalError(E, "");
         }
       }
       else
@@ -2506,10 +2485,6 @@ void __fastcall TFTPFileSystem::GotReply(unsigned int Reply, unsigned int Flags,
       *Response = FLastResponse;
       FLastResponse = new TStringList();
     }
-  }
-  __finally
-  {
-    ResetReply();
   }
 }
 //---------------------------------------------------------------------------
@@ -3065,8 +3040,10 @@ bool __fastcall TFTPFileSystem::HandleAsynchRequestVerifyCertificate(
 
     THierarchicalStorage * Storage =
       FTerminal->Configuration->CreateScpStorage(false);
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete Storage;
+    });
       Storage->AccessMode = smRead;
 
       if (Storage->OpenSubKey(CertificateStorageKey, false) &&
@@ -3074,10 +3051,6 @@ bool __fastcall TFTPFileSystem::HandleAsynchRequestVerifyCertificate(
       {
         RequestResult = 1;
       }
-    }
-    __finally
-    {
-      delete Storage;
     }
 
     if (RequestResult == 0)
@@ -3138,18 +3111,16 @@ bool __fastcall TFTPFileSystem::HandleAsynchRequestVerifyCertificate(
       {
         THierarchicalStorage * Storage =
           FTerminal->Configuration->CreateScpStorage(false);
-        try
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
+          delete Storage;
+        });
           Storage->AccessMode = smReadWrite;
 
           if (Storage->OpenSubKey(CertificateStorageKey, true))
           {
             Storage->WriteString(FSessionInfo.CertificateFingerprint, "");
           }
-        }
-        __finally
-        {
-          delete Storage;
         }
       }
     }

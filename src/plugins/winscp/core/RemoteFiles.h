@@ -1,6 +1,10 @@
 ﻿//---------------------------------------------------------------------------
 #ifndef RemoteFilesH
 #define RemoteFilesH
+// forward declarations for friend classes (required by Clang)
+class TSCPFileSystem;
+class TSFTPFileSystem;
+class TFTPFileSystem;
 //---------------------------------------------------------------------------
 #include <vector>
 #include <map>
@@ -97,7 +101,7 @@ private:
   AnsiString FLinkTo;
   TRights *FRights;
   TTerminal *FTerminal;
-  Char FType;
+  char FType;
   bool FSelected;
   bool FCyclicLink;
   AnsiString FFullFileName;
@@ -162,7 +166,7 @@ public:
   __property AnsiString ListingStr = { read = GetListingStr, write = SetListingStr };
   __property TRights * Rights = { read = FRights, write = SetRights };
   __property TTerminal * Terminal = { read = FTerminal, write = SetTerminal };
-  __property Char Type = { read = GetType, write = SetType };
+  __property char Type = { read = GetType, write = SetType };
   __property bool Selected  = { read=FSelected, write=FSelected };
   __property AnsiString FullFileName  = { read = GetFullFileName, write = FFullFileName };
   __property bool HaveFullFileName  = { read = GetHaveFullFileName };

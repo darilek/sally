@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <FileInfo.h>
@@ -12,7 +13,7 @@
 #include "Interface.h"
 #include "CoreMain.h"
 #include "Security.h"
-#include <shfolder.h>
+#include <shlobj.h>
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 //---------------------------------------------------------------------------
@@ -52,17 +53,15 @@ void __fastcall TConfiguration::Default()
 
   TRegistryStorage * AdminStorage;
   AdminStorage = new TRegistryStorage(RegistryStorageKey, HKEY_LOCAL_MACHINE);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete AdminStorage;
+  });
     if (AdminStorage->OpenRootKey(false))
     {
       LoadAdmin(AdminStorage);
       AdminStorage->CloseSubKey();
     }
-  }
-  __finally
-  {
-    delete AdminStorage;
   }
 
   RandomSeedFile = FDefaultRandomSeedFile;
@@ -114,7 +113,7 @@ THierarchicalStorage * TConfiguration::CreateScpStorage(bool /*SessionList*/)
 #define LASTELEM(ELEM) \
   ELEM.SubString(ELEM.LastDelimiter(".>")+1, ELEM.Length() - ELEM.LastDelimiter(".>"))
 #define BLOCK(KEY, CANCREATE, BLOCK) \
-  if (Storage->OpenSubKey(KEY, CANCREATE, true)) try { BLOCK } __finally { Storage->CloseSubKey(); }
+  if (Storage->OpenSubKey(KEY, CANCREATE, true)) { FINALLY_GUARD([&]() { Storage->CloseSubKey(); }); BLOCK }
 #define KEY(TYPE, VAR) KEYEX(TYPE, VAR, VAR)
 #define REGCONFIG(CANCREATE) \
   BLOCK("Interface", CANCREATE, \
@@ -152,18 +151,16 @@ void __fastcall TConfiguration::Save(bool All, bool Explicit)
   if (FDontSave) return;
 
   THierarchicalStorage * AStorage = CreateScpStorage(false);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete AStorage;
+  });
     AStorage->AccessMode = smReadWrite;
     AStorage->Explicit = Explicit;
     if (AStorage->OpenSubKey(ConfigurationSubKey, true))
     {
       SaveData(AStorage, All);
     }
-  }
-  __finally
-  {
-    delete AStorage;
   }
 
   Saved();
@@ -184,8 +181,11 @@ void __fastcall TConfiguration::Export(const AnsiString FileName)
 {
   THierarchicalStorage * Storage = NULL;
   THierarchicalStorage * ExportStorage = NULL;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete ExportStorage;
+    delete Storage;
+  });
     ExportStorage = new TIniFileStorage(FileName);
     ExportStorage->AccessMode = smReadWrite;
     ExportStorage->Explicit = true;
@@ -199,11 +199,6 @@ void __fastcall TConfiguration::Export(const AnsiString FileName)
     {
       SaveData(ExportStorage, true);
     }
-  }
-  __finally
-  {
-    delete ExportStorage;
-    delete Storage;
   }
 
   StoredSessions->Export(FileName);
@@ -230,17 +225,15 @@ void __fastcall TConfiguration::Load()
   TGuard Guard(FCriticalSection);
 
   THierarchicalStorage * Storage = CreateScpStorage(false);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Storage;
+  });
     Storage->AccessMode = smRead;
     if (Storage->OpenSubKey(ConfigurationSubKey, false))
     {
       LoadData(Storage);
     }
-  }
-  __finally
-  {
-    delete Storage;
   }
 }
 //---------------------------------------------------------------------------
@@ -248,8 +241,10 @@ void __fastcall TConfiguration::CopyData(THierarchicalStorage * Source,
   THierarchicalStorage * Target)
 {
   TStrings * Names = new TStringList();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Names;
+  });
     if (Source->OpenSubKey(ConfigurationSubKey, false))
     {
       if (Target->OpenSubKey(ConfigurationSubKey, true))
@@ -313,18 +308,16 @@ void __fastcall TConfiguration::CopyData(THierarchicalStorage * Source,
       Source->CloseSubKey();
     }
   }
-  __finally
-  {
-    delete Names;
-  }
 }
 //---------------------------------------------------------------------------
 void __fastcall TConfiguration::LoadDirectoryChangesCache(const AnsiString SessionKey,
   TRemoteDirectoryChangesCache * DirectoryChangesCache)
 {
   THierarchicalStorage * Storage = CreateScpStorage(false);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Storage;
+  });
     Storage->AccessMode = smRead;
     if (Storage->OpenSubKey(ConfigurationSubKey, false) &&
         Storage->OpenSubKey("CDCache", false) &&
@@ -333,18 +326,16 @@ void __fastcall TConfiguration::LoadDirectoryChangesCache(const AnsiString Sessi
       DirectoryChangesCache->Deserialize(Storage->ReadBinaryData(SessionKey));
     }
   }
-  __finally
-  {
-    delete Storage;
-  }
 }
 //---------------------------------------------------------------------------
 void __fastcall TConfiguration::SaveDirectoryChangesCache(const AnsiString SessionKey,
   TRemoteDirectoryChangesCache * DirectoryChangesCache)
 {
   THierarchicalStorage * Storage = CreateScpStorage(false);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Storage;
+  });
     Storage->AccessMode = smReadWrite;
     if (Storage->OpenSubKey(ConfigurationSubKey, true) &&
         Storage->OpenSubKey("CDCache", true))
@@ -353,10 +344,6 @@ void __fastcall TConfiguration::SaveDirectoryChangesCache(const AnsiString Sessi
       DirectoryChangesCache->Serialize(Data);
       Storage->WriteBinaryData(SessionKey, Data);
     }
-  }
-  __finally
-  {
-    delete Storage;
   }
 }
 //---------------------------------------------------------------------------
@@ -373,18 +360,16 @@ bool __fastcall TConfiguration::ShowBanner(const AnsiString SessionKey,
 {
   bool Result;
   THierarchicalStorage * Storage = CreateScpStorage(false);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Storage;
+  });
     Storage->AccessMode = smRead;
     Result =
       !Storage->OpenSubKey(ConfigurationSubKey, false) ||
       !Storage->OpenSubKey("Banners", false) ||
       !Storage->ValueExists(SessionKey) ||
       (Storage->ReadString(SessionKey, "") != StrToHex(BannerHash(Banner)));
-  }
-  __finally
-  {
-    delete Storage;
   }
 
   return Result;
@@ -394,8 +379,10 @@ void __fastcall TConfiguration::NeverShowBanner(const AnsiString SessionKey,
   const AnsiString & Banner)
 {
   THierarchicalStorage * Storage = CreateScpStorage(false);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Storage;
+  });
     Storage->AccessMode = smReadWrite;
 
     if (Storage->OpenSubKey(ConfigurationSubKey, true) &&
@@ -403,10 +390,6 @@ void __fastcall TConfiguration::NeverShowBanner(const AnsiString SessionKey,
     {
       Storage->WriteString(SessionKey, StrToHex(BannerHash(Banner)));
     }
-  }
-  __finally
-  {
-    delete Storage;
   }
 }
 //---------------------------------------------------------------------------
@@ -466,13 +449,11 @@ void __fastcall TConfiguration::CleanupConfiguration()
 void __fastcall TConfiguration::CleanupRegistry(AnsiString CleanupSubKey)
 {
   TRegistryStorage *Registry = new TRegistryStorage(RegistryStorageKey);
-  try
-  {
-    Registry->RecursiveDeleteSubKey(CleanupSubKey);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     delete Registry;
+  });
+    Registry->RecursiveDeleteSubKey(CleanupSubKey);
   }
 }
 //---------------------------------------------------------------------------
@@ -697,8 +678,13 @@ AnsiString __fastcall TConfiguration::GetFileFileInfoString(const AnsiString Key
 
   AnsiString Result;
   void * Info = GetFileApplicationInfo(FileName);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    if (!FileName.IsEmpty())
+    {
+      FreeFileInfo(Info);
+    }
+  });
     if ((Info != NULL) && (GetTranslationCount(Info) > 0))
     {
       TTranslation Translation;
@@ -708,13 +694,6 @@ AnsiString __fastcall TConfiguration::GetFileFileInfoString(const AnsiString Key
     else
     {
       assert(!FileName.IsEmpty());
-    }
-  }
-  __finally
-  {
-    if (!FileName.IsEmpty())
-    {
-      FreeFileInfo(Info);
     }
   }
   return Result;
@@ -785,8 +764,11 @@ void __fastcall TConfiguration::SetStorage(TStorage value)
     THierarchicalStorage * SourceStorage = NULL;
     THierarchicalStorage * TargetStorage = NULL;
 
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete SourceStorage;
+      delete TargetStorage;
+    });
       SourceStorage = CreateScpStorage(false);
       SourceStorage->AccessMode = smRead;
 
@@ -799,11 +781,6 @@ void __fastcall TConfiguration::SetStorage(TStorage value)
       // copy before save as it removes the ini file,
       // when switching from ini to registry
       CopyData(SourceStorage, TargetStorage);
-    }
-    __finally
-    {
-      delete SourceStorage;
-      delete TargetStorage;
     }
 
     // save all and explicit

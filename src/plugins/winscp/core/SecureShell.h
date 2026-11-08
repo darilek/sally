@@ -2,6 +2,8 @@
 #ifndef SecureShellH
 #define SecureShellH
 
+// forward declarations for friend classes (required by Clang)
+class TPoolForDataEvent;
 #include <set>
 #include "Configuration.h"
 #include "SessionData.h"
@@ -68,12 +70,12 @@ private:
   AnsiString __fastcall FuncToCompression(int SshVersion, const void * Compress) const;
   void __fastcall Init();
   void __fastcall SetActive(bool value);
-  void inline __fastcall CheckConnection(int Message = -1);
+  void __fastcall CheckConnection(int Message = -1);
   void __fastcall WaitForData();
   void __fastcall Discard();
   void __fastcall FreeBackend();
   void __fastcall PoolForData(WSANETWORKEVENTS & Events, unsigned int & Result);
-  inline void __fastcall CaptureOutput(TLogLineType Type,
+  void __fastcall CaptureOutput(TLogLineType Type,
     const AnsiString & Line);
   void __fastcall ResetConnection();
   void __fastcall ResetSessionInfo();
@@ -100,7 +102,7 @@ protected:
   void __fastcall AddStdError(AnsiString Str);
   void __fastcall AddStdErrorLine(const AnsiString & Str);
   void __fastcall FatalError(Exception * E, AnsiString Msg);
-  void __fastcall inline LogEvent(const AnsiString & Str);
+  void __fastcall LogEvent(const AnsiString & Str);
   void __fastcall FatalError(AnsiString Error);
   static void __fastcall ClearConfig(Config * cfg);
   static void __fastcall StoreToConfig(TSessionData * Data, Config * cfg, bool Simple);

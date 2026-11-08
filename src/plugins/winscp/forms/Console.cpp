@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Common.h>
@@ -22,14 +23,12 @@ void __fastcall DoConsoleDialog(TTerminal * Terminal, const AnsiString Command,
   const TStrings * Log)
 {
   TConsoleDialog * Dialog = new TConsoleDialog(Application);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Dialog;
+  });
     Dialog->Terminal = Terminal;
     Dialog->Execute(Command, Log);
-  }
-  __finally
-  {
-    delete Dialog;
   }
 }
 //---------------------------------------------------------------------
@@ -123,24 +122,28 @@ void __fastcall TConsoleDialog::UpdateControls()
 bool __fastcall TConsoleDialog::Execute(const AnsiString Command,
   const TStrings * Log)
 {
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    if (FTerminal)
+    {
+      CommandEdit->SaveToHistory();
+      CustomWinConfiguration->History["Commands"] = CommandEdit->Items;
+    }
+  });
     CommandEdit->Items = CustomWinConfiguration->History["Commands"];
 
     if (Log != NULL)
     {
       OutputMemo->Lines->BeginUpdate();
-      try
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
+        OutputMemo->Lines->EndUpdate();
+      });
         TStrings * ALog = const_cast<TStrings *>(Log);
         for (int i = 0; i < ALog->Count; i++)
         {
           AddLine(ALog->Strings[i], false);
         }
-      }
-      __finally
-      {
-        OutputMemo->Lines->EndUpdate();
       }
     }
 
@@ -159,14 +162,6 @@ bool __fastcall TConsoleDialog::Execute(const AnsiString Command,
       ConsoleWin.WindowSize = StoreFormSize(this);
     }
     CustomWinConfiguration->ConsoleWin = ConsoleWin;
-  }
-  __finally
-  {
-    if (FTerminal)
-    {
-      CommandEdit->SaveToHistory();
-      CustomWinConfiguration->History["Commands"] = CommandEdit->Items;
-    }
   }
   return true;
 }
@@ -194,15 +189,8 @@ void __fastcall TConsoleDialog::DoExecuteCommand()
   CommandEdit->SelectAll();
   FTerminal->ExceptionOnFail = true;
   FClearExceptionOnFail = true;
-  try
-  {
-    AnsiString Command = CommandEdit->Text;
-    OutputMemo->Lines->Add(FORMAT("%s$ %s", (FTerminal->CurrentDirectory, Command)));
-    FAnyCommandExecuted = true;
-    FTerminal->AnyCommand(Command, AddLine);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     if (FTerminal)
     {
       FTerminal->ExceptionOnFail = false;
@@ -213,6 +201,11 @@ void __fastcall TConsoleDialog::DoExecuteCommand()
         FTerminal->ReadCurrentDirectory();
       }
     }
+  });
+    AnsiString Command = CommandEdit->Text;
+    OutputMemo->Lines->Add(FORMAT("%s$ %s", (FTerminal->CurrentDirectory, Command)));
+    FAnyCommandExecuted = true;
+    FTerminal->AnyCommand(Command, AddLine);
   }
 }
 //---------------------------------------------------------------------------
@@ -254,23 +247,21 @@ void __fastcall TConsoleDialog::HelpButtonClick(TObject * /*Sender*/)
 void __fastcall TConsoleDialog::DoAdjustWindow()
 {
   HFONT OldFont;
-  void * DC;
-  TTextMetric TM;
+  HDC DC;
+  TEXTMETRICA TM;
   TRect Rect;
 
   DC = GetDC(OutputMemo->Handle);
-  OldFont = SelectObject(DC, OutputMemo->Font->Handle);
+  OldFont = (HFONT)SelectObject(DC, OutputMemo->Font->Handle);
 
-  try
-  {
-    GetTextMetrics(DC, &TM);
-
-    OutputMemo->Perform(EM_GETRECT, 0, ((int)&Rect));
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     SelectObject(DC, OldFont);
     ReleaseDC(OutputMemo->Handle, DC);
+  });
+    GetTextMetrics(DC, &TM);
+
+    OutputMemo->Perform(EM_GETRECT, 0, reinterpret_cast<LPARAM>(&Rect));
   }
 
   int Rows = OutputMemo->Lines->Count;

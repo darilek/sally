@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include "PuttyIntf.h"
@@ -82,7 +83,7 @@ void __fastcall TSecureShell::ResetSessionInfo()
   FMaxPacketSize = NULL;
 }
 //---------------------------------------------------------------------------
-inline void __fastcall TSecureShell::UpdateSessionInfo()
+void __fastcall TSecureShell::UpdateSessionInfo()
 {
   if (!FSessionInfoValid)
   {
@@ -525,7 +526,7 @@ bool __fastcall TSecureShell::PromptUser(bool /*ToServer*/,
     assert(false);
   }
 
-  LogEvent(FORMAT("Prompt (%d, %s, %s, %s)", (PromptKind, AName, Instructions, (Prompts->Count > 0 ? Prompts->Strings[0] : AnsiString("<no prompt>")))));
+  LogEvent(FORMAT("Prompt (%d, %s, %s, %s)", (PromptKind, AName, Instructions, (Prompts->Count > 0 ? AnsiString(Prompts->Strings[0]) : AnsiString("<no prompt>")))));
 
   Name = Name.Trim();
 
@@ -710,18 +711,16 @@ void __fastcall TSecureShell::FromBackend(bool IsStdErr, const char * Data, int 
       if (!FFrozen)
       {
         FFrozen = true;
-        try
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
+          FFrozen = false;
+        });
           do
           {
             FDataWhileFrozen = false;
             FOnReceive(NULL);
           }
           while (FDataWhileFrozen);
-        }
-        __finally
-        {
-          FFrozen = false;
         }
       }
       else
@@ -755,8 +754,10 @@ Integer __fastcall TSecureShell::Receive(char * Buf, Integer Len)
     OutPtr = Buf;
     OutLen = Len;
 
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      OutPtr = NULL;
+    });
       /*
        * See if the pending-input block contains some of what we
        * need.
@@ -793,10 +794,6 @@ Integer __fastcall TSecureShell::Receive(char * Buf, Integer Len)
       // This seems ambiguous
       if (Len <= 0) FatalError(LoadStr(LOST_CONNECTION));
     }
-    __finally
-    {
-      OutPtr = NULL;
-    }
   };
   if (Configuration->ActualLogProtocol >= 1)
   {
@@ -809,7 +806,7 @@ Integer __fastcall TSecureShell::Receive(char * Buf, Integer Len)
 AnsiString __fastcall TSecureShell::ReceiveLine()
 {
   unsigned Index;
-  Char Ch;
+  char Ch;
   AnsiString Line;
   Boolean EOL = False;
 
@@ -866,8 +863,10 @@ int __fastcall TSecureShell::TimeoutPrompt(TQueryParamsTimerEvent PoolEvent)
   FWaiting++;
 
   int Answer;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    FWaiting--;
+  });
     TQueryParams Params(qpFatalAbort | qpAllowContinueOnError | qpIgnoreAbort);
     Params.Timer = 500;
     Params.TimerEvent = PoolEvent;
@@ -875,10 +874,6 @@ int __fastcall TSecureShell::TimeoutPrompt(TQueryParamsTimerEvent PoolEvent)
     Params.TimerAnswers = qaAbort;
     Answer = FUI->QueryUser(FMTLOAD(CONFIRM_PROLONG_TIMEOUT3, (FSessionData->Timeout)),
       NULL, qaRetry | qaAbort, &Params);
-  }
-  __finally
-  {
-    FWaiting--;
   }
   return Answer;
 }
@@ -1129,7 +1124,7 @@ void __fastcall TSecureShell::FatalError(AnsiString Error)
   FUI->FatalError(NULL, Error);
 }
 //---------------------------------------------------------------------------
-void __fastcall inline TSecureShell::LogEvent(const AnsiString & Str)
+void __fastcall TSecureShell::LogEvent(const AnsiString & Str)
 {
   if (FLog->Logging)
   {
@@ -1365,8 +1360,10 @@ void __fastcall TSecureShell::WaitForData()
     {
       assert(FWaitingForData == 0);
       FWaitingForData++;
-      try
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
+        FWaitingForData--;
+      });
         WSANETWORKEVENTS Events;
         memset(&Events, 0, sizeof(Events));
         TPoolForDataEvent Event(this, Events);
@@ -1395,10 +1392,6 @@ void __fastcall TSecureShell::WaitForData()
             FatalError(LoadStr(USER_TERMINATED));
             break;
         }
-      }
-      __finally
-      {
-        FWaitingForData--;
       }
     }
   }
@@ -1513,8 +1506,10 @@ bool __fastcall TSecureShell::EventSelectLoop(unsigned int MSec, bool ReadEventR
     int HandleCount;
     // note that this returns all handles, not only the session-related handles
     HANDLE * Handles = handle_get_events(&HandleCount);
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      sfree(Handles);
+    });
       Handles = sresize(Handles, HandleCount + 1, HANDLE);
       Handles[HandleCount] = FSocketEvent;
       unsigned int WaitResult = WaitForMultipleObjects(HandleCount + 1, Handles, FALSE, MSec);
@@ -1574,10 +1569,6 @@ bool __fastcall TSecureShell::EventSelectLoop(unsigned int MSec, bool ReadEventR
 
         MSec = 0;
       }
-    }
-    __finally
-    {
-      sfree(Handles);
     }
 
     unsigned int TicksAfter = GetTickCount();

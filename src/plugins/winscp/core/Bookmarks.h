@@ -1,9 +1,12 @@
 ﻿//---------------------------------------------------------------------------
 #ifndef BookmarksH
 #define BookmarksH
+// forward declarations for friend classes (required by Clang)
+class TBookmarks;
 //---------------------------------------------------------------------------
 class THierarchicalStorage;
 class TBookmarkList;
+class TBookmark;
 class TShortCuts;
 //---------------------------------------------------------------------------
 class TBookmarks : public TObject

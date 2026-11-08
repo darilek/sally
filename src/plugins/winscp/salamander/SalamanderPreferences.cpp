@@ -5,9 +5,10 @@
 //---------------------------------------------------------------------
 #define NO_WIN32_LEAN_AND_MEAN
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
-#include "Salamander.h"
+#include "Salamand.h"
 #include "WinInterface.h"
 #include "SalamanderPreferences.h"
 #include "SalamandConfiguration.h"
@@ -24,14 +25,12 @@ bool __fastcall DoPreferencesDialog(TPreferencesMode APreferencesMode,
 {
     bool Result;
     TPreferencesDialog* PreferencesDialog = new TPreferencesDialog(Application);
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+        delete PreferencesDialog;
+    });
         PreferencesDialog->PreferencesMode = APreferencesMode;
         Result = PreferencesDialog->Execute();
-    }
-    __finally
-    {
-        delete PreferencesDialog;
     }
     return Result;
 }
@@ -39,7 +38,7 @@ bool __fastcall DoPreferencesDialog(TPreferencesMode APreferencesMode,
 __fastcall TPreferencesDialog::TPreferencesDialog(TComponent* AOwner)
     : TForm(AOwner)
 {
-    FPreferencesMode = pmDefault;
+    FPreferencesMode = ::pmDefault;
     UseSystemSettings(this);
 }
 //---------------------------------------------------------------------------
@@ -47,7 +46,7 @@ void __fastcall TPreferencesDialog::SetPreferencesMode(TPreferencesMode value)
 {
     if (PreferencesMode != value)
     {
-        assert((value == pmDefault) || (value == pmTransfer));
+        assert((value == ::pmDefault) || (value == ::pmTransfer));
 
         FPreferencesMode = value;
     }
@@ -139,7 +138,7 @@ bool __fastcall TPreferencesDialog::Execute()
                     PanelColumns += ";";
                 }
                 TListItem* Item = ColumnsListView->Items->Item[i];
-                PanelColumns += IntToStr(reinterpret_cast<int>(Item->Data)) + "," +
+                PanelColumns += IntToStr((int)reinterpret_cast<NativeInt>(Item->Data)) + "," +
                                 IntToStr(Item->Checked);
             }
             SalamandConfiguration->PanelColumns = PanelColumns;
@@ -167,7 +166,7 @@ void __fastcall TPreferencesDialog::FormShow(TObject* /*Sender*/)
 {
     switch (PreferencesMode)
     {
-    case pmTransfer:
+    case ::pmTransfer:
         PageControl->ActivePage = TransferSheet;
         break;
 

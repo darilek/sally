@@ -8,7 +8,6 @@
 #pragma hdrstop
 
 #include <HelpIntfs.hpp>
-#include <WinHelpViewer.hpp>
 
 #include "Salamand.h"
 #include "Salamander.rh"
@@ -23,12 +22,12 @@
 class TSalamandHelpSystem : public TInterfacedObject, public ICustomHelpViewer
 {
 public:
-    virtual AnsiString __fastcall GetViewerName();
-    virtual int __fastcall UnderstandsKeyword(const AnsiString HelpString);
-    virtual TStringList* __fastcall GetHelpStrings(const AnsiString HelpString);
+    virtual UnicodeString __fastcall GetViewerName();
+    virtual int __fastcall UnderstandsKeyword(const UnicodeString HelpString);
+    virtual TStringList* __fastcall GetHelpStrings(const UnicodeString HelpString);
     virtual bool __fastcall CanShowTableOfContents();
     virtual void __fastcall ShowTableOfContents();
-    virtual void __fastcall ShowHelp(const AnsiString HelpString);
+    virtual void __fastcall ShowHelp(const UnicodeString HelpString);
     virtual void __fastcall NotifyID(const int ViewerID);
     virtual void __fastcall SoftShutDown();
     virtual void __fastcall ShutDown();
@@ -46,18 +45,18 @@ void __fastcall FinalizeWinHelp()
     FinalizeCustomHelp();
 }
 //---------------------------------------------------------------------------
-AnsiString __fastcall TSalamandHelpSystem::GetViewerName()
+UnicodeString __fastcall TSalamandHelpSystem::GetViewerName()
 {
     return "Salamand";
 }
 //---------------------------------------------------------------------------
-int __fastcall TSalamandHelpSystem::UnderstandsKeyword(const AnsiString HelpString)
+int __fastcall TSalamandHelpSystem::UnderstandsKeyword(const UnicodeString HelpString)
 {
     // pretend that we know everyting
     return 1;
 }
 //---------------------------------------------------------------------------
-TStringList* __fastcall TSalamandHelpSystem::GetHelpStrings(const AnsiString HelpString)
+TStringList* __fastcall TSalamandHelpSystem::GetHelpStrings(const UnicodeString HelpString)
 {
     TStringList* Result = new TStringList();
     Result->Add(GetViewerName() + " : " + HelpString);
@@ -74,7 +73,7 @@ void __fastcall TSalamandHelpSystem::ShowTableOfContents()
     PluginInterface.Help();
 }
 //---------------------------------------------------------------------------
-void __fastcall TSalamandHelpSystem::ShowHelp(const AnsiString HelpString)
+void __fastcall TSalamandHelpSystem::ShowHelp(const UnicodeString HelpString)
 {
     unsigned int HelpContext;
 
@@ -144,8 +143,9 @@ void __fastcall TSalamandHelpSystem::ShowHelp(const AnsiString HelpString)
     }
 }
 //---------------------------------------------------------------------------
-void __fastcall TSalamandHelpSystem::NotifyID(const int /*ViewerID*/)
+void __fastcall TSalamandHelpSystem::NotifyID(const int ViewerID)
 {
+    SetCustomHelpViewerID(ViewerID);
 }
 //---------------------------------------------------------------------------
 void __fastcall TSalamandHelpSystem::SoftShutDown()

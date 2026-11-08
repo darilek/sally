@@ -5,6 +5,7 @@
 //---------------------------------------------------------------------------
 #define NO_WIN32_LEAN_AND_MEAN
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include "Salamand.h"
@@ -17,11 +18,12 @@
 #include <SessionData.h>
 #include <CoreMain.h>
 #include <Common.h>
+#include <VCLCommon.h>
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 //---------------------------------------------------------------------------
 bool CPluginInterfaceForFS::FForceNewSesion = false;
-const fsmDetached = 0x0100;
+const int fsmDetached = 0x0100;
 //---------------------------------------------------------------------------
 CPluginInterfaceForFS::CPluginInterfaceForFS(CPluginInterface* APlugin) : CPluginInterfaceForFSAbstract(), CSalamanderGeneralLocal(APlugin)
 {
@@ -282,21 +284,21 @@ void __fastcall CPluginInterfaceForFS::ConnectFileSystem(int Panel)
     try
     {
         SetParentWindow(SalamanderGeneral()->GetMainWindowHWND());
+        // repaint Sally (e.g. area under the just-closed menu) before blocking work
+        FlushThreadPaint();
 
         AnsiString Path;
         FSessionToOpen = GetSessionData();
         if (FSessionToOpen)
         {
             SetForceNewSession(true);
-            try
-            {
-                const std::wstring fsNameW = SalWide(FPlugin->GetFSName(FSessionToOpen->FSProtocol, false));
-                SalamanderGeneral()->ChangePanelPathToPluginFS(Panel, fsNameW.c_str(), L"", NULL);
-            }
-            __finally
-            {
+            { // try/__finally -> scope guard (bcc64x)
+              FINALLY_GUARD([&]() {
                 SetForceNewSession(false);
                 SAFE_DESTROY(FSessionToOpen);
+            });
+                const std::wstring fsNameW = SalWide(FPlugin->GetFSName(FSessionToOpen->FSProtocol, false));
+                SalamanderGeneral()->ChangePanelPathToPluginFS(Panel, fsNameW.c_str(), L"", NULL);
             }
         }
     }
@@ -360,7 +362,7 @@ int CPluginInterfaceForFS::SessionMenu(HWND Parent,
 }
 //---------------------------------------------------------------------------
 CPluginFSInterfaceAbstract* WINAPI CPluginInterfaceForFS::OpenFS(
-    const char* /*FSName*/, int /*FSNameIndex*/)
+    const wchar_t* /*FSName*/, int /*FSNameIndex*/)
 {
     CALL_STACK_MESSAGE1("CPluginInterfaceForFS::OpenFS()");
 
@@ -383,22 +385,33 @@ CPluginFSInterfaceAbstract* WINAPI CPluginInterfaceForFS::OpenFS(
 //---------------------------------------------------------------------------
 void WINAPI CPluginInterfaceForFS::CloseFS(CPluginFSInterfaceAbstract* FS)
 {
-    CALL_STACK_MESSAGE2("CPluginInterfaceForFS::CloseFS(%p)", FS);
-
-    if (FS)
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        CPluginFSInterface* FSInterface = dynamic_cast<CPluginFSInterface*>(FS);
-        assert(FSInterface);
-        if (FSInterface)
+        CALL_STACK_MESSAGE2("CPluginInterfaceForFS::CloseFS(%p)", FS);
+    
+        if (FS)
         {
-            FFSs.erase(FSInterface);
-            delete FSInterface;
+            CPluginFSInterface* FSInterface = dynamic_cast<CPluginFSInterface*>(FS);
+            assert(FSInterface);
+            if (FSInterface)
+            {
+                FFSs.erase(FSInterface);
+                delete FSInterface;
+            }
+            else
+            {
+                assert(false);
+                delete FS;
+            }
         }
-        else
-        {
-            assert(false);
-            delete FS;
-        }
+    }
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginInterfaceForFS::CloseFS", &E, false);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginInterfaceForFS::CloseFS", NULL, false);
     }
 }
 //---------------------------------------------------------------------------
@@ -411,141 +424,185 @@ void WINAPI CPluginInterfaceForFS::ExecuteChangeDriveMenuItem(int Panel)
 //---------------------------------------------------------------------------
 BOOL WINAPI CPluginInterfaceForFS::ChangeDriveMenuItemContextMenu(HWND Parent,
                                                                   int Panel, int X, int Y, CPluginFSInterfaceAbstract* PluginFS,
-                                                                  const char* /*PluginFSName*/, int /*PluginFSNameIndex*/,
+                                                                  const wchar_t* /*PluginFSName*/, int /*PluginFSNameIndex*/,
                                                                   BOOL IsDetachedFS, BOOL& RefreshMenu, BOOL& CloseMenu,
                                                                   int& PostCmd, void*& PostCmdParam)
 {
-    CALL_STACK_MESSAGE7("CPluginInterfaceForFS::ChangeDriveMenuItemContextMenu(%x, %d, %d, %d, %p, %d)",
-                        Parent, Panel, X, Y, PluginFS, IsDetachedFS);
-
-    if (PluginFS == NULL)
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        return FALSE;
+        CALL_STACK_MESSAGE7("CPluginInterfaceForFS::ChangeDriveMenuItemContextMenu(%x, %d, %d, %d, %p, %d)",
+                            Parent, Panel, X, Y, PluginFS, IsDetachedFS);
+    
+        if (PluginFS == NULL)
+        {
+            return FALSE;
+        }
+    
+        int Cmd = SessionMenu(Parent, X, Y, IsDetachedFS);
+    
+        bool Result = (Cmd != 0);
+        if (Result)
+        {
+            PostCmd = Cmd | (IsDetachedFS ? fsmDetached : 0);
+            PostCmdParam = PluginFS;
+            RefreshMenu = FALSE;
+            CloseMenu = TRUE;
+        }
+        return Result;
     }
-
-    int Cmd = SessionMenu(Parent, X, Y, IsDetachedFS);
-
-    bool Result = (Cmd != 0);
-    if (Result)
+    catch (Exception& E)
     {
-        PostCmd = Cmd | (IsDetachedFS ? fsmDetached : 0);
-        PostCmdParam = PluginFS;
-        RefreshMenu = FALSE;
-        CloseMenu = TRUE;
+        PluginBoundaryException("CPluginInterfaceForFS::ChangeDriveMenuItemContextMenu", &E, true);
     }
-    return Result;
+    catch (...)
+    {
+        PluginBoundaryException("CPluginInterfaceForFS::ChangeDriveMenuItemContextMenu", NULL, false);
+    }
+    return FALSE;
 }
 //---------------------------------------------------------------------------
 void WINAPI CPluginInterfaceForFS::ExecuteChangeDrivePostCommand(int Panel, int PostCmd,
                                                                  void* PostCmdParam)
 {
-    CALL_STACK_MESSAGE4("CPluginInterfaceForFS::ExecuteChangeDrivePostCommand(%d, %d, %p)",
-                        Panel, PostCmd, PostCmdParam);
-
-    int Cmd = (PostCmd & ~fsmDetached) - 1;
-    bool Detached = PostCmd & fsmDetached;
-    CPluginFSInterfaceAbstract* PluginFS =
-        reinterpret_cast<CPluginFSInterfaceAbstract*>(PostCmdParam);
-
-    CPluginFSInterface* FSInterface;
-    FSInterface = dynamic_cast<CPluginFSInterface*>(PluginFS);
-
-    if (Cmd == fsmClose)
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        if (Detached)
+        CALL_STACK_MESSAGE4("CPluginInterfaceForFS::ExecuteChangeDrivePostCommand(%d, %d, %p)",
+                            Panel, PostCmd, PostCmdParam);
+    
+        int Cmd = (PostCmd & ~fsmDetached) - 1;
+        bool Detached = PostCmd & fsmDetached;
+        CPluginFSInterfaceAbstract* PluginFS =
+            reinterpret_cast<CPluginFSInterfaceAbstract*>(PostCmdParam);
+    
+        CPluginFSInterface* FSInterface;
+        FSInterface = dynamic_cast<CPluginFSInterface*>(PluginFS);
+    
+        if (Cmd == fsmClose)
         {
-            SalamanderGeneral()->CloseDetachedFS(
-                SalamanderGeneral()->GetMainWindowHWND(), PluginFS);
+            if (Detached)
+            {
+                SalamanderGeneral()->CloseDetachedFS(
+                    SalamanderGeneral()->GetMainWindowHWND(), PluginFS);
+            }
+            else
+            {
+                FSInterface->ForceClose();
+                ChangePanelPathOutOfPlugin(PANEL_SOURCE);
+            }
+        }
+        else if (Cmd == fsmFullSynchronize)
+        {
+            assert(!Detached);
+            FSInterface->FullSynchronize(true);
+        }
+        else if (Cmd == fsmSynchronize)
+        {
+            assert(!Detached);
+            FSInterface->Synchronize();
         }
         else
         {
-            FSInterface->ForceClose();
-            ChangePanelPathOutOfPlugin(PANEL_SOURCE);
+            assert(false);
         }
     }
-    else if (Cmd == fsmFullSynchronize)
+    catch (Exception& E)
     {
-        assert(!Detached);
-        FSInterface->FullSynchronize(true);
+        PluginBoundaryException("CPluginInterfaceForFS::ExecuteChangeDrivePostCommand", &E, true);
     }
-    else if (Cmd == fsmSynchronize)
+    catch (...)
     {
-        assert(!Detached);
-        FSInterface->Synchronize();
-    }
-    else
-    {
-        assert(false);
+        PluginBoundaryException("CPluginInterfaceForFS::ExecuteChangeDrivePostCommand", NULL, false);
     }
 }
 //---------------------------------------------------------------------------
 void WINAPI CPluginInterfaceForFS::ExecuteOnFS(int Panel,
-                                               CPluginFSInterfaceAbstract* PluginFS, const char* PluginFSName,
+                                               CPluginFSInterfaceAbstract* PluginFS, const wchar_t* PluginFSNameW,
                                                int /*PluginFSNameIndex*/, CFileData& File, int IsDir)
 {
-    CALL_STACK_MESSAGE5("CPluginInterfaceForFS::ExecuteOnFS(%d, %p, %s, %d)",
-                        Panel, PluginFS, PluginFSName, IsDir);
-
-    if (IsDir > 0)
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        CPluginFSInterface* FSInterface = dynamic_cast<CPluginFSInterface*>(PluginFS);
-        assert(FSInterface != NULL);
-        if (FSInterface != NULL)
+        const AnsiString PluginFSName_A = SalA(PluginFSNameW);
+        const char* PluginFSName = PluginFSName_A.c_str();
+        CALL_STACK_MESSAGE5("CPluginInterfaceForFS::ExecuteOnFS(%d, %p, %s, %d)",
+                            Panel, PluginFS, PluginFSName, IsDir);
+    
+        if (IsDir > 0)
         {
-            AnsiString CurrentPath = FSInterface->CurrentPath();
-
-            AnsiString NewPath;
-            char* SuggestedFocusName;
-
-            if (IsDir == 2)
+            CPluginFSInterface* FSInterface = dynamic_cast<CPluginFSInterface*>(PluginFS);
+            assert(FSInterface != NULL);
+            if (FSInterface != NULL)
             {
-                NewPath = UnixExtractFilePath(UnixExcludeTrailingBackslash(CurrentPath));
-                SuggestedFocusName = strrchr(CurrentPath.c_str(), '/');
-                if (SuggestedFocusName)
+                AnsiString CurrentPath = FSInterface->CurrentPath();
+    
+                AnsiString NewPath;
+                char* SuggestedFocusName;
+    
+                if (IsDir == 2)
                 {
-                    SuggestedFocusName++;
+                    NewPath = UnixExtractFilePath(UnixExcludeTrailingBackslash(CurrentPath));
+                    SuggestedFocusName = strrchr(CurrentPath.c_str(), '/');
+                    if (SuggestedFocusName)
+                    {
+                        SuggestedFocusName++;
+                    }
                 }
+                else
+                {
+                    NewPath = UnixIncludeTrailingBackslash(CurrentPath) + SalA(File.Name);
+                    SuggestedFocusName = NULL;
+                }
+                AnsiString NewFullPath = FSInterface->FullPath(NewPath);
+                const std::wstring SuggestedFocusNameW = SalW(SuggestedFocusName);
+                SalamanderGeneral()->ChangePanelPathToPluginFS(Panel,
+                                                               PluginFSNameW, SalW(NewFullPath.c_str()).c_str(), NULL, -1,
+                                                               (SuggestedFocusName != NULL) ? SuggestedFocusNameW.c_str() : NULL);
             }
-            else
-            {
-                NewPath = UnixIncludeTrailingBackslash(CurrentPath) + File.Name;
-                SuggestedFocusName = NULL;
-            }
-            AnsiString NewFullPath = FSInterface->FullPath(NewPath);
-            // wide fsName/fsUserPart; see the widening note above.
-            wchar_t pluginFSNameW[MAX_PATH];
-            MultiByteToWideChar(CP_ACP, 0, PluginFSName, -1, pluginFSNameW, MAX_PATH);
-            wchar_t newFullPathW[MAX_PATH];
-            MultiByteToWideChar(CP_ACP, 0, NewFullPath.c_str(), -1, newFullPathW, MAX_PATH);
-            SalamanderGeneral()->ChangePanelPathToPluginFS(Panel,
-                                                           pluginFSNameW, newFullPathW, NULL, -1,
-                                                           SuggestedFocusName);
         }
+    }
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginInterfaceForFS::ExecuteOnFS", &E, true);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginInterfaceForFS::ExecuteOnFS", NULL, false);
     }
 }
 //---------------------------------------------------------------------------
 BOOL WINAPI CPluginInterfaceForFS::DisconnectFS(HWND Parent, BOOL IsInPanel,
-                                                int Panel, CPluginFSInterfaceAbstract* PluginFS, const char* /*PluginFSName*/,
+                                                int Panel, CPluginFSInterfaceAbstract* PluginFS, const wchar_t* /*PluginFSName*/,
                                                 int /*PluginFSNameIndex*/)
 {
-    CALL_STACK_MESSAGE5("CPluginInterfaceForFS::DisconnectFS(%x, %d, %d, %p)",
-                        Parent, IsInPanel, Panel, PluginFS);
-
-    CPluginFSInterface* FSInterface;
-    FSInterface = dynamic_cast<CPluginFSInterface*>(PluginFS);
-    assert(FSInterface != NULL);
-    FSInterface->ForceClose();
-
-    BOOL Result;
-    if (IsInPanel)
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        SalamanderGeneral()->DisconnectFSFromPanel(Parent, Panel);
-        Result = (SalamanderGeneral()->GetPanelPluginFS(Panel) != PluginFS);
+        CALL_STACK_MESSAGE5("CPluginInterfaceForFS::DisconnectFS(%x, %d, %d, %p)",
+                            Parent, IsInPanel, Panel, PluginFS);
+    
+        CPluginFSInterface* FSInterface;
+        FSInterface = dynamic_cast<CPluginFSInterface*>(PluginFS);
+        assert(FSInterface != NULL);
+        FSInterface->ForceClose();
+    
+        BOOL Result;
+        if (IsInPanel)
+        {
+            SalamanderGeneral()->DisconnectFSFromPanel(Parent, Panel);
+            Result = (SalamanderGeneral()->GetPanelPluginFS(Panel) != PluginFS);
+        }
+        else
+        {
+            Result = SalamanderGeneral()->CloseDetachedFS(Parent, PluginFS);
+        }
+        return Result;
     }
-    else
+    catch (Exception& E)
     {
-        Result = SalamanderGeneral()->CloseDetachedFS(Parent, PluginFS);
+        PluginBoundaryException("CPluginInterfaceForFS::DisconnectFS", &E, true);
     }
-    return Result;
+    catch (...)
+    {
+        PluginBoundaryException("CPluginInterfaceForFS::DisconnectFS", NULL, false);
+    }
+    return FALSE;
 }
 //---------------------------------------------------------------------------

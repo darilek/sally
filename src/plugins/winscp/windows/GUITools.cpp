@@ -1,6 +1,7 @@
 ﻿//---------------------------------------------------------------------------
 #define NO_WIN32_LEAN_AND_MEAN
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <shlobj.h>
@@ -54,8 +55,12 @@ void __fastcall OpenSessionInPutty(const AnsiString PuttyPath,
     TRegistryStorage * Storage = NULL;
     TSessionData * ExportData = NULL;
     TRegistryStorage * SourceStorage = NULL;
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete Storage;
+      delete ExportData;
+      delete SourceStorage;
+    });
       Storage = new TRegistryStorage(Configuration->PuttySessionsKey);
       Storage->AccessMode = smReadWrite;
       // make it compatible with putty
@@ -104,12 +109,6 @@ void __fastcall OpenSessionInPutty(const AnsiString PuttyPath,
         }
       }
     }
-    __finally
-    {
-      delete Storage;
-      delete ExportData;
-      delete SourceStorage;
-    }
 
     if (!Params.IsEmpty())
     {
@@ -134,7 +133,7 @@ void __fastcall OpenSessionInPutty(const AnsiString PuttyPath,
 //---------------------------------------------------------------------------
 bool __fastcall ExecuteShell(const AnsiString Path, const AnsiString Params)
 {
-  return ((int)ShellExecute(NULL, "open", (char*)Path.data(),
+  return ((INT_PTR)ShellExecute(NULL, "open", (char*)Path.data(),
     (char*)Params.data(), NULL, SW_SHOWNORMAL) > 32);
 }
 //---------------------------------------------------------------------------
@@ -143,7 +142,7 @@ bool __fastcall ExecuteShell(const AnsiString Path, const AnsiString Params,
 {
   bool Result;
 
-  TShellExecuteInfo ExecuteInfo;
+  SHELLEXECUTEINFOA ExecuteInfo;
   memset(&ExecuteInfo, 0, sizeof(ExecuteInfo));
   ExecuteInfo.cbSize = sizeof(ExecuteInfo);
   ExecuteInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
@@ -165,7 +164,7 @@ bool __fastcall ExecuteShellAndWait(HWND Handle, const AnsiString Path,
 {
   bool Result;
 
-  TShellExecuteInfo ExecuteInfo;
+  SHELLEXECUTEINFOA ExecuteInfo;
   memset(&ExecuteInfo, 0, sizeof(ExecuteInfo));
   ExecuteInfo.cbSize = sizeof(ExecuteInfo);
   ExecuteInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
@@ -239,7 +238,7 @@ AnsiString __fastcall ItemsFormatString(const AnsiString SingleItemFormat,
   const AnsiString MultiItemsFormat, TStrings * Items)
 {
   return ItemsFormatString(SingleItemFormat, MultiItemsFormat,
-    Items->Count, (Items->Count > 0 ? Items->Strings[0] : AnsiString()));
+    Items->Count, (Items->Count > 0 ? AnsiString(Items->Strings[0]) : AnsiString()));
 }
 //---------------------------------------------------------------------------
 AnsiString __fastcall FileNameFormatString(const AnsiString SingleFileFormat,
@@ -250,7 +249,7 @@ AnsiString __fastcall FileNameFormatString(const AnsiString SingleFileFormat,
   if (Files->Count > 0)
   {
     Item = Remote ? UnixExtractFileName(Files->Strings[0]) :
-      ExtractFileName(Files->Strings[0]);
+      AnsiString(ExtractFileName(Files->Strings[0]));
   }
   return ItemsFormatString(SingleFileFormat, MultiFilesFormat,
     Files->Count, Item);
@@ -260,11 +259,11 @@ AnsiString __fastcall FormatBytes(__int64 Bytes, bool UseOrders)
 {
   AnsiString Result;
 
-  if (!UseOrders || (Bytes < __int64(100*1024)))
+  if (!UseOrders || (Bytes < (__int64)(100*1024)))
   {
     Result = FormatFloat("#,##0 \"B\"", Bytes);
   }
-  else if (Bytes < __int64(100*1024*1024))
+  else if (Bytes < (__int64)(100*1024*1024))
   {
     Result = FormatFloat("#,##0 \"KiB\"", Bytes / 1024);
   }

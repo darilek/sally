@@ -3,6 +3,7 @@
 #pragma hdrstop
 
 #include "CoreMain.h"
+#include <stdlib.h>
 
 #include "Common.h"
 #include "Interface.h"

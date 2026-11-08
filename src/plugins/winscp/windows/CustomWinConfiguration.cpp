@@ -1,5 +1,7 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
+#include <type_traits>
 #pragma hdrstop
 
 #include <Common.h>
@@ -65,7 +67,7 @@ void __fastcall TCustomWinConfiguration::DefaultHistory()
   unsigned long Speed = 1024;
   while (Speed >= 8)
   {
-    Strings->Add(IntToStr(Speed));
+    Strings->Add(IntToStr((__int64)Speed));
     Speed = Speed / 2;
   }
   FHistory->AddObject("SpeedLimit", Strings);
@@ -106,7 +108,7 @@ void __fastcall TCustomWinConfiguration::Saved()
 #define LASTELEM(ELEM) \
   ELEM.SubString(ELEM.LastDelimiter(".>")+1, ELEM.Length() - ELEM.LastDelimiter(".>"))
 #define BLOCK(KEY, CANCREATE, BLOCK) \
-  if (Storage->OpenSubKey(KEY, CANCREATE, true)) try { BLOCK } __finally { Storage->CloseSubKey(); }
+  if (Storage->OpenSubKey(KEY, CANCREATE, true)) { FINALLY_GUARD([&]() { Storage->CloseSubKey(); }); BLOCK }
 #define REGCONFIG(CANCREATE) \
   BLOCK("Interface", CANCREATE, \
     KEY(Integer,  Interface); \
@@ -142,8 +144,10 @@ void __fastcall TCustomWinConfiguration::SaveData(
   {
     if (Storage->OpenSubKey("History", true))
     {
-      try
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
+        Storage->CloseSubKey();
+      });
         THistoryStrings * HistoryStrings;
         for (int Index = 0; Index < FHistory->Count; Index++)
         {
@@ -153,28 +157,24 @@ void __fastcall TCustomWinConfiguration::SaveData(
           {
             if (Storage->OpenSubKey(FHistory->Strings[Index], true))
             {
-              try
-              {
-                Storage->WriteValues(HistoryStrings);
-              }
-              __finally
-              {
+              { // try/__finally -> scope guard (bcc64x)
+                FINALLY_GUARD([&]() {
                 Storage->CloseSubKey();
+              });
+                Storage->WriteValues(HistoryStrings);
               }
             }
           }
         }
       }
-      __finally
-      {
-        Storage->CloseSubKey();
-      }
     }
 
     if (Storage->OpenSubKey("HistoryParams", true))
     {
-      try
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
+        Storage->CloseSubKey();
+      });
         THistoryStrings * HistoryStrings;
         for (int Index = 0; Index < FHistory->Count; Index++)
         {
@@ -194,8 +194,10 @@ void __fastcall TCustomWinConfiguration::SaveData(
             }
             else if (Storage->OpenSubKey(FHistory->Strings[Index], true))
             {
-              try
-              {
+              { // try/__finally -> scope guard (bcc64x)
+                FINALLY_GUARD([&]() {
+                Storage->CloseSubKey();
+              });
                 Storage->ClearValues();
                 for (int VIndex = 0; VIndex < HistoryStrings->Count; VIndex++)
                 {
@@ -203,17 +205,9 @@ void __fastcall TCustomWinConfiguration::SaveData(
                   Storage->WriteBinaryData(IntToStr(VIndex), &Data, sizeof(Data));
                 }
               }
-              __finally
-              {
-                Storage->CloseSubKey();
-              }
             }
           }
         }
-      }
-      __finally
-      {
-        Storage->CloseSubKey();
       }
     }
   }
@@ -225,7 +219,7 @@ void __fastcall TCustomWinConfiguration::LoadData(
   TGUIConfiguration::LoadData(Storage);
 
   // duplicated from core\configuration.cpp
-  #define KEY(TYPE, VAR) VAR = Storage->Read ## TYPE(LASTELEM(AnsiString(#VAR)), VAR)
+  #define KEY(TYPE, VAR) VAR = (std::decay_t<decltype(VAR)>)Storage->Read ## TYPE(LASTELEM(AnsiString(#VAR)), VAR)
   #pragma warn -eas
   REGCONFIG(false);
   #pragma warn +eas
@@ -235,8 +229,11 @@ void __fastcall TCustomWinConfiguration::LoadData(
   if (Storage->OpenSubKey("History", false))
   {
     TStrings * Names = NULL;
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      Storage->CloseSubKey();
+      delete Names;
+    });
       Names = new TStringList();
       Storage->GetSubKeyNames(Names);
       for (int Index = 0; Index < Names->Count; Index++)
@@ -244,8 +241,11 @@ void __fastcall TCustomWinConfiguration::LoadData(
         if (Storage->OpenSubKey(Names->Strings[Index], false))
         {
           THistoryStrings * HistoryStrings = NULL;
-          try
-          {
+          { // try/__finally -> scope guard (bcc64x)
+            FINALLY_GUARD([&]() {
+            Storage->CloseSubKey();
+            delete HistoryStrings;
+          });
             // remove defaults, if any
             int HIndex = FHistory->IndexOf(Names->Strings[Index]);
             if (HIndex >= 0)
@@ -260,33 +260,27 @@ void __fastcall TCustomWinConfiguration::LoadData(
             FHistory->AddObject(Names->Strings[Index], HistoryStrings);
             HistoryStrings = NULL;
           }
-          __finally
-          {
-            Storage->CloseSubKey();
-            delete HistoryStrings;
-          }
         }
       }
-    }
-    __finally
-    {
-      Storage->CloseSubKey();
-      delete Names;
     }
   }
 
   if (Storage->OpenSubKey("HistoryParams", false))
   {
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      Storage->CloseSubKey();
+    });
       THistoryStrings * HistoryStrings;
       for (int Index = 0; Index < FHistory->Count; Index++)
       {
         HistoryStrings = dynamic_cast<THistoryStrings *>(FHistory->Objects[Index]);
         if (Storage->OpenSubKey(FHistory->Strings[Index], false))
         {
-          try
-          {
+          { // try/__finally -> scope guard (bcc64x)
+            FINALLY_GUARD([&]() {
+            Storage->CloseSubKey();
+          });
             for (int VIndex = 0; VIndex < HistoryStrings->Count; VIndex++)
             {
               void * Data;
@@ -297,16 +291,8 @@ void __fastcall TCustomWinConfiguration::LoadData(
               }
             }
           }
-          __finally
-          {
-            Storage->CloseSubKey();
-          }
         }
       }
-    }
-    __finally
-    {
-      Storage->CloseSubKey();
     }
   }
 }
@@ -321,17 +307,15 @@ void __fastcall TCustomWinConfiguration::LoadAdmin(THierarchicalStorage * Storag
 void __fastcall TCustomWinConfiguration::RecryptPasswords()
 {
   Busy(true);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    Busy(false);
+  });
     StoredSessions->RecryptPasswords();
     if (OnMasterPasswordRecrypt != NULL)
     {
       OnMasterPasswordRecrypt(NULL);
     }
-  }
-  __finally
-  {
-    Busy(false);
   }
 }
 //---------------------------------------------------------------------------

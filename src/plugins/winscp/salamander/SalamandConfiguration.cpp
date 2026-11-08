@@ -5,6 +5,7 @@
 //---------------------------------------------------------------------------
 #define NO_WIN32_LEAN_AND_MEAN
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include "Salamand.h"
@@ -74,14 +75,10 @@ void __fastcall TSalamandConfiguration::Default()
     ELEM.SubString(ELEM.LastDelimiter(".>") + 1, ELEM.Length() - ELEM.LastDelimiter(".>"))
 #define BLOCK(KEY, CANCREATE, BLOCK) \
     if (Storage->OpenSubKey(KEY, CANCREATE, true)) \
-        try \
-        { \
-            BLOCK \
-        } \
-        __finally \
-        { \
-            Storage->CloseSubKey(); \
-        }
+    { \
+        FINALLY_GUARD([&]() { Storage->CloseSubKey(); }); \
+        BLOCK \
+    }
 #define REGCONFIG(CANCREATE) \
     BLOCK("Salamander", CANCREATE, \
           KEY(Bool, ConfirmDetach); \

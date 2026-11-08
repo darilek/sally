@@ -343,9 +343,9 @@ static int handle_cmp_evtomain(void *av, void *bv)
     struct handle *a = (struct handle *)av;
     struct handle *b = (struct handle *)bv;
 
-    if ((unsigned)a->u.g.ev_to_main < (unsigned)b->u.g.ev_to_main)
+    if ((UINT_PTR)a->u.g.ev_to_main < (UINT_PTR)b->u.g.ev_to_main)
 	return -1;
-    else if ((unsigned)a->u.g.ev_to_main > (unsigned)b->u.g.ev_to_main)
+    else if ((UINT_PTR)a->u.g.ev_to_main > (UINT_PTR)b->u.g.ev_to_main)
 	return +1;
     else
 	return 0;
@@ -356,9 +356,9 @@ static int handle_find_evtomain(void *av, void *bv)
     HANDLE *a = (HANDLE *)av;
     struct handle *b = (struct handle *)bv;
 
-    if ((unsigned)*a < (unsigned)b->u.g.ev_to_main)
+    if ((UINT_PTR)*a < (UINT_PTR)b->u.g.ev_to_main)
 	return -1;
-    else if ((unsigned)*a > (unsigned)b->u.g.ev_to_main)
+    else if ((UINT_PTR)*a > (UINT_PTR)b->u.g.ev_to_main)
 	return +1;
     else
 	return 0;

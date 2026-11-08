@@ -326,7 +326,7 @@ void __fastcall TFileMasks::CreateMaskMask(const AnsiString & Mask, int Start, i
     else
     {
       MaskMask.Kind = (Ex && (Mask == "*.")) ? TMaskMask::NoExt : TMaskMask::Regular;
-      MaskMask.Mask = new Masks::TMask(Mask);
+      MaskMask.Mask = new Masks::TMask(Mask, false);
     }
   }
   catch(...)

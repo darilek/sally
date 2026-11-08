@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <SysUtils.hpp>
@@ -221,8 +222,10 @@ int __fastcall TScriptCommands::FindCommand(const char ** Commands, size_t Count
 {
   int Result;
   TStringList * Strings = new TStringList;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Strings;
+  });
     Strings->CaseSensitive = false;
 
     for (unsigned int i = 0; i < Count; i++)
@@ -231,10 +234,6 @@ int __fastcall TScriptCommands::FindCommand(const char ** Commands, size_t Count
     }
 
     Result = FindCommand(Strings, Command, Matches);
-  }
-  __finally
-  {
-    delete Strings;
   }
   return Result;
 }
@@ -255,8 +254,10 @@ void __fastcall TScriptCommands::CheckParams(TOptions * Parameters,
 void __fastcall TScriptCommands::Execute(const AnsiString & Command, const AnsiString & Params)
 {
   TScriptProcParams * Parameters = new TScriptProcParams(Params);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Parameters;
+  });
     AnsiString Matches;
     int Index = FindCommand(this, Command, &Matches);
 
@@ -286,10 +287,6 @@ void __fastcall TScriptCommands::Execute(const AnsiString & Command, const AnsiS
 
       ScriptCommand->Proc(Parameters);
     }
-  }
-  __finally
-  {
-    delete Parameters;
   }
 }
 //---------------------------------------------------------------------------
@@ -386,14 +383,12 @@ void __fastcall TScript::Command(AnsiString Cmd)
       if (CutToken(Cmd, Command))
       {
         int ASessionReopenTimeout = Configuration->SessionReopenTimeout;
-        try
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
+          Configuration->SessionReopenTimeout = ASessionReopenTimeout;
+        });
           Configuration->SessionReopenTimeout = FSessionReopenTimeout;
           FCommands->Execute(Command, Cmd);
-        }
-        __finally
-        {
-          Configuration->SessionReopenTimeout = ASessionReopenTimeout;
         }
       }
     }
@@ -412,8 +407,17 @@ TStrings * __fastcall TScript::CreateFileList(TScriptProcParams * Parameters, in
 {
   TStrings * Result = new TStringList();
   TStrings * FileLists = NULL;
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    if (FileLists != NULL)
+    {
+      for (int i = 0; i < FileLists->Count; i++)
+      {
+        delete FileLists->Objects[i];
+      }
+      delete FileLists;
+    }
+  });
     try
     {
       for (int i = Start; i <= End; i++)
@@ -474,17 +478,15 @@ TStrings * __fastcall TScript::CreateFileList(TScriptProcParams * Parameters, in
           if (FLAGSET(ListType, fltQueryServer))
           {
             FTerminal->ExceptionOnFail = true;
-            try
-            {
+            { // try/__finally -> scope guard (bcc64x)
+              FINALLY_GUARD([&]() {
+              FTerminal->ExceptionOnFail = false;
+            });
               FTerminal->ReadFile(FileName, File);
               if (!File->HaveFullFileName)
               {
                 File->FullFileName = FileName;
               }
-            }
-            __finally
-            {
-              FTerminal->ExceptionOnFail = false;
             }
           }
           Result->AddObject(FileName, File);
@@ -495,17 +497,6 @@ TStrings * __fastcall TScript::CreateFileList(TScriptProcParams * Parameters, in
     {
       FreeFileList(Result);
       throw;
-    }
-  }
-  __finally
-  {
-    if (FileLists != NULL)
-    {
-      for (int i = 0; i < FileLists->Count; i++)
-      {
-        delete FileLists->Objects[i];
-      }
-      delete FileLists;
     }
   }
   return Result;
@@ -527,8 +518,10 @@ TStrings * __fastcall TScript::CreateLocalFileList(TScriptProcParams * Parameter
         if (FindFirst(FileName, FindAttrs, SearchRec) == 0)
         {
           AnsiString Directory = ExtractFilePath(FileName);
-          try
-          {
+          { // try/__finally -> scope guard (bcc64x)
+            FINALLY_GUARD([&]() {
+            FindClose(SearchRec);
+          });
             do
             {
               if ((SearchRec.Name != ".") && (SearchRec.Name != ".."))
@@ -537,10 +530,6 @@ TStrings * __fastcall TScript::CreateLocalFileList(TScriptProcParams * Parameter
               }
             }
             while (FindNext(SearchRec) == 0);
-          }
-          __finally
-          {
-            FindClose(SearchRec);
           }
         }
         else
@@ -818,16 +807,14 @@ void __fastcall TScript::LsProc(TScriptProcParams * Parameters)
   // on error user may select "skip", then we get NULL
   if (FileList != NULL)
   {
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete FileList;
+    });
       for (int i = 0; i < FileList->Count; i++)
       {
         PrintLine(FileList->Files[i]->ListingStr);
       }
-    }
-    __finally
-    {
-      delete FileList;
     }
   }
 }
@@ -837,13 +824,11 @@ void __fastcall TScript::RmProc(TScriptProcParams * Parameters)
   CheckSession();
 
   TStrings * FileList = CreateFileList(Parameters, 1, Parameters->ParamCount, fltMask);
-  try
-  {
-    FTerminal->DeleteFiles(FileList);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     FreeFileList(FileList);
+  });
+    FTerminal->DeleteFiles(FileList);
   }
 }
 //---------------------------------------------------------------------------
@@ -852,13 +837,11 @@ void __fastcall TScript::RmDirProc(TScriptProcParams * Parameters)
   CheckSession();
 
   TStrings * FileList = CreateFileList(Parameters, 1, Parameters->ParamCount, fltDirectories);
-  try
-  {
-    FTerminal->DeleteFiles(FileList);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     FreeFileList(FileList);
+  });
+    FTerminal->DeleteFiles(FileList);
   }
 }
 //---------------------------------------------------------------------------
@@ -868,17 +851,15 @@ void __fastcall TScript::MvProc(TScriptProcParams * Parameters)
 
   TStrings * FileList = CreateFileList(Parameters, 1, Parameters->ParamCount - 1,
     fltMask);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    FreeFileList(FileList);
+  });
     assert(Parameters->ParamCount >= 1);
     AnsiString Target = Parameters->Param[Parameters->ParamCount];
     AnsiString TargetDirectory = UnixExtractFilePath(Target);
     AnsiString FileMask = UnixExtractFileName(Target);
     FTerminal->MoveFiles(FileList, TargetDirectory, FileMask);
-  }
-  __finally
-  {
-    FreeFileList(FileList);
   }
 }
 //---------------------------------------------------------------------------
@@ -888,17 +869,15 @@ void __fastcall TScript::ChModProc(TScriptProcParams * Parameters)
 
   TStrings * FileList = CreateFileList(Parameters, 2, Parameters->ParamCount,
     fltMask);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    FreeFileList(FileList);
+  });
     TRemoteProperties Properties;
     Properties.Valid = TValidProperties() << vpRights;
     Properties.Rights.Octal = Parameters->Param[1];
 
     FTerminal->ChangeFilesProperties(FileList, &Properties);
-  }
-  __finally
-  {
-    FreeFileList(FileList);
   }
 }
 //---------------------------------------------------------------------------
@@ -925,9 +904,11 @@ void __fastcall TScript::GetProc(TScriptProcParams * Parameters)
 
   int LastFileParam = (Parameters->ParamCount == 1 ? 1 : Parameters->ParamCount - 1);
   TStrings * FileList = CreateFileList(Parameters, 1, LastFileParam,
-    fltQueryServer | fltMask);
-  try
-  {
+    static_cast<TFileListType>(fltQueryServer | fltMask));
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    FreeFileList(FileList);
+  });
     TCopyParamType CopyParam = FCopyParam;
 
     AnsiString TargetDirectory;
@@ -954,10 +935,6 @@ void __fastcall TScript::GetProc(TScriptProcParams * Parameters)
 
     FTerminal->CopyToLocal(FileList, TargetDirectory, &CopyParam, Params);
   }
-  __finally
-  {
-    FreeFileList(FileList);
-  }
 }
 //---------------------------------------------------------------------------
 void __fastcall TScript::PutProc(TScriptProcParams * Parameters)
@@ -967,8 +944,10 @@ void __fastcall TScript::PutProc(TScriptProcParams * Parameters)
 
   int LastFileParam = (Parameters->ParamCount == 1 ? 1 : Parameters->ParamCount - 1);
   TStrings * FileList = CreateLocalFileList(Parameters, 1, LastFileParam, fltMask);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    FreeFileList(FileList);
+  });
     TCopyParamType CopyParam = FCopyParam;
 
     AnsiString TargetDirectory;
@@ -994,10 +973,6 @@ void __fastcall TScript::PutProc(TScriptProcParams * Parameters)
     CheckParams(Parameters);
 
     FTerminal->CopyToRemote(FileList, TargetDirectory, &CopyParam, Params);
-  }
-  __finally
-  {
-    FreeFileList(FileList);
   }
 }
 //---------------------------------------------------------------------------
@@ -1245,8 +1220,10 @@ void __fastcall TScript::SynchronizeProc(TScriptProcParams * Parameters)
   assert(FSynchronizeMode < 0);
   FSynchronizeMode = TScriptCommands::FindCommand(ModeNames, LENOF(ModeNames), ModeName);
 
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    FSynchronizeMode = -1;
+  });
     if (FSynchronizeMode < 0)
     {
       throw Exception(FMTLOAD(SCRIPT_OPTION_UNKNOWN, (ModeName)));
@@ -1313,8 +1290,10 @@ void __fastcall TScript::SynchronizeProc(TScriptProcParams * Parameters)
       FTerminal->SynchronizeCollect(LocalDirectory, RemoteDirectory,
         static_cast<TTerminal::TSynchronizeMode>(FSynchronizeMode),
         &CopyParam, SynchronizeParams, OnTerminalSynchronizeDirectory, NULL);
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete Checklist;
+    });
       if (Checklist->Count > 0)
       {
         PrintLine(LoadStr(SCRIPT_SYNCHRONIZE_SYNCHRONIZING));
@@ -1326,15 +1305,7 @@ void __fastcall TScript::SynchronizeProc(TScriptProcParams * Parameters)
         PrintLine(LoadStr(SCRIPT_SYNCHRONIZE_NODIFFERENCE));
       }
     }
-    __finally
-    {
-      delete Checklist;
-    }
 
-  }
-  __finally
-  {
-    FSynchronizeMode = -1;
   }
 }
 //---------------------------------------------------------------------------
@@ -1349,16 +1320,8 @@ void __fastcall TScript::Synchronize(const AnsiString LocalDirectory,
     TSynchronizeChecklist * AChecklist =
       FTerminal->SynchronizeCollect(LocalDirectory, RemoteDirectory, TTerminal::smRemote,
         &CopyParam, SynchronizeParams, NULL, NULL);
-    try
-    {
-      if (AChecklist->Count > 0)
-      {
-        FTerminal->SynchronizeApply(AChecklist, LocalDirectory, RemoteDirectory,
-          &CopyParam, SynchronizeParams, OnTerminalSynchronizeDirectory);
-      }
-    }
-    __finally
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
       if (Checklist == NULL)
       {
         delete AChecklist;
@@ -1366,6 +1329,12 @@ void __fastcall TScript::Synchronize(const AnsiString LocalDirectory,
       else
       {
         *Checklist = AChecklist;
+      }
+    });
+      if (AChecklist->Count > 0)
+      {
+        FTerminal->SynchronizeApply(AChecklist, LocalDirectory, RemoteDirectory,
+          &CopyParam, SynchronizeParams, OnTerminalSynchronizeDirectory);
       }
     }
 
@@ -1764,8 +1733,10 @@ void __fastcall TManagementScript::Connect(const AnsiString Session,
     bool DefaultsOnly;
 
     TSessionData * Data = FStoredSessions->ParseUrl(Session, Options, DefaultsOnly);
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete Data;
+    });
       if (CheckParams)
       {
         TScriptCommands::CheckParams(Options, false);
@@ -1834,10 +1805,6 @@ void __fastcall TManagementScript::Connect(const AnsiString Session,
         PrintActiveSession();
       }
     }
-    __finally
-    {
-      delete Data;
-    }
 
   }
   catch(Exception & E)
@@ -1856,24 +1823,8 @@ void __fastcall TManagementScript::DoClose(TTerminal * Terminal)
 
   bool WasActiveTerminal = (FTerminal == Terminal);
 
-  try
-  {
-    if (Terminal->Active)
-    {
-      Terminal->Close();
-    }
-
-    AnsiString SessionName = Terminal->SessionData->SessionName;
-    FreeTerminal(Terminal);
-    if (WasActiveTerminal)
-    {
-      FTerminal = NULL;
-    }
-
-    PrintLine(FMTLOAD(SCRIPT_SESSION_CLOSED, (SessionName)));
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     if (WasActiveTerminal)
     {
       if (FTerminalList->Count > 0)
@@ -1893,6 +1844,20 @@ void __fastcall TManagementScript::DoClose(TTerminal * Terminal)
         PrintLine(LoadStr(SCRIPT_NO_SESSION));
       }
     }
+  });
+    if (Terminal->Active)
+    {
+      Terminal->Close();
+    }
+
+    AnsiString SessionName = Terminal->SessionData->SessionName;
+    FreeTerminal(Terminal);
+    if (WasActiveTerminal)
+    {
+      FTerminal = NULL;
+    }
+
+    PrintLine(FMTLOAD(SCRIPT_SESSION_CLOSED, (SessionName)));
   }
 }
 //---------------------------------------------------------------------------
@@ -2003,10 +1968,12 @@ void __fastcall TManagementScript::LLsProc(TScriptProcParams * Parameters)
     throw Exception(FMTLOAD(LIST_DIR_ERROR, (Directory)));
   }
 
-  try
-  {
-    AnsiString TimeFormat = FixedLenDateTimeFormat(ShortTimeFormat);
-    AnsiString DateFormat = FixedLenDateTimeFormat(ShortDateFormat);
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    FindClose(SearchRec);
+  });
+    AnsiString TimeFormat = FixedLenDateTimeFormat(FormatSettings.ShortTimeFormat);
+    AnsiString DateFormat = FixedLenDateTimeFormat(FormatSettings.ShortDateFormat);
     int DateLen = 0;
     int TimeLen = 0;
     bool First = true;
@@ -2048,10 +2015,6 @@ void __fastcall TManagementScript::LLsProc(TScriptProcParams * Parameters)
       }
     }
     while (FindNext(SearchRec) == 0);
-  }
-  __finally
-  {
-    FindClose(SearchRec);
   }
 }
 //---------------------------------------------------------------------------

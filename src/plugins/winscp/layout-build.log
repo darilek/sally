@@ -1,0 +1,34 @@
+=== bcc64x 
+Embarcadero C++ 7.80 for Win64/COFF Copyright (c) 2012-2025 Embarcadero Technologies, Inc.
+Warning W5490 tools_layout_check.cpp 113(5): offset of on non-standard-layout type 'CSalamanderPluginInternalViewerData' [-Winvalid-offsetof]
+  113 |     P_OFF(CSalamanderPluginInternalViewerData, Mode);
+      |     ^                                          ~~~~
+Hint H0 tools_layout_check.cpp 24(75): expanded from macro 'P_OFF'
+   24 | #define P_OFF(T, M) printf("  offsetof(%s, %s) = %u\n", #T, #M, (unsigned)offsetof(T, M))
+      |                                                                           ^           ~
+Hint H0 C:\Program Files (x86)\Embarcadero\Studio\37.0\lib\clang\20\include\__stddef_offsetof.h 16(24): expanded from macro 'offsetof'
+   16 | #define offsetof(t, d) __builtin_offsetof(t, d)
+      |                        ^                     ~
+Warning W5490 tools_layout_check.cpp 114(5): offset of on non-standard-layout type 'CSalamanderPluginInternalViewerData' [-Winvalid-offsetof]
+  114 |     P_OFF(CSalamanderPluginInternalViewerData, Caption);
+      |     ^                                          ~~~~~~~
+Hint H0 tools_layout_check.cpp 24(75): expanded from macro 'P_OFF'
+   24 | #define P_OFF(T, M) printf("  offsetof(%s, %s) = %u\n", #T, #M, (unsigned)offsetof(T, M))
+      |                                                                           ^           ~
+Hint H0 C:\Program Files (x86)\Embarcadero\Studio\37.0\lib\clang\20\include\__stddef_offsetof.h 16(24): expanded from macro 'offsetof'
+   16 | #define offsetof(t, d) __builtin_offsetof(t, d)
+      |                        ^                     ~
+Warning W5490 tools_layout_check.cpp 115(5): offset of on non-standard-layout type 'CSalamanderPluginInternalViewerData' [-Winvalid-offsetof]
+  115 |     P_OFF(CSalamanderPluginInternalViewerData, WholeCaption);
+      |     ^                                          ~~~~~~~~~~~~
+Hint H0 tools_layout_check.cpp 24(75): expanded from macro 'P_OFF'
+   24 | #define P_OFF(T, M) printf("  offsetof(%s, %s) = %u\n", #T, #M, (unsigned)offsetof(T, M))
+      |                                                                           ^           ~
+Hint H0 C:\Program Files (x86)\Embarcadero\Studio\37.0\lib\clang\20\include\__stddef_offsetof.h 16(24): expanded from macro 'offsetof'
+   16 | #define offsetof(t, d) __builtin_offsetof(t, d)
+      |                        ^                     ~
+3 warnings generated.
+=== msvc at "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools" 
+vcvars done, cl: 
+tools_layout_check.cpp
+done 

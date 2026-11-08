@@ -5,6 +5,7 @@
 //---------------------------------------------------------------------------
 #define NO_WIN32_LEAN_AND_MEAN
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Consts.hpp>
@@ -95,12 +96,28 @@ char* SalLoadStr(int resID)
     std::wstring wide;
     std::string bytes;
     if (SalamanderGeneral == NULL ||
-        !SPLLoadStrOwned(SalamanderGeneral, HLanguage, resID, wide) ||
+        !SPLLoadStrOwned(::SalamanderGeneral, HLanguage, resID, wide) ||
         !SalNarrowExact(wide.c_str(), bytes))
         return failed;
     return RetainBoundedText(std::move(bytes));
 }
 //---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+// Last line of defence at SDK entry points: Sally is built with MSVC and cannot
+// catch exceptions thrown by this (clang/bcc64x) module, so they must stop here.
+void PluginBoundaryException(const char* Where, Exception* E, bool Show)
+{
+    try
+    {
+        if (Show && (E != NULL))
+        {
+            ShowExtendedException(E);
+        }
+    }
+    catch (...)
+    {
+    }
+}
 //---------------------------------------------------------------------------
 #define DLLEXPORT extern "C" __declspec(dllexport)
 //---------------------------------------------------------------------------
@@ -112,14 +129,18 @@ DLLEXPORT int WINAPI SalamanderPluginGetReqVer()
 DLLEXPORT CPluginInterfaceAbstract* WINAPI SalamanderPluginEntry(
     CSalamanderPluginEntryAbstract* Salamander)
 {
-    if (PluginInterface.Init(Salamander))
+    try // PLUGIN_BOUNDARY
     {
-        return &PluginInterface;
+        if (PluginInterface.Init(Salamander))
+        {
+            return &PluginInterface;
+        }
     }
-    else
+    catch (...)
     {
-        return NULL;
+        PluginBoundaryException("SalamanderPluginEntry", NULL, false);
     }
+    return NULL;
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
@@ -329,6 +350,9 @@ void CSalamanderGeneralLocal::BugReport(AnsiString Report)
 CPluginInterface::CPluginInterface() : CSalamanderGeneralLocal(this)
 {
     FInterfaceForFS = NULL;
+    FInterfaceForMenuExt = NULL;
+    FSalamanderGeneral = NULL;
+    FSalamanderGUI = NULL;
 }
 //---------------------------------------------------------------------------
 CPluginInterface::~CPluginInterface()
@@ -337,13 +361,11 @@ CPluginInterface::~CPluginInterface()
     TControl** HintControl = (TControl**)(((unsigned char*)Application) + 96);
     TLabel* Label = new TLabel(Application);
     *HintControl = Label;
-    try
-    {
-        Application->CancelHint();
-    }
-    __finally
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
         *HintControl = NULL;
+    });
+        Application->CancelHint();
     }
 
     ClearParentWindow();
@@ -383,7 +405,7 @@ void CPluginInterface::PreferencesDialog()
 {
     CALL_STACK_MESSAGE1("CPluginInterface::PreferencesDialog()");
 
-    if (DoPreferencesDialog(pmDefault))
+    if (DoPreferencesDialog(::pmDefault))
     {
         CPluginFSInterface* FileSystem;
         FileSystem = GetPanelFS(PANEL_SOURCE);
@@ -411,13 +433,20 @@ bool CPluginInterface::Init(CSalamanderPluginEntryAbstract* Salamander)
 
     try
     {
+        // obtain Salamander interfaces first: CoreInitialize and error reporting
+        // (forms, message boxes) may already need them
+        FSalamanderGeneral = Salamander->GetSalamanderGeneral();
+        ::SalamanderGeneral = FSalamanderGeneral;
+        FSalamanderGUI = Salamander->GetSalamanderGUI();
+        HLanguage = DLLInstance;
+
         CoreInitialize();
         InitializeWinHelp();
         InitializeSystemSettings();
 
         if (SalamanderVersion < LAST_VERSION_OF_SALAMANDER)
         {
-            MessageBox(Salamander->GetParentWindow(), REQUIRE_LAST_VERSION_OF_SALAMANDER,
+            MessageBoxA(Salamander->GetParentWindow(), REQUIRE_LAST_VERSION_OF_SALAMANDER,
                        "WinSCP" /* neprekladat! */, MB_OK | MB_ICONERROR);
         }
         else
@@ -432,31 +461,26 @@ bool CPluginInterface::Init(CSalamanderPluginEntryAbstract* Salamander)
             InitializeWinLib(L"WinSCP" /* neprekladat! */, DLLInstance);
 
 #ifndef IDE
-            HLanguage = Salamander->LoadLanguageModule(Salamander->GetParentWindow(),
-                                                       "WinSCP (SFTP/SCP Client)" /* neprekladat! */);
-            if (HLanguage == NULL)
-            {
-                return NULL;
-            }
-            (dynamic_cast<TGUIConfiguration*>(::Configuration))->ChangeResourceModule(HLanguage);
+            // SDK 109: LoadLanguageModule was removed, all languages live in the plugin DLL
+            HLanguage = DLLInstance;
 #else
             HLanguage = DLLInstance;
 #endif
 
-            SalamanderGeneral()->SetHelpFileName("winscp.chm");
+            SalamanderGeneral()->SetHelpFileName(L"winscp.chm");
 
             AnsiString ProductVersion = ::Configuration->Version;
             AnsiString Copyright = ::Configuration->FileInfoString["LegalCopyright"];
             AnsiString Description = SalLoadStr(SAL_PLUGIN_DESCRIPTION);
-            Salamander->SetBasicPluginData(SalLoadStr(SAL_PLUGIN_NAME),
+            Salamander->SetBasicPluginData(SalW(SalLoadStr(SAL_PLUGIN_NAME)).c_str(),
                                            FUNCTION_CONFIGURATION | FUNCTION_FILESYSTEM,
-                                           ProductVersion.c_str(), Copyright.c_str(), Description.c_str(),
-                                           "WinSCP" /* do not translate! */, "", "winscp");
+                                           SalW(ProductVersion.c_str()).c_str(), SalW(Copyright.c_str()).c_str(), SalW(Description.c_str()).c_str(),
+                                           L"WinSCP" /* do not translate! */, L"", L"winscp");
 
             // we want to receive notifications about the creation/change/removal of the master password
             SalamanderGeneral()->SetPluginUsesPasswordManager();
 
-            Salamander->SetPluginHomePageURL(SalLoadStr(SAL_HOMEPAGE));
+            Salamander->SetPluginHomePageURL(SalW(SalLoadStr(SAL_HOMEPAGE)).c_str());
 
             const std::wstring FSName0 = SPLGetPluginFSNameOwned(
                 SalamanderGeneral(), 0);
@@ -464,14 +488,14 @@ bool CPluginInterface::Init(CSalamanderPluginEntryAbstract* Salamander)
                 Abort();
             assert(!FFSNames[0].IsEmpty());
             int FSIndex;
-            if (Salamander->AddFSName("scp", &FSIndex))
+            if (Salamander->AddFSName(L"scp", &FSIndex))
             {
                 assert(FSIndex == 1);
                 const std::wstring FSName1 = SPLGetPluginFSNameOwned(
                     SalamanderGeneral(), FSIndex);
                 if (!WideToWinScpNameBytes(FSName1.c_str(), FFSNames[1]))
                     Abort();
-                if (Salamander->AddFSName("sftp", &FSIndex))
+                if (Salamander->AddFSName(L"sftp", &FSIndex))
                 {
                     assert(FSIndex == 2);
                     const std::wstring FSName2 = SPLGetPluginFSNameOwned(
@@ -496,6 +520,10 @@ bool CPluginInterface::Init(CSalamanderPluginEntryAbstract* Salamander)
     catch (Exception& E)
     {
         ShowExtendedException(&E);
+    }
+    catch (...)
+    {
+        throw;
     }
 
     return Result;
@@ -593,7 +621,7 @@ BOOL WINAPI CPluginInterface::Release(HWND /*Parent*/, BOOL /*Force*/)
             if (!FFSNames[Index].IsEmpty())
             {
                 Root = (AnsiString(FFSNames[Index]) + ":").LowerCase();
-                SalamanderGeneral()->RemoveFilesFromCache(Root.c_str());
+                SalamanderGeneral()->RemoveFilesFromCache(SalW(Root.c_str()).c_str());
             }
         }
 
@@ -601,6 +629,12 @@ BOOL WINAPI CPluginInterface::Release(HWND /*Parent*/, BOOL /*Force*/)
     }
     catch (...)
     {
+    }
+
+    // Sally unloads the DLL right after Release: detach VCL from Sally's main window
+    if (Application != NULL)
+    {
+        Application->Handle = NULL;
     }
 
     return TRUE;
@@ -633,16 +667,16 @@ void WINAPI CPluginInterface::Connect(HWND Parent,
     {
         SetParentWindow(Parent);
 
-        Salamander->AddMenuItem(-1, SPLLoadStrOwned(SalamanderGeneral, HLanguage, SAL_CONNECT).c_str(),
+        Salamander->AddMenuItem(-1, SPLLoadStrOwned(::SalamanderGeneral, HLanguage, SAL_CONNECT).c_str(),
                                 SALHOTKEY('W', HOTKEYF_CONTROL | HOTKEYF_SHIFT), pmConnect,
                                 FALSE, MENU_EVENT_TRUE, MENU_EVENT_TRUE, MENU_SKILLLEVEL_ALL);
-        Salamander->AddMenuItem(-1, SPLLoadStrOwned(SalamanderGeneral, HLanguage, SAL_DISCONNECT_F12).c_str(), SALHOTKEY_HINT, pmDisconnectF12,
+        Salamander->AddMenuItem(-1, SPLLoadStrOwned(::SalamanderGeneral, HLanguage, SAL_DISCONNECT_F12).c_str(), SALHOTKEY_HINT, pmDisconnectF12,
                                 FALSE, MENU_EVENT_TRUE, MENU_EVENT_TRUE, MENU_SKILLLEVEL_ALL);
         Salamander->AddMenuItem(-1, NULL, 0, 0, FALSE, 0, 0, MENU_SKILLLEVEL_ALL);
-        Salamander->AddMenuItem(-1, SPLLoadStrOwned(SalamanderGeneral, HLanguage, SAL_FULL_SYNCHRONIZE).c_str(), 0, pmFullSynchronize,
+        Salamander->AddMenuItem(-1, SPLLoadStrOwned(::SalamanderGeneral, HLanguage, SAL_FULL_SYNCHRONIZE).c_str(), 0, pmFullSynchronize,
                                 FALSE, MENU_EVENT_THIS_PLUGIN_FS | MENU_EVENT_TARGET_THIS_PLUGIN_FS,
                                 MENU_EVENT_TRUE, MENU_SKILLLEVEL_ALL);
-        Salamander->AddMenuItem(-1, SPLLoadStrOwned(SalamanderGeneral, HLanguage, SAL_SYNCHRONIZE).c_str(), 0, pmSynchronize,
+        Salamander->AddMenuItem(-1, SPLLoadStrOwned(::SalamanderGeneral, HLanguage, SAL_SYNCHRONIZE).c_str(), 0, pmSynchronize,
                                 FALSE, MENU_EVENT_THIS_PLUGIN_FS | MENU_EVENT_TARGET_THIS_PLUGIN_FS,
                                 MENU_EVENT_TRUE, MENU_SKILLLEVEL_ALL);
 
@@ -650,7 +684,7 @@ void WINAPI CPluginInterface::Connect(HWND Parent,
                                                      MAKEINTRESOURCE(IDB_WINSCP), IMAGE_BITMAP, 16, 16, LR_DEFAULTCOLOR));
         Salamander->SetBitmapWithIcons(HBitmap);
         HANDLES(DeleteObject(HBitmap));
-        Salamander->SetChangeDriveMenuItem(SalLoadStr(SAL_FS_NAME), 0);
+        Salamander->SetChangeDriveMenuItem(SalW(SalLoadStr(SAL_FS_NAME)).c_str(), 0);
 
         Salamander->SetPluginIcon(0);
         Salamander->SetPluginMenuAndToolbarIcon(0);
@@ -664,14 +698,25 @@ void WINAPI CPluginInterface::Connect(HWND Parent,
 void WINAPI CPluginInterface::ReleasePluginDataInterface(
     CPluginDataInterfaceAbstract* PluginData)
 {
-    CALL_STACK_MESSAGE2("CPluginInterface::ReleasePluginDataInterface(%p)", PluginData);
-
-    CPluginFSDataInterface* FSDataInterface;
-    FSDataInterface = dynamic_cast<CPluginFSDataInterface*>(PluginData);
-    assert(FSDataInterface != NULL);
-    if (FSDataInterface != NULL)
+    try // PLUGIN_BOUNDARY: never let exceptions unwind into Sally (MSVC) frames
     {
-        delete FSDataInterface;
+        CALL_STACK_MESSAGE2("CPluginInterface::ReleasePluginDataInterface(%p)", PluginData);
+    
+        CPluginFSDataInterface* FSDataInterface;
+        FSDataInterface = dynamic_cast<CPluginFSDataInterface*>(PluginData);
+        assert(FSDataInterface != NULL);
+        if (FSDataInterface != NULL)
+        {
+            delete FSDataInterface;
+        }
+    }
+    catch (Exception& E)
+    {
+        PluginBoundaryException("CPluginInterface::ReleasePluginDataInterface", &E, false);
+    }
+    catch (...)
+    {
+        PluginBoundaryException("CPluginInterface::ReleasePluginDataInterface", NULL, false);
     }
 }
 //---------------------------------------------------------------------------

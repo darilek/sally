@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 #include <Common.h>
 #include "NamedObjs.h"
@@ -16,7 +17,7 @@ __fastcall TBookmarks::TBookmarks(): TObject()
   FBookmarkLists = new TStringList();
   FBookmarkLists->Sorted = true;
   FBookmarkLists->CaseSensitive = false;
-  FBookmarkLists->Duplicates = dupError;
+  FBookmarkLists->Duplicates = System::Classes::dupError;
 }
 //---------------------------------------------------------------------------
 __fastcall TBookmarks::~TBookmarks()
@@ -43,8 +44,10 @@ void __fastcall TBookmarks::Load(THierarchicalStorage * Storage)
     if (Storage->OpenSubKey(Keys[i], false))
     {
       TStrings * BookmarkKeys = new TStringList();
-      try
-      {
+      { // try/__finally -> scope guard (bcc64x)
+        FINALLY_GUARD([&]() {
+        delete BookmarkKeys;
+      });
         Storage->GetSubKeyNames(BookmarkKeys);
         for (int Index = 0; Index < BookmarkKeys->Count; Index++)
         {
@@ -69,10 +72,6 @@ void __fastcall TBookmarks::Load(THierarchicalStorage * Storage)
           }
         }
       }
-      __finally
-      {
-        delete BookmarkKeys;
-      }
       Storage->CloseSubKey();
     }
   }
@@ -84,8 +83,10 @@ void __fastcall TBookmarks::LoadLevel(THierarchicalStorage * Storage, const Ansi
   int Index, TBookmarkList * BookmarkList)
 {
   TStrings * Names = new TStringList();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Names;
+  });
     Storage->GetValueNames(Names);
     AnsiString Name;
     AnsiString Directory;
@@ -151,10 +152,6 @@ void __fastcall TBookmarks::LoadLevel(THierarchicalStorage * Storage, const Ansi
         Storage->CloseSubKey();
       }
     }
-  }
-  __finally
-  {
-    delete Names;
   }
 }
 //---------------------------------------------------------------------------

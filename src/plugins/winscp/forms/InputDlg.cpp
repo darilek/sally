@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include "WinInterface.h"
@@ -41,8 +42,10 @@ bool __fastcall InputDialog(const AnsiString ACaption,
   bool Result = False;
   TInputDialogToken Token;
   Form = new TForm(Application, 0); // bypass the VCL streaming (for Salamander)
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete Form;
+  });
     // salam needs to override this in UseSystemSettings
     Form->Position = poMainFormCenter;
     SetCorrectFormParent(Form);
@@ -52,7 +55,7 @@ bool __fastcall InputDialog(const AnsiString ACaption,
       Token.OnInitialize = OnInitialize;
       TNotifyEvent OnShow;
       ((TMethod *)&OnShow)->Data = &Token;
-      ((TMethod *)&OnShow)->Code = InputDialogShow;
+      ((TMethod *)&OnShow)->Code = reinterpret_cast<void *>(InputDialogShow);
       Form->OnShow = OnShow;
     }
     Form->Canvas->Font = Form->Font;
@@ -124,14 +127,14 @@ bool __fastcall InputDialog(const AnsiString ACaption,
     TButton * Button;
     Button = new TButton(Form);
     Button->Parent = Form;
-    Button->Caption = Consts_SMsgDlgOK;
+    Button->Caption = LoadResourceString(&Vcl::Consts::_SMsgDlgOK);
     Button->ModalResult = mrOk;
     Button->Default = True;
     Button->SetBounds(ButtonsStart, ButtonTop, ButtonWidth, ButtonHeight);
 
     Button = new TButton(Form);
     Button->Parent = Form;
-    Button->Caption = Consts_SMsgDlgCancel;
+    Button->Caption = LoadResourceString(&Vcl::Consts::_SMsgDlgCancel);
     Button->ModalResult = mrCancel;
     Button->Cancel = True;
     Button->SetBounds(ButtonsStart + ButtonWidth + ButtonSpace, ButtonTop,
@@ -141,12 +144,12 @@ bool __fastcall InputDialog(const AnsiString ACaption,
     {
       Button = new TButton(Form);
       Button->Parent = Form;
-      Button->Caption = Consts_SMsgDlgHelp;
+      Button->Caption = LoadResourceString(&Vcl::Consts::_SMsgDlgHelp);
       Button->ModalResult = mrNone;
       Button->SetBounds(ButtonsStart + 2 * (ButtonWidth + ButtonSpace), ButtonTop,
         ButtonWidth, ButtonHeight);
       TNotifyEvent OnClick;
-      ((TMethod*)&OnClick)->Code = InputDialogHelp;
+      ((TMethod*)&OnClick)->Code = reinterpret_cast<void *>(InputDialogHelp);
       Button->OnClick = OnClick;
     }
 
@@ -166,10 +169,6 @@ bool __fastcall InputDialog(const AnsiString ACaption,
       }
       Result = true;
     }
-  }
-  __finally
-  {
-    delete Form;
   }
   return Result;
 }

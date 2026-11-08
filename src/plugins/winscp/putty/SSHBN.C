@@ -36,7 +36,7 @@ typedef unsigned long long BignumDblInt;
 	    "=d" (r), "=a" (q) : \
 	    "r" (w), "d" (hi), "a" (lo))
 // MPEXT: Borland does not support inline assembly in IDE
-#elif (defined _MSC_VER && defined _M_IX86) || (defined(MPEXT) && !defined(IDE))
+#elif (defined _MSC_VER && defined _M_IX86) || (defined(MPEXT) && !defined(IDE) && !defined(_WIN64))
 typedef unsigned __int32 BignumInt;
 typedef unsigned __int64 BignumDblInt;
 #define BIGNUM_INT_MASK  0xFFFFFFFFUL
@@ -77,7 +77,7 @@ typedef unsigned long BignumDblInt;
     q = n / w; \
     r = n % w; \
 } while (0)
-#elif defined _LLP64
+#elif defined _LLP64 || defined _WIN64 /* Win64: LLP64 */
 /* 64-bit architectures in which unsigned long is 32 bits, not 64 */
 typedef unsigned long BignumInt;
 typedef unsigned long long BignumDblInt;

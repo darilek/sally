@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <stdio.h>
@@ -587,7 +588,7 @@ AnsiString __fastcall TSessionLog::GetLine(Integer Index)
 //---------------------------------------------------------------------------
 TLogLineType __fastcall TSessionLog::GetType(int Index)
 {
-  return (TLogLineType)Objects[Index - FTopIndex];
+  return (TLogLineType)reinterpret_cast<NativeInt>(Objects[Index - FTopIndex]);
 }
 //---------------------------------------------------------------------------
 void __fastcall TSessionLog::DoAddToParent(TLogLineType Type, const AnsiString & Line)
@@ -663,15 +664,13 @@ void __fastcall TSessionLog::Add(TLogLineType Type, const AnsiString & Line)
 
         BeginUpdate();
 
-        try
-        {
-          DoAdd(Type, Line, DoAddToSelf);
-        }
-        __finally
-        {
+        { // try/__finally -> scope guard (bcc64x)
+          FINALLY_GUARD([&]() {
           DeleteUnnecessary();
 
           EndUpdate();
+        });
+          DoAdd(Type, Line, DoAddToSelf);
         }
       }
     }
@@ -856,8 +855,10 @@ void TSessionLog::StateChange()
 void TSessionLog::DeleteUnnecessary()
 {
   BeginUpdate();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    EndUpdate();
+  });
     if (!Logging || (FParent != NULL))
     {
       Clear();
@@ -870,10 +871,6 @@ void TSessionLog::DeleteUnnecessary()
         FTopIndex++;
       }
     }
-  }
-  __finally
-  {
-    EndUpdate();
   }
 }
 //---------------------------------------------------------------------------
@@ -898,22 +895,24 @@ void __fastcall TSessionLog::DoAddStartupInfo(TSessionData * Data)
   TGuard Guard(FCriticalSection);
 
   BeginUpdate();
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    DeleteUnnecessary();
+
+    EndUpdate();
+  });
     #define ADF(S, F) DoAdd(llMessage, FORMAT(S, F), DoAddToSelf);
     AddSeparator();
     ADF("WinSCP %s (OS %s)", (FConfiguration->VersionStr, FConfiguration->OSVersionStr));
     THierarchicalStorage * Storage = FConfiguration->CreateScpStorage(false);
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      delete Storage;
+    });
       ADF("Configuration: %s", (Storage->Source));
     }
-    __finally
-    {
-      delete Storage;
-    }
 
-    typedef BOOL WINAPI (* TGetUserNameEx)(EXTENDED_NAME_FORMAT NameFormat, LPSTR lpNameBuffer, PULONG nSize);
+    typedef BOOL (WINAPI * TGetUserNameEx)(EXTENDED_NAME_FORMAT NameFormat, LPSTR lpNameBuffer, PULONG nSize);
     HINSTANCE Secur32 = LoadLibrary("secur32.dll");
     TGetUserNameEx GetUserNameEx =
       (Secur32 != NULL) ? (TGetUserNameEx)GetProcAddress(Secur32, "GetUserNameExA") : NULL;
@@ -957,7 +956,7 @@ void __fastcall TSessionLog::DoAddStartupInfo(TSessionData * Data)
     ADF("Ping type: %s, Ping interval: %d sec; Timeout: %d sec",
       (AnsiString(PingTypes[PingType]), PingInterval, Data->Timeout));
     ADF("Proxy: %s", (ProxyMethodList[Data->ProxyMethod]));
-    if (Data->ProxyMethod != pmNone)
+    if (Data->ProxyMethod != ::pmNone)
     {
       ADF("HostName: %s (Port: %d); Username: %s; Passwd: %s",
         (Data->ProxyHost, Data->ProxyPort,
@@ -1052,12 +1051,6 @@ void __fastcall TSessionLog::DoAddStartupInfo(TSessionData * Data)
     AddSeparator();
 
     #undef ADF
-  }
-  __finally
-  {
-    DeleteUnnecessary();
-
-    EndUpdate();
   }
 }
 //---------------------------------------------------------------------------

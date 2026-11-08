@@ -1,6 +1,11 @@
 ﻿//---------------------------------------------------------------------------
 #ifndef QueueH
 #define QueueH
+// forward declarations for friend classes (required by Clang)
+class TTerminalItem;
+class TQueryUserAction;
+class TPromptUserAction;
+class TShowExtendedExceptionAction;
 //---------------------------------------------------------------------------
 #include "Terminal.h"
 #include "FileOperationProgress.h"

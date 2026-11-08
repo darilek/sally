@@ -405,7 +405,7 @@ begin
   // disallow resizing of "invisible" (width=0) columns
   with PHDNotify(Message.NMHdr)^ do
     case Hdr.code of
-      HDN_BEGINTRACK, HDN_TRACK, HDN_BEGINTRACKW, HDN_TRACKW:
+      HDN_BEGINTRACKA, HDN_TRACKA, HDN_BEGINTRACKW, HDN_TRACKW:
         if not ColProperties.Visible[Item] then
         begin
           Message.Result := 1;

@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include "Rights.h"
@@ -457,13 +458,11 @@ bool __fastcall TRightsFrame::IsAncestor(TControl * Control, TControl * Ancestor
 void __fastcall TRightsFrame::WMContextMenu(TWMContextMenu & Message)
 {
   FPopingContextMenu = true;
-  try
-  {
-    TFrame::Dispatch(&Message);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     FPopingContextMenu = false;
+  });
+    TFrame::Dispatch(&Message);
   }
 }
 //---------------------------------------------------------------------------

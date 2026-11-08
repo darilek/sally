@@ -1,0 +1,49 @@
+.\Win64x\Release\putty\SSHDH.o: putty\SSHDH.c putty\ssh.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1\stdio.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1\__config \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1\__config_site \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1\__configuration\abi.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1\__configuration\compiler.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1\__configuration\platform.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1\__configuration\availability.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1\__configuration\language.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\stdio.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\corecrt_stdio_config.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\corecrt.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\_mingw.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\_mingw_mac.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\_mingw_secapi.h \
+  c:\program\ files\ (x86)\embarcadero\studio\37.0\lib\clang\20\include\vadefs.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\vadefs.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\_mingw_off_t.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\swprintf.inl \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\sec_api\stdio_s.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1\string.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\string.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\crtdefs.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\sec_api\string_s.h \
+  putty\puttymem.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\c++\v1\stddef.h \
+  c:\program\ files\ (x86)\embarcadero\studio\37.0\lib\clang\20\include\stddef.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\stddef.h \
+  c:\program\ files\ (x86)\embarcadero\studio\37.0\lib\clang\20\include\__stddef_header_macro.h \
+  c:\program\ files\ (x86)\embarcadero\studio\37.0\lib\clang\20\include\__stddef_ptrdiff_t.h \
+  c:\program\ files\ (x86)\embarcadero\studio\37.0\lib\clang\20\include\__stddef_size_t.h \
+  c:\program\ files\ (x86)\embarcadero\studio\37.0\lib\clang\20\include\__stddef_wchar_t.h \
+  c:\program\ files\ (x86)\embarcadero\studio\37.0\lib\clang\20\include\__stddef_null.h \
+  c:\program\ files\ (x86)\embarcadero\studio\37.0\lib\clang\20\include\__stddef_offsetof.h \
+  putty\tree234.h putty\network.h putty\int64.h putty\misc.h \
+  c:\program\ files\ (x86)\embarcadero\studio\37.0\lib\clang\20\include\stdarg.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\stdarg.h \
+  c:\program\ files\ (x86)\embarcadero\studio\37.0\lib\clang\20\include\__stdarg_header_macro.h \
+  c:\program\ files\ (x86)\embarcadero\studio\37.0\lib\clang\20\include\__stdarg___gnuc_va_list.h \
+  c:\program\ files\ (x86)\embarcadero\studio\37.0\lib\clang\20\include\__stdarg_va_list.h \
+  c:\program\ files\ (x86)\embarcadero\studio\37.0\lib\clang\20\include\__stdarg_va_arg.h \
+  c:\program\ files\ (x86)\embarcadero\studio\37.0\lib\clang\20\include\__stdarg___va_copy.h \
+  c:\program\ files\ (x86)\embarcadero\studio\37.0\lib\clang\20\include\__stdarg_va_copy.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\time.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\sys\timeb.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\sec_api\sys\timeb_s.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\_timeval.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\pthread_time.h \
+  C:\Program\ Files\ (x86)\Embarcadero\Studio\37.0\include\x86_64-w64-mingw32\pthread_compat.h

@@ -18,8 +18,10 @@
 #pragma pack(push, enter_include_spl_gui) // to make structures independent of alignment settings
 #pragma pack(4)
 #endif // _MSC_VER
-#ifdef __BORLANDC__
+#if defined(__BORLANDC__) && !defined(__clang__)
 #pragma option -a4
+#elif defined(__clang__) && !defined(_MSC_VER) // C++Builder bcc64x
+#pragma pack(push, 4)
 #endif // __BORLANDC__
 
 ////////////////////////////////////////////////////////
@@ -2259,6 +2261,8 @@ inline BOOL SPLPrepareToolTipTextForAbiBuffer(CSalamanderGUIAbstract* gui,
 #ifdef _MSC_VER
 #pragma pack(pop, enter_include_spl_gui)
 #endif // _MSC_VER
-#ifdef __BORLANDC__
+#if defined(__BORLANDC__) && !defined(__clang__)
 #pragma option -a
+#elif defined(__clang__) && !defined(_MSC_VER) // C++Builder bcc64x
+#pragma pack(pop)
 #endif // __BORLANDC__

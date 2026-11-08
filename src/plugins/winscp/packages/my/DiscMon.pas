@@ -489,7 +489,7 @@ var
     while Directory < SysHandles + FDirectories.Count do
     begin
       // removed directory
-      if Integer(FDirectories.Objects[Directory - SysHandles]) = 1 then
+      if NativeInt(FDirectories.Objects[Directory - SysHandles]) = 1 then
       begin
         FDirectories.Delete(Directory - SysHandles);
         Assert(OrigDirectory < Count);
@@ -500,7 +500,7 @@ var
       end
         else
       // newly added
-      if Integer(FDirectories.Objects[Directory - SysHandles]) = 2 then
+      if NativeInt(FDirectories.Objects[Directory - SysHandles]) = 2 then
       begin
         Assert(Directory < NewAlloc);
         NewHandles^[Directory] := StartMonitor(FDirectories[Directory - SysHandles], False);
@@ -516,7 +516,7 @@ var
       end
         else
       begin
-        Assert(Integer(FDirectories.Objects[Directory - SysHandles]) = 0);
+        Assert(NativeInt(FDirectories.Objects[Directory - SysHandles]) = 0);
         Assert(Directory < NewAlloc);
         Assert(OrigDirectory < Count);
         NewHandles^[Directory] := Handles^[OrigDirectory];

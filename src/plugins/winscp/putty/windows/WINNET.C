@@ -125,7 +125,7 @@ static tree234 *sktree;
 static int cmpfortree(void *av, void *bv)
 {
     Actual_Socket a = (Actual_Socket) av, b = (Actual_Socket) bv;
-    unsigned long as = (unsigned long) a->s, bs = (unsigned long) b->s;
+    UINT_PTR as = (UINT_PTR) a->s, bs = (UINT_PTR) b->s; /* SOCKET is 64-bit on Win64 */
     if (as < bs)
 	return -1;
     if (as > bs)
@@ -140,7 +140,7 @@ static int cmpfortree(void *av, void *bv)
 static int cmpforsearch(void *av, void *bv)
 {
     Actual_Socket b = (Actual_Socket) bv;
-    unsigned long as = (unsigned long) av, bs = (unsigned long) b->s;
+    UINT_PTR as = (UINT_PTR) av, bs = (UINT_PTR) b->s; /* SOCKET is 64-bit on Win64 */
     if (as < bs)
 	return -1;
     if (as > bs)
@@ -1004,7 +1004,8 @@ static DWORD try_connect(Actual_Socket sock,
 #ifdef MPEXT
     if (timeout > 0)
     {
-        if (p_getsockopt (s, SOL_SOCKET, SO_RCVTIMEO, (char *)&rcvtimeo, &rcvtimeo) < 0)
+        int rcvtimeolen = sizeof(rcvtimeo);
+        if (p_getsockopt (s, SOL_SOCKET, SO_RCVTIMEO, (char *)&rcvtimeo, &rcvtimeolen) < 0)
         {
             rcvtimeo.tv_sec = -1;
         }

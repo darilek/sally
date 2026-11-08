@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Common.h>
@@ -26,8 +27,10 @@ bool __fastcall DoCopyDialog(bool ToRemote,
 {
   bool Result;
   TCopyDialog *CopyDialog = new TCopyDialog(Application);
-  try
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
+    delete CopyDialog;
+  });
     if (FLAGSET(CopyParamAttrs, cpaNoTransferMode))
     {
       // If local and remote EOL types are the same, there is no need
@@ -55,10 +58,6 @@ bool __fastcall DoCopyDialog(bool ToRemote,
         *OutputOptions = CopyDialog->OutputOptions;
       }
     }
-  }
-  __finally
-  {
-    delete CopyDialog;
   }
   return Result;
 }
@@ -275,7 +274,7 @@ void __fastcall TCopyDialog::SetDirectory(AnsiString value)
   if (!value.IsEmpty())
   {
     value = RemotePaths() ?
-      UnixIncludeTrailingBackslash(value) : IncludeTrailingBackslash(value);
+      UnixIncludeTrailingBackslash(value) : AnsiString(IncludeTrailingBackslash(value));
   }
   DirectoryEdit->Text = value + GetFileMask();
 }
@@ -378,8 +377,10 @@ bool __fastcall TCopyDialog::Execute()
   if (Result)
   {
     Configuration->BeginUpdate();
-    try
-    {
+    { // try/__finally -> scope guard (bcc64x)
+      FINALLY_GUARD([&]() {
+      Configuration->EndUpdate();
+    });
       if (FLAGSET(OutputOptions, cooSaveSettings) &&
           FLAGCLEAR(Options, coDisableSaveSettings))
       {
@@ -388,10 +389,6 @@ bool __fastcall TCopyDialog::Execute()
       DirectoryEdit->SaveToHistory();
       CustomWinConfiguration->History[ToRemote ?
         "RemoteTarget" : "LocalTarget"] = DirectoryEdit->Items;
-    }
-    __finally
-    {
-      Configuration->EndUpdate();
     }
   }
   return Result;

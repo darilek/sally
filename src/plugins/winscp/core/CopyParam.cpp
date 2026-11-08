@@ -273,12 +273,12 @@ AnsiString __fastcall TCopyParamType::ValidLocalFileName(AnsiString FileName) co
     while ((InvalidChar = strpbrk(InvalidChar, Chars)) != NULL)
     {
       int Pos = (InvalidChar - FileName.c_str() + 1);
-      char Char;
+      char Ch;
       if ((InvalidCharsReplacement == TokenReplacement) &&
           (*InvalidChar == TokenPrefix) &&
           (((FileName.Length() - Pos) <= 1) ||
-           (((Char = HexToChar(FileName.SubString(Pos + 1, 2))) == '\0') ||
-            (FTokenizibleChars.Pos(Char) == 0))))
+           (((Ch = HexToChar(FileName.SubString(Pos + 1, 2))) == '\0') ||
+            (FTokenizibleChars.Pos(Ch) == 0))))
       {
         InvalidChar++;
       }
@@ -323,12 +323,12 @@ AnsiString __fastcall TCopyParamType::RestoreChars(AnsiString FileName) const
           (FileName.ByteType(Index + 2) == mbSingleByte))
       {
         AnsiString Hex = FileName.SubString(Index + 1, 2);
-        char Char = HexToChar(Hex);
-        if ((Char != '\0') &&
-            ((FTokenizibleChars.Pos(Char) > 0) ||
-             (((Char == ' ') || (Char == '.')) && (Index == FileName.Length() - 2))))
+        char Ch = HexToChar(Hex);
+        if ((Ch != '\0') &&
+            ((FTokenizibleChars.Pos(Ch) > 0) ||
+             (((Ch == ' ') || (Ch == '.')) && (Index == FileName.Length() - 2))))
         {
-          FileName[Index] = Char;
+          FileName[Index] = Ch;
           FileName.Delete(Index + 1, 2);
           InvalidChar = FileName.c_str() + Index;
         }
@@ -619,7 +619,7 @@ AnsiString __fastcall SetSpeedLimit(unsigned long Limit)
   }
   else
   {
-    Text = IntToStr(Limit / 1024);
+    Text = IntToStr((__int64)(Limit / 1024));
   }
   return Text;
 }

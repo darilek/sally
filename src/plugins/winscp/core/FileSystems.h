@@ -21,9 +21,9 @@ enum TFSCommand { fsNull = 0, fsVarValue, fsLastLine, fsFirstLine,
   fsHomeDirectory, fsUnset, fsUnalias, fsCreateLink, fsCopyFile,
   fsAnyCommand, fsReadSymlink, fsChangeProperties, fsMoveFile };
 //---------------------------------------------------------------------------
-const dfNoRecursive = 0x01;
-const dfAlternative = 0x02;
-const dfForceDelete = 0x04;
+const int dfNoRecursive = 0x01;
+const int dfAlternative = 0x02;
+const int dfForceDelete = 0x04;
 //---------------------------------------------------------------------------
 class TCustomFileSystem
 {

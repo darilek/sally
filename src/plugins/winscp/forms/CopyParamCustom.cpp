@@ -1,5 +1,6 @@
 ﻿//---------------------------------------------------------------------------
 #include <vcl.h>
+#include <Finally.h>
 #pragma hdrstop
 
 #include <Common.h>
@@ -22,13 +23,11 @@ bool __fastcall DoCopyParamCustomDialog(TCopyParamType & CopyParam,
   bool Result;
   TCopyParamCustomDialog * Dialog = new TCopyParamCustomDialog(
     Application, CopyParamAttrs, 0);
-  try
-  {
-    Result = Dialog->Execute(CopyParam);
-  }
-  __finally
-  {
+  { // try/__finally -> scope guard (bcc64x)
+    FINALLY_GUARD([&]() {
     delete Dialog;
+  });
+    Result = Dialog->Execute(CopyParam);
   }
   return Result;
 }

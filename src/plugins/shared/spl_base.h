@@ -17,8 +17,10 @@
 #pragma pack(4)
 #pragma warning(3 : 4706) // warning C4706: assignment within conditional expression
 #endif                    // _MSC_VER
-#ifdef __BORLANDC__
+#if defined(__BORLANDC__) && !defined(__clang__)
 #pragma option -a4
+#elif defined(__clang__) && !defined(_MSC_VER) // C++Builder bcc64x
+#pragma pack(push, 4)
 #endif // __BORLANDC__
 
 // in debug version we will test whether source and destination memory overlap (for memcpy they must not overlap)
@@ -850,7 +852,7 @@ typedef int(WINAPI* FSalamanderPluginGetSDKVer)();
 // http://msdn.microsoft.com/en-us/library/windows/desktop/dn424964%28v=vs.85%29.aspx
 //
 
-#ifdef __BORLANDC__
+#if defined(__BORLANDC__) && !defined(__clang__)
 inline void* SecureZeroMemory(void* ptr, int cnt)
 {
     char* vptr = (char*)ptr;
@@ -995,6 +997,8 @@ M1xA_findPartTemplate(DWORD)
 #ifdef _MSC_VER
 #pragma pack(pop, enter_include_spl_base)
 #endif // _MSC_VER
-#ifdef __BORLANDC__
+#if defined(__BORLANDC__) && !defined(__clang__)
 #pragma option -a
+#elif defined(__clang__) && !defined(_MSC_VER) // C++Builder bcc64x
+#pragma pack(pop)
 #endif // __BORLANDC__

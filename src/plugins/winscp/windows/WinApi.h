@@ -90,7 +90,7 @@ typedef struct tagCHANGEFILTERSTRUCT {
 #define MSGFLT_ALLOW                            (1)
 #define MSGFLT_DISALLOW                         (2)
 
-typedef BOOL WINAPI (* ChangeWindowMessageFilterExProc)(
+typedef BOOL (WINAPI * ChangeWindowMessageFilterExProc)(
     HWND hwnd, UINT message, DWORD action, PCHANGEFILTERSTRUCT pChangeFilterStruct);
 //---------------------------------------------------------------------------
 #endif  // WinApiH

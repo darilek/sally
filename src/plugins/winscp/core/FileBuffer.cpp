@@ -71,13 +71,13 @@ DWORD __fastcall TFileBuffer::ReadStream(TStream * Stream, const DWORD Len, bool
     }
     else
     {
-      Result = Stream->Read(Data + Position, Len);
+      Result = Stream->Read(Data + Position, (int)Len);
     }
     if (Result != Len)
     {
       Size = Size - Len + Result;
     }
-    FMemory->Seek(Len, soFromCurrent);
+    FMemory->Seek((__int64)Len, soCurrent);
   }
   catch(EReadError &)
   {
@@ -88,7 +88,7 @@ DWORD __fastcall TFileBuffer::ReadStream(TStream * Stream, const DWORD Len, bool
 //---------------------------------------------------------------------------
 DWORD __fastcall TFileBuffer::LoadStream(TStream * Stream, const DWORD Len, bool ForceLen)
 {
-  FMemory->Seek(0, soFromBeginning);
+  FMemory->Seek((__int64)0, soBeginning);
   return ReadStream(Stream, Len, ForceLen);
 }
 //---------------------------------------------------------------------------
@@ -227,7 +227,7 @@ void __fastcall TFileBuffer::WriteToStream(TStream * Stream, const DWORD Len)
   try
   {
     Stream->WriteBuffer(Data + Position, Len);
-    FMemory->Seek(Len, soFromCurrent);
+    FMemory->Seek((__int64)Len, soCurrent);
   }
   catch(EWriteError &)
   {

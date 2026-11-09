@@ -101,7 +101,14 @@ CPluginDataInterface::CompareFilesFromFS(const CFileData* file1, const CFileData
     const CSftpFileData* a = DataOf(file1);
     const CSftpFileData* b = DataOf(file2);
     if (a != NULL && b != NULL)
-        return CompareRawNames(a->rawName, b->rawName); // by the raw bytes: different items never compare equal
+    {
+        // by the raw bytes; two different items must never compare equal (SDK rule), so identical names fall back
+        // to the address (arbitrary but stable while the listing lives)
+        const int byName = CompareRawNames(a->rawName, b->rawName);
+        if (byName != 0 || file1 == file2)
+            return byName;
+        return file1 < file2 ? -1 : 1;
+    }
     if (a == NULL && b == NULL)
         return 0; // both are the up-dir item
     return a == NULL ? -1 : 1;

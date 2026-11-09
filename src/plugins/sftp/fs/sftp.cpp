@@ -206,7 +206,9 @@ void WINAPI
 CPluginInterface::LoadConfiguration(HWND parent, HKEY regKey, CSalamanderRegistryAbstract* registry)
 {
     CALL_STACK_MESSAGE1("CPluginInterface::LoadConfiguration(, ,)");
-    SiteConfig.Load(regKey, registry); // catches everything itself
+    // catches everything itself; a read-only (newer version) configuration is reported when the user tries to
+    // change the site list, not with a message box during Sally's startup
+    SiteConfig.Load(regKey, registry);
 }
 
 void WINAPI

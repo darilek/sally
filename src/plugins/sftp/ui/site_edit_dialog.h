@@ -17,6 +17,7 @@ struct CSiteEditResult
     bool passwordTyped = false;
     CSecret passphrase;
     bool passphraseTyped = false;
+    bool forgetSecrets = false; // "forget the stored password and passphrase" was ticked; the typed secrets are empty
 };
 
 // The text that belongs to a validation error (also used by the rename dialog).
@@ -70,7 +71,7 @@ class CSiteEditDialog : public CCenteredDialog
 public:
     // existing == NULL: a new site (defaults). Otherwise the site to edit; its name may stay (changing only the
     // letter case is fine). 'sites' is used for the duplicate-name check. hasPassword/hasPassphrase: a secret is
-    // already stored (the hint "leave empty to keep it" is shown).
+    // already stored (the hint "leave empty to keep it" and the "forget" check box are shown).
     CSiteEditDialog(HWND parent, const CSiteList& sites, const CSite* existing, bool hasPassword, bool hasPassphrase);
 
     // True: OK, result is filled. False: Cancel.

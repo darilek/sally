@@ -86,7 +86,7 @@ void KbdCallback(const char* name, int nameLen, const char* instruction, int ins
         else if (ctx->cb != nullptr && !ctx->cancelled->load())
         {
             const std::string promptText(reinterpret_cast<const char*>(prompts[i].text), prompts[i].length);
-            if (!ctx->cb->Prompt(std::string(name, nameLen > 0 ? nameLen : 0),
+            if (!ctx->cb->Prompt(PromptKind::KeyboardInteractive, std::string(name, nameLen > 0 ? nameLen : 0),
                                  std::string(instruction, instructionLen > 0 ? instructionLen : 0), promptText,
                                  prompts[i].echo != 0, answer))
                 ctx->declined = true;
@@ -138,7 +138,7 @@ bool CSshSession::AuthPuttyKey(const CSecret& file, const CSshSite& site, CAuthS
     if (passphrase.empty() && PpkIsEncrypted(file) && cb_ != nullptr && !state.passphraseAsked)
     {
         state.passphraseAsked = true;
-        if (!cb_->Prompt("", "", "Passphrase for " + site.keyFile + ":", false, passphrase))
+        if (!cb_->Prompt(PromptKind::KeyPassphrase, "", "", site.keyFile, false, passphrase))
         {
             state.declined = true;
             return false;
@@ -186,7 +186,7 @@ bool CSshSession::AuthKeyFile(const CSshSite& site, CAuthState& state)
         {
             state.passphraseAsked = true;
             CSecret entered;
-            if (!cb_->Prompt("", "", "Passphrase for " + site.keyFile + ":", false, entered))
+            if (!cb_->Prompt(PromptKind::KeyPassphrase, "", "", site.keyFile, false, entered))
             {
                 state.declined = true;
                 return false;

@@ -175,3 +175,11 @@ TEST(SiteEdit, ConnectPath)
     EXPECT_TRUE(back.isSite);
     EXPECT_EQ(back.siteName, L"My Site");
 }
+
+TEST(SiteEdit, ForgetSecretsRules)
+{
+    EXPECT_FALSE(ShouldClearSecrets(true, false)); // remember on, nothing ticked: keep (or store typed)
+    EXPECT_TRUE(ShouldClearSecrets(true, true));   // forget wins even while remember stays ticked
+    EXPECT_TRUE(ShouldClearSecrets(false, false)); // remember off drops them
+    EXPECT_TRUE(ShouldClearSecrets(false, true));
+}

@@ -194,9 +194,9 @@ struct CPromptCallbacks : ISshCallbacks
     {
         return HostKeyDecision::AcceptOnce;
     }
-    bool Prompt(const std::string&, const std::string&, const std::string& text, bool, CSecret& answer) override
+    bool Prompt(PromptKind kind, const std::string&, const std::string&, const std::string&, bool, CSecret& answer) override
     {
-        if (text.rfind("Passphrase for", 0) != 0)
+        if (kind != PromptKind::KeyPassphrase)
         {
             answer.assign(std::string()); // a keyboard-interactive prompt after the key failed: empty answer
             return true;

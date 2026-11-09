@@ -19,7 +19,7 @@ struct CNoCallbacks : ISshCallbacks
     {
         return HostKeyDecision::AcceptOnce;
     }
-    bool Prompt(const std::string&, const std::string&, const std::string&, bool, CSecret&) override { return false; }
+    bool Prompt(PromptKind, const std::string&, const std::string&, const std::string&, bool, CSecret&) override { return false; }
     bool Progress(uint64_t, uint64_t) override { return true; }
 };
 

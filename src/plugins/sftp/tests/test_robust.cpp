@@ -20,7 +20,7 @@ struct CCallbacks : ISshCallbacks
     {
         return HostKeyDecision::AcceptOnce;
     }
-    bool Prompt(const std::string&, const std::string&, const std::string&, bool, CSecret& answer) override
+    bool Prompt(PromptKind, const std::string&, const std::string&, const std::string&, bool, CSecret& answer) override
     {
         ++prompts;
         std::this_thread::sleep_for(std::chrono::milliseconds(promptDelayMs));

@@ -26,6 +26,11 @@ struct CSiteForm
     std::wstring initialLocalPath;
 };
 
+// What the site edit dialog does with the remembered secrets after OK: they are dropped when "remember" is off or
+// the user ticked "forget the stored password and passphrase" (typed text is then ignored). Otherwise typed secrets
+// replace the stored ones and the rest is kept.
+bool ShouldClearSecrets(bool rememberPassword, bool forgetSecrets);
+
 // The control a SiteError refers to.
 enum class SiteField
 {

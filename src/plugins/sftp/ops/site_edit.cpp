@@ -32,6 +32,11 @@ bool ParseNumber(const std::wstring& text, long& value)
 }
 } // namespace
 
+bool ShouldClearSecrets(bool rememberPassword, bool forgetSecrets)
+{
+    return forgetSecrets || !rememberPassword;
+}
+
 CSiteForm FormFromSite(const CSite& site)
 {
     CSiteForm form;

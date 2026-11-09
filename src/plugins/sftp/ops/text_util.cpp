@@ -38,16 +38,16 @@ bool EnsureDirectory(const std::wstring& path)
     return GetLastError() == ERROR_ALREADY_EXISTS;
 }
 
-std::wstring DescribeSshError(const CSshError& error)
+std::wstring DescribeSshError(const CSshError& error, const CSshErrorLabels& labels)
 {
     std::wstring text = CNameCodec::Utf8().Decode(error.message);
     if (text.empty())
-        text = L"Unknown error";
+        text = labels.unknown;
     if (error.libssh2Code != 0)
     {
-        text += L" (code " + std::to_wstring(error.libssh2Code);
+        text += L" (" + labels.code + L" " + std::to_wstring(error.libssh2Code);
         if (error.sftpStatus != 0)
-            text += L", SFTP status " + std::to_wstring(error.sftpStatus);
+            text += L", " + labels.sftpStatus + L" " + std::to_wstring(error.sftpStatus);
         text += L")";
     }
     return text;

@@ -102,4 +102,12 @@ STRINGTABLE
  IDS_SITE_SAVE_FAILED,       "The site could not be saved."
  // plugin menu
  IDS_MENU_CONNECT,           "&Connect..."
+ // the saved sites were written by a newer plugin version
+ IDS_SITES_READONLY,         "The saved sites were written by a newer version of the SFTP plugin. They are not loaded and will not be changed by this version, so New, Edit, Delete, Rename and Duplicate are unavailable. Install the newer plugin version to manage them."
+ // key passphrase prompt (argument: key file)
+ IDS_PROMPT_PASSPHRASE,      "Passphrase for %ls:"
+ // pieces of an error text: "message (code N, SFTP status M)"; "Unknown error" when there is no message
+ IDS_ERR_UNKNOWN,            "Unknown error"
+ IDS_ERR_CODE,               "code"
+ IDS_ERR_SFTP_STATUS,        "SFTP status"
 }

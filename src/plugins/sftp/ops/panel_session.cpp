@@ -403,14 +403,15 @@ HostKeyDecision CPanelSession::VerifyHostKey(const std::string& host, int port, 
     return WaitForAnswer(lock) ? hostKeyAnswer_ : HostKeyDecision::Reject;
 }
 
-bool CPanelSession::Prompt(const std::string& name, const std::string& instruction, const std::string& promptText,
-                           bool echo, CSecret& answer)
+bool CPanelSession::Prompt(PromptKind kind, const std::string& name, const std::string& instruction,
+                           const std::string& promptText, bool echo, CSecret& answer)
 {
     std::unique_lock<std::mutex> lock(mutex_);
     if (AbortRequested())
         return false;
     interaction_ = CInteraction();
     interaction_.kind = CInteraction::Kind::Prompt;
+    interaction_.promptKind = kind;
     interaction_.name = name;
     interaction_.instruction = instruction;
     interaction_.promptText = promptText;

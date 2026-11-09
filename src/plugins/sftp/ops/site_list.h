@@ -30,8 +30,18 @@ SiteError ValidateSiteName(const std::wstring& name);
 // Name (ValidateSiteName) and every other field. Does not look at other sites (uniqueness is the list's job).
 SiteError ValidateSite(const CSite& site);
 
+// Case-insensitive (ordinal) comparison of two site names: <0, 0, >0. This is the ONE definition of "same name";
+// everything that keys data by site name (the secrets map, the list) must use it.
+int CompareSiteNames(const std::wstring& a, const std::wstring& b);
+
 // Case-insensitive (ordinal) equality of two site names.
 bool SiteNamesEqual(const std::wstring& a, const std::wstring& b);
+
+// Ordering for std::map keyed by site name: two names are the same key exactly when SiteNamesEqual says so.
+struct SiteNameLess
+{
+    bool operator()(const std::wstring& a, const std::wstring& b) const { return CompareSiteNames(a, b) < 0; }
+};
 
 class CSiteList
 {

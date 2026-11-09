@@ -80,6 +80,13 @@ enum class HostKeyDecision
     AcceptAndSave
 };
 
+// What a Prompt callback asks for. The core sends no user-facing text of its own: the UI words KeyPassphrase itself.
+enum class PromptKind
+{
+    KeyboardInteractive, // name/instruction/promptText are the server's own texts
+    KeyPassphrase        // promptText is the key file (UTF-8); name and instruction are empty
+};
+
 // Implemented by the layer above (UI or tests). Called on the thread that owns the session.
 class ISshCallbacks
 {
@@ -91,7 +98,7 @@ public:
                                           const std::string& fingerprintSha256, bool changed) = 0;
 
     // Keyboard-interactive prompt or passphrase request. Returns false when the user cancels.
-    virtual bool Prompt(const std::string& name, const std::string& instruction, const std::string& promptText,
+    virtual bool Prompt(PromptKind kind, const std::string& name, const std::string& instruction, const std::string& promptText,
                         bool echo, CSecret& answer) = 0;
 
     // Transfer progress; return false to cancel. total may be 0 when unknown.

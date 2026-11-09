@@ -30,7 +30,7 @@ struct CAuthCallbacks : ISshCallbacks
     {
         return HostKeyDecision::AcceptOnce;
     }
-    bool Prompt(const std::string&, const std::string&, const std::string& text, bool echo, CSecret& answer) override
+    bool Prompt(PromptKind, const std::string&, const std::string&, const std::string& text, bool echo, CSecret& answer) override
     {
         ++prompts;
         promptTexts.push_back(text);

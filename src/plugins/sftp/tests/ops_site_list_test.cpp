@@ -1,6 +1,8 @@
 // Tests for ops/site_list (site list, name rules, validation) and the known_hosts path helpers.
 #include <gtest/gtest.h>
 
+#include <map>
+
 #include "site_list.h"
 #include "site_path.h"
 #include "text_util.h"
@@ -183,4 +185,28 @@ TEST(KnownHostsPaths, OwnAndUserPaths)
     ASSERT_GT(user.size(), 20u);
     EXPECT_EQ(user[1], L':');
     EXPECT_EQ(user.substr(user.size() - 17), L"\\.ssh\\known_hosts");
+}
+
+// The secrets map is keyed with SiteNameLess; it must agree with the list about which names are the same.
+TEST(SiteList, NameKeyAgreesWithListEquality)
+{
+    const std::wstring names[] = {L"k",       L"K",        std::wstring(1, 0x212A) /* KELVIN SIGN */,
+                                  L"i",       L"I",        std::wstring(1, 0x0130) /* I WITH DOT ABOVE */,
+                                  std::wstring(1, 0x0131) /* DOTLESS I */, L"ß" /* sharp s */, L"SS", L"Work", L"work", L""};
+    for (const std::wstring& a : names)
+    {
+        for (const std::wstring& b : names)
+        {
+            const bool sameKey = !SiteNameLess()(a, b) && !SiteNameLess()(b, a);
+            EXPECT_EQ(SiteNamesEqual(a, b), sameKey);
+
+            CSiteList list;
+            if (list.Add(MakeSite(a)))
+                EXPECT_EQ(list.Find(b) != nullptr, sameKey);
+        }
+    }
+    std::map<std::wstring, int, SiteNameLess> secrets;
+    secrets[L"Work"] = 1;
+    EXPECT_EQ(secrets.count(L"WORK"), 1u);
+    EXPECT_EQ(secrets.count(L"Other"), 0u);
 }

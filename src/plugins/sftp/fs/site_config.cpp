@@ -19,14 +19,6 @@ const int kMaxSites = 100000; // guards the load loop against a registry that ne
 
 typedef std::vector<BYTE> CBlob;
 
-std::wstring SecretsKey(const std::wstring& name)
-{
-    std::wstring key = name;
-    if (!key.empty())
-        CharLowerBuffW(&key[0], static_cast<DWORD>(key.size()));
-    return key;
-}
-
 void WipeBlob(CBlob& blob)
 {
     if (!blob.empty())
@@ -281,13 +273,13 @@ void SaveSite(CSalamanderRegistryAbstract* registry, HKEY key, const CSite& site
 
 CStoredSecrets* CSiteConfig::FindSecrets(const std::wstring& siteName)
 {
-    auto it = secrets_.find(SecretsKey(siteName));
+    auto it = secrets_.find(siteName);
     return it == secrets_.end() ? nullptr : &it->second;
 }
 
 const CStoredSecrets* CSiteConfig::FindSecrets(const std::wstring& siteName) const
 {
-    auto it = secrets_.find(SecretsKey(siteName));
+    auto it = secrets_.find(siteName);
     return it == secrets_.end() ? nullptr : &it->second;
 }
 
@@ -305,7 +297,7 @@ bool CSiteConfig::HasPassphrase(const std::wstring& siteName) const
 
 void CSiteConfig::ClearSecrets(const std::wstring& siteName)
 {
-    auto it = secrets_.find(SecretsKey(siteName));
+    auto it = secrets_.find(siteName);
     if (it == secrets_.end())
         return;
     WipeBlob(it->second.password);
@@ -313,9 +305,21 @@ void CSiteConfig::ClearSecrets(const std::wstring& siteName)
     secrets_.erase(it);
 }
 
+bool CSiteConfig::AddSite(const CSite& site)
+{
+    try
+    {
+        return !readOnly_ && list_.Add(site);
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
 bool CSiteConfig::RemoveSite(const std::wstring& name)
 {
-    if (!list_.Remove(name))
+    if (readOnly_ || !list_.Remove(name))
         return false;
     ClearSecrets(name);
     return true;
@@ -323,11 +327,13 @@ bool CSiteConfig::RemoveSite(const std::wstring& name)
 
 bool CSiteConfig::UpdateSite(const std::wstring& name, const CSite& site)
 {
+    if (readOnly_)
+        return false;
     try
     {
-        const std::wstring oldKey = SecretsKey(name);
-        const std::wstring newKey = SecretsKey(site.name);
-        if (oldKey != newKey)
+        const std::wstring oldKey = name;
+        const std::wstring newKey = site.name;
+        if (!SiteNamesEqual(oldKey, newKey))
         {
             auto it = secrets_.find(oldKey);
             if (it != secrets_.end())
@@ -375,13 +381,15 @@ bool CSiteConfig::UpdateSite(const std::wstring& name, const CSite& site)
 
 std::wstring CSiteConfig::DuplicateSite(const std::wstring& name)
 {
+    if (readOnly_)
+        return std::wstring();
     try
     {
         const CStoredSecrets* source = FindSecrets(name);
         const CStoredSecrets copy = source != nullptr ? *source : CStoredSecrets();
         const std::wstring newName = list_.Duplicate(name);
         if (!newName.empty() && !copy.IsEmpty())
-            secrets_[SecretsKey(newName)] = copy;
+            secrets_[newName] = copy;
         return newName;
     }
     catch (...)
@@ -418,7 +426,7 @@ bool CSiteConfig::SetSecret(const std::wstring& siteName, bool passphrase, const
 {
     try
     {
-        if (list_.Find(siteName) == nullptr)
+        if (readOnly_ || list_.Find(siteName) == nullptr)
             return false;
         if (secret.empty())
         {
@@ -426,7 +434,7 @@ bool CSiteConfig::SetSecret(const std::wstring& siteName, bool passphrase, const
             {
                 WipeBlob(passphrase ? stored->passphrase : stored->password);
                 if (stored->IsEmpty())
-                    secrets_.erase(SecretsKey(siteName));
+                    secrets_.erase(siteName);
             }
             return true;
         }
@@ -439,7 +447,7 @@ bool CSiteConfig::SetSecret(const std::wstring& siteName, bool passphrase, const
         CBlob blob;
         if (!EncryptSecret(secret, aes, blob))
             return false;
-        CStoredSecrets& stored = secrets_[SecretsKey(siteName)];
+        CStoredSecrets& stored = secrets_[siteName];
         CBlob& target = passphrase ? stored.passphrase : stored.password;
         WipeBlob(target);
         target.swap(blob);
@@ -487,6 +495,7 @@ bool CSiteConfig::ReencryptAll(bool encrypt)
 void CSiteConfig::Load(HKEY regKey, CSalamanderRegistryAbstract* registry)
 {
     loaded_ = false;
+    readOnly_ = false;
     try
     {
         list_.Clear();
@@ -507,6 +516,7 @@ void CSiteConfig::Load(HKEY regKey, CSalamanderRegistryAbstract* registry)
         if (version > kCurrentVersion)
         {
             TRACE_E("SFTP: configuration version " << version << " is newer than supported; sites are not loaded or saved.");
+            readOnly_ = true;
             return;
         }
 
@@ -524,7 +534,7 @@ void CSiteConfig::Load(HKEY regKey, CSalamanderRegistryAbstract* registry)
                 registry->CloseKey(itemKey);
                 // an unreadable or clashing entry is dropped (it is rewritten without it on the next save)
                 if (read && list_.Add(site) && !secrets.IsEmpty())
-                    secrets_[SecretsKey(site.name)] = secrets;
+                    secrets_[site.name] = secrets;
             }
             registry->CloseKey(sitesKey);
         }
@@ -539,10 +549,30 @@ void CSiteConfig::Load(HKEY regKey, CSalamanderRegistryAbstract* registry)
     }
 }
 
-void CSiteConfig::Save(HKEY regKey, CSalamanderRegistryAbstract* registry)
+namespace
 {
-    if (!loaded_ || regKey == nullptr || registry == nullptr)
-        return;
+// Sally calls this from CallLoadOrSaveConfiguration with the plugin's registry key.
+void WINAPI SaveNowCallback(BOOL load, HKEY regKey, CSalamanderRegistryAbstract* registry, void* param)
+{
+    if (!load && regKey != nullptr)
+        static_cast<CSiteConfig*>(param)->Save(regKey, registry);
+}
+} // namespace
+
+void CSiteConfig::SaveNow()
+{
+    // writes the registry now; needs the FUNCTION_LOADSAVECONFIGURATION flag set in SalamanderPluginEntry
+    SalamanderGeneral->CallLoadOrSaveConfiguration(FALSE, SaveNowCallback, this);
+}
+
+// The sites are written over the existing numbered subkeys (a failure half-way leaves old data, not a hole), then
+// the surplus subkeys are deleted. A site that cannot be written is skipped; the numbers stay contiguous so Load,
+// which stops at the first missing number, still reads the rest.
+bool CSiteConfig::Save(HKEY regKey, CSalamanderRegistryAbstract* registry)
+{
+    if (!loaded_ || readOnly_ || regKey == nullptr || registry == nullptr)
+        return true; // nothing to write is not a failure
+    bool allWritten = true;
     try
     {
         EnsureDirectory(AppDataSallyDir()); // known_hosts and other plugin files live there
@@ -550,21 +580,38 @@ void CSiteConfig::Save(HKEY regKey, CSalamanderRegistryAbstract* registry)
 
         HKEY sitesKey;
         if (!registry->CreateKey(regKey, kSitesKey, sitesKey))
-            return;
-        registry->ClearKey(sitesKey);
+            return false;
+        int written = 0;
         for (size_t i = 0; i < list_.Count(); i++)
         {
             HKEY itemKey;
-            if (!registry->CreateKey(sitesKey, std::to_wstring(i + 1).c_str(), itemKey))
-                break;
+            if (!registry->CreateKey(sitesKey, std::to_wstring(written + 1).c_str(), itemKey))
+            {
+                allWritten = false;
+                continue;
+            }
+            registry->ClearKey(itemKey); // drop the values of the site that used to have this number
             const CSite& site = list_.At(i);
             SaveSite(registry, itemKey, site, FindSecrets(site.name));
             registry->CloseKey(itemKey);
+            written++;
+        }
+        // surplus subkeys of deleted sites
+        for (int n = written + 1; n <= kMaxSites; n++)
+        {
+            const std::wstring name = std::to_wstring(n);
+            HKEY itemKey;
+            if (!registry->OpenKey(sitesKey, name.c_str(), itemKey))
+                break;
+            registry->CloseKey(itemKey);
+            registry->DeleteKey(sitesKey, name.c_str());
         }
         registry->CloseKey(sitesKey);
     }
     catch (...)
     {
         TRACE_E("SFTP: out of memory while saving the sites.");
+        return false;
     }
+    return allWritten;
 }

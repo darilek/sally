@@ -248,11 +248,14 @@ void CSiteEditDialog::ShowTab(int index)
 // follows its encoding.
 void CSiteEditDialog::UpdateEnabled()
 {
-    const bool remember = IsChecked(session_.Control(IDX_SITE_REMEMBER));
+    // a ticked "forget" drops the stored secrets on OK, so the "leave empty to keep it" hints would be wrong
+    const bool remember = IsChecked(session_.Control(IDX_SITE_REMEMBER)) && !IsChecked(session_.Control(IDX_SITE_FORGET));
     SetWindowTextW(session_.Control(IDC_SITE_PASSWORD_HINT),
                    remember && hasPassword_ ? LangStr(IDS_SITE_KEEP_PASSWORD).c_str() : L"");
     SetWindowTextW(auth_.Control(IDC_SITE_PASSPHRASE_HINT),
                    remember && hasPassphrase_ ? LangStr(IDS_SITE_KEEP_PASSPHRASE).c_str() : L"");
+    // "Forget" only makes sense while something is stored
+    ShowWindow(session_.Control(IDX_SITE_FORGET), hasPassword_ || hasPassphrase_ ? SW_SHOW : SW_HIDE);
     EnableWindow(connection_.Control(IDE_SITE_CODEPAGE), IsChecked(connection_.Control(IDR_SITE_ENC_CODEPAGE)));
 }
 
@@ -275,6 +278,7 @@ void CSiteEditDialog::OnPageCommand(int id, int notifyCode)
     switch (id)
     {
     case IDX_SITE_REMEMBER:
+    case IDX_SITE_FORGET:
     case IDR_SITE_ENC_UTF8:
     case IDR_SITE_ENC_AUTO:
     case IDR_SITE_ENC_CODEPAGE:
@@ -377,7 +381,8 @@ bool CSiteEditDialog::TryAccept()
 
     result_ = CSiteEditResult();
     result_.site = std::move(site);
-    if (result_.site.rememberPassword)
+    result_.forgetSecrets = (hasPassword_ || hasPassphrase_) && IsChecked(session_.Control(IDX_SITE_FORGET));
+    if (result_.site.rememberPassword && !result_.forgetSecrets)
     {
         result_.password = ReadSecretFromEdit(session_.Control(IDE_SITE_PASSWORD));
         result_.passwordTyped = !result_.password.empty();

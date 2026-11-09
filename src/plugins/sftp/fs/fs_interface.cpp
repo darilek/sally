@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "fs_object.h"
+#include "site_config.h"
 #include "../ui/site_list_dialog.h"
 
 CPluginFSInterfaceAbstract* WINAPI
@@ -58,7 +59,7 @@ void CPluginInterfaceForFS::CloseAllSessions()
 
 void ConnectFromSiteList(HWND parent, int panel)
 {
-    CSiteListDialog dialog(parent); // kept across the loop: the selection and the quick connect text survive a failure
+    CSiteListDialog dialog(parent, SiteConfig); // kept across the loop: the selection and the quick connect text survive a failure
     while (true)
     {
         std::wstring path;

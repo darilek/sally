@@ -45,15 +45,21 @@ TEST(TextUtil, EnsureDirectoryCreatesNestedAndIsIdempotent)
 
 TEST(TextUtil, DescribeSshErrorIsNotEmpty)
 {
+    const CSshErrorLabels labels = {L"Unknown error", L"code", L"SFTP status"};
     CSshError error;
-    EXPECT_FALSE(DescribeSshError(error).empty());
+    EXPECT_EQ(DescribeSshError(error, labels), L"Unknown error");
 
     error.kind = SshErrorKind::ConnectFailed;
     error.message = "Connection refused";
     error.libssh2Code = -43;
-    const std::wstring text = DescribeSshError(error);
+    std::wstring text = DescribeSshError(error, labels);
     EXPECT_NE(text.find(L"Connection refused"), std::wstring::npos);
     EXPECT_NE(text.find(L"-43"), std::wstring::npos);
+    EXPECT_NE(text.find(L"code"), std::wstring::npos);
+
+    error.sftpStatus = 2;
+    text = DescribeSshError(error, {L"?", L"Kod", L"Stav SFTP"}); // the caller's words are used
+    EXPECT_EQ(text, L"Connection refused (Kod -43, Stav SFTP 2)");
 }
 
 TEST(TextUtil, FormatHostPort)

@@ -92,7 +92,7 @@ struct CInteraction
     {
         None,
         HostKey, // host, port, keyType, fingerprint, changed
-        Prompt   // name, instruction, promptText, echo
+        Prompt   // promptKind, name, instruction, promptText, echo
     };
     Kind kind = Kind::None;
     std::string host; // UTF-8 like everything here
@@ -100,6 +100,7 @@ struct CInteraction
     std::string keyType;
     std::string fingerprint; // "SHA256:..."
     bool changed = false;    // a known key differs (show a warning)
+    PromptKind promptKind = PromptKind::KeyboardInteractive; // KeyPassphrase: promptText is the key file
     std::string name;        // prompt: window title from the server (may be empty)
     std::string instruction; // prompt: text above the prompts (may be empty)
     std::string promptText;
@@ -151,8 +152,8 @@ private:
     // ISshCallbacks, called on the session thread
     HostKeyDecision VerifyHostKey(const std::string& host, int port, const std::string& keyType,
                                   const std::string& fingerprintSha256, bool changed) override;
-    bool Prompt(const std::string& name, const std::string& instruction, const std::string& promptText, bool echo,
-                CSecret& answer) override;
+    bool Prompt(PromptKind kind, const std::string& name, const std::string& instruction, const std::string& promptText,
+                bool echo, CSecret& answer) override;
     bool Progress(uint64_t, uint64_t) override { return true; }
 
     std::shared_ptr<CPanelRequest> Submit(std::shared_ptr<CPanelRequest> req);

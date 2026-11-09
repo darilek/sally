@@ -22,7 +22,10 @@ bool AskPrompt(HWND parent, const CInteraction& in, CSecret& answer)
 {
     const CNameCodec utf8 = CNameCodec::Utf8();
     CPromptItem item;
-    item.text = utf8.Decode(in.promptText);
+    if (in.promptKind == PromptKind::KeyPassphrase)
+        item.text = SPLFormatStringOwned(LangStr(IDS_PROMPT_PASSPHRASE).c_str(), utf8.Decode(in.promptText).c_str());
+    else
+        item.text = utf8.Decode(in.promptText); // the server's own text
     item.echo = in.echo;
     CPromptDialog dialog(parent, utf8.Decode(in.name), utf8.Decode(in.instruction), {item});
     std::vector<CSecret> answers;

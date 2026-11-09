@@ -2,7 +2,6 @@
 
 #include <algorithm>
 
-#include "../fs/site_config.h" // the dialog edits the plugin's one site list
 #include "site_list_dialog.h"
 
 namespace
@@ -74,17 +73,10 @@ private:
     std::wstring name_;
     std::wstring trimmed_;
 };
-
-// Saves the site configuration now (Salamander otherwise saves it when it exits or when its own configuration is
-// saved), so that a crash does not lose the sites the user just entered.
-void WINAPI SaveCallback(BOOL load, HKEY regKey, CSalamanderRegistryAbstract* registry, void* param)
-{
-    if (!load && regKey != NULL)
-        SiteConfig.Save(regKey, registry);
-}
 } // namespace
 
-CSiteListDialog::CSiteListDialog(HWND parent) : CCenteredDialog(HLanguage, IDD_SITELIST, parent)
+CSiteListDialog::CSiteListDialog(HWND parent, ISiteStore& store)
+    : CCenteredDialog(HLanguage, IDD_SITELIST, parent), store_(store)
 {
 }
 
@@ -133,13 +125,13 @@ void CSiteListDialog::InitDialog()
     SetFocus(list);
 }
 
-// Rebuilds the list from SiteConfig (in stored order) and selects 'select' (or the first site).
+// Rebuilds the list from the store (in stored order) and selects 'select' (or the first site).
 void CSiteListDialog::FillList(const std::wstring& select)
 {
     HWND list = GetDlgItem(HWindow, IDC_SITELIST_LIST);
     SendMessageW(list, WM_SETREDRAW, FALSE, 0);
     ListView_DeleteAllItems(list);
-    const std::vector<CSite>& sites = SiteConfig.Sites().Sites();
+    const std::vector<CSite>& sites = store_.Sites().Sites();
     int selectIndex = sites.empty() ? -1 : 0;
     for (size_t i = 0; i < sites.size(); i++)
     {
@@ -168,7 +160,7 @@ std::wstring CSiteListDialog::SelectedName() const
 {
     HWND list = GetDlgItem(HWindow, IDC_SITELIST_LIST);
     const int index = ListView_GetNextItem(list, -1, LVNI_SELECTED);
-    const CSiteList& sites = SiteConfig.Sites();
+    const CSiteList& sites = store_.Sites();
     if (index < 0 || static_cast<size_t>(index) >= sites.Count())
         return std::wstring();
     return sites.At(static_cast<size_t>(index)).name;
@@ -193,8 +185,17 @@ void CSiteListDialog::UpdateButtons()
 void CSiteListDialog::ListChanged(const std::wstring& select)
 {
     FillList(select);
-    // writes the registry now; needs the FUNCTION_LOADSAVECONFIGURATION flag set in SalamanderPluginEntry
-    SalamanderGeneral->CallLoadOrSaveConfiguration(FALSE, SaveCallback, NULL);
+    // Salamander otherwise saves the configuration when it exits; do it now so a crash does not lose the sites
+    store_.SaveNow();
+}
+
+bool CSiteListDialog::RefuseIfReadOnly()
+{
+    if (!store_.IsReadOnly())
+        return false;
+    SalamanderGeneral->SalMessageBox(HWindow, LangStr(IDS_SITES_READONLY).c_str(), LangStr(IDS_PLUGINNAME).c_str(),
+                                     MB_OK | MB_ICONINFORMATION);
+    return true;
 }
 
 void CSiteListDialog::OnConnect()
@@ -229,15 +230,15 @@ void CSiteListDialog::OnConnect()
 void CSiteListDialog::StoreSecrets(const std::wstring& siteName, CSiteEditResult& result)
 {
     bool ok = true;
-    if (result.site.rememberPassword)
+    if (ShouldClearSecrets(result.site.rememberPassword, result.forgetSecrets))
+        store_.ClearSecrets(siteName);
+    else
     {
         if (result.passwordTyped)
-            ok = SiteConfig.SetPassword(siteName, result.password, HWindow) && ok;
+            ok = store_.SetPassword(siteName, result.password, HWindow) && ok;
         if (result.passphraseTyped)
-            ok = SiteConfig.SetPassphrase(siteName, result.passphrase, HWindow) && ok;
+            ok = store_.SetPassphrase(siteName, result.passphrase, HWindow) && ok;
     }
-    else
-        SiteConfig.ClearSecrets(siteName);
     if (!ok)
         SalamanderGeneral->SalMessageBox(HWindow, LangStr(IDS_SITE_SECRET_NOT_STORED).c_str(),
                                          LangStr(IDS_PLUGINNAME).c_str(), MB_OK | MB_ICONEXCLAMATION);
@@ -245,11 +246,13 @@ void CSiteListDialog::StoreSecrets(const std::wstring& siteName, CSiteEditResult
 
 void CSiteListDialog::OnNew()
 {
-    CSiteEditDialog dialog(HWindow, SiteConfig.Sites(), NULL, false, false);
+    if (RefuseIfReadOnly())
+        return;
+    CSiteEditDialog dialog(HWindow, store_.Sites(), NULL, false, false);
     CSiteEditResult result;
     if (!dialog.Run(result))
         return;
-    if (!SiteConfig.AddSite(result.site))
+    if (!store_.AddSite(result.site))
     {
         SalamanderGeneral->SalMessageBox(HWindow, LangStr(IDS_SITE_SAVE_FAILED).c_str(),
                                          LangStr(IDS_PLUGINNAME).c_str(), MB_OK | MB_ICONEXCLAMATION);
@@ -261,16 +264,18 @@ void CSiteListDialog::OnNew()
 
 void CSiteListDialog::OnEdit()
 {
-    const CSite* found = SiteConfig.Sites().Find(SelectedName());
+    if (RefuseIfReadOnly())
+        return;
+    const CSite* found = store_.Sites().Find(SelectedName());
     if (found == NULL)
         return;
     const CSite original = *found; // the list may change while the dialog runs on the copy
-    CSiteEditDialog dialog(HWindow, SiteConfig.Sites(), &original, SiteConfig.HasPassword(original.name),
-                           SiteConfig.HasPassphrase(original.name));
+    CSiteEditDialog dialog(HWindow, store_.Sites(), &original, store_.HasPassword(original.name),
+                           store_.HasPassphrase(original.name));
     CSiteEditResult result;
     if (!dialog.Run(result))
         return;
-    if (!SiteConfig.UpdateSite(original.name, result.site))
+    if (!store_.UpdateSite(original.name, result.site))
     {
         SalamanderGeneral->SalMessageBox(HWindow, LangStr(IDS_SITE_SAVE_FAILED).c_str(),
                                          LangStr(IDS_PLUGINNAME).c_str(), MB_OK | MB_ICONEXCLAMATION);
@@ -282,6 +287,8 @@ void CSiteListDialog::OnEdit()
 
 void CSiteListDialog::OnDelete()
 {
+    if (RefuseIfReadOnly())
+        return;
     const std::wstring name = SelectedName();
     if (name.empty())
         return;
@@ -289,10 +296,10 @@ void CSiteListDialog::OnDelete()
     if (SalamanderGeneral->SalMessageBox(HWindow, text.c_str(), LangStr(IDS_PLUGINNAME).c_str(),
                                          MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) != IDYES)
         return;
-    const int index = SiteConfig.Sites().IndexOf(name);
-    SiteConfig.RemoveSite(name);
+    const int index = store_.Sites().IndexOf(name);
+    store_.RemoveSite(name);
     // select the neighbour that moved into the deleted row
-    const CSiteList& sites = SiteConfig.Sites();
+    const CSiteList& sites = store_.Sites();
     std::wstring next;
     if (sites.Count() > 0)
         next = sites.At(std::min<size_t>(static_cast<size_t>(index < 0 ? 0 : index), sites.Count() - 1)).name;
@@ -301,17 +308,19 @@ void CSiteListDialog::OnDelete()
 
 void CSiteListDialog::OnRename()
 {
-    const CSite* found = SiteConfig.Sites().Find(SelectedName());
+    if (RefuseIfReadOnly())
+        return;
+    const CSite* found = store_.Sites().Find(SelectedName());
     if (found == NULL)
         return;
     CSite renamed = *found;
     const std::wstring oldName = renamed.name;
-    CSiteNameDialog dialog(HWindow, SiteConfig.Sites(), oldName);
+    CSiteNameDialog dialog(HWindow, store_.Sites(), oldName);
     std::wstring newName;
     if (!dialog.Run(newName) || newName == oldName)
         return;
     renamed.name = newName;
-    if (!SiteConfig.UpdateSite(oldName, renamed)) // moves the remembered secrets with the site
+    if (!store_.UpdateSite(oldName, renamed)) // moves the remembered secrets with the site
     {
         SalamanderGeneral->SalMessageBox(HWindow, LangStr(IDS_SITE_SAVE_FAILED).c_str(),
                                          LangStr(IDS_PLUGINNAME).c_str(), MB_OK | MB_ICONEXCLAMATION);
@@ -322,10 +331,12 @@ void CSiteListDialog::OnRename()
 
 void CSiteListDialog::OnDuplicate()
 {
+    if (RefuseIfReadOnly())
+        return;
     const std::wstring name = SelectedName();
     if (name.empty())
         return;
-    const std::wstring copy = SiteConfig.DuplicateSite(name);
+    const std::wstring copy = store_.DuplicateSite(name);
     if (!copy.empty())
         ListChanged(copy);
 }

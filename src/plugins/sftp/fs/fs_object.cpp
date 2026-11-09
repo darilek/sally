@@ -25,6 +25,13 @@ std::string ToUtf8Path(const std::wstring& path)
     return CNameCodec::Utf8().Encode(path);
 }
 
+// The error text with the words taken from the string table (the ops layer has no texts of its own).
+std::wstring DescribeError(const CSshError& error)
+{
+    const CSshErrorLabels labels = {LangStr(IDS_ERR_UNKNOWN), LangStr(IDS_ERR_CODE), LangStr(IDS_ERR_SFTP_STATUS)};
+    return DescribeSshError(error, labels);
+}
+
 // Whether the user is told about a path problem while the path is shortened (the rules of the "mode" parameter of
 // ChangePath: mode 1 = refresh, does not report a path that no longer exists).
 bool ShouldReport(int mode, SshErrorKind kind)
@@ -279,7 +286,7 @@ bool CPluginFSInterface::OpenConnection(const CSftpPath& wanted)
     if (!request->Ok())
     {
         ShowError(SPLFormatStringOwned(LangStr(IDS_ERR_CONNECT).c_str(), site.host.c_str(),
-                                       DescribeSshError(request->Error()).c_str()));
+                                       DescribeError(request->Error()).c_str()));
         return false;
     }
     connected_ = true;
@@ -457,7 +464,7 @@ BOOL CPluginFSInterface::DoChangePath(const wchar_t* userPart, CSalamanderString
         {
             cacheEntries_.reset();
             ShowError(SPLFormatStringOwned(LangStr(IDS_ERR_LIST).c_str(), DisplayPath(path.empty() ? "/" : path).c_str(),
-                                           DescribeSshError(listing.error).c_str()));
+                                           DescribeError(listing.error).c_str()));
             return FALSE;
         }
 
@@ -476,7 +483,7 @@ BOOL CPluginFSInterface::DoChangePath(const wchar_t* userPart, CSalamanderString
 
         const std::wstring message = SPLFormatStringOwned(LangStr(IDS_ERR_LIST).c_str(),
                                                           DisplayPath(path.empty() ? "/" : path).c_str(),
-                                                          DescribeSshError(listing.error).c_str());
+                                                          DescribeError(listing.error).c_str());
         if (!mayShorten || path.empty() || IsRootRemotePath(path))
         {
             ShowError(pendingMessage.empty() ? message : pendingMessage); // nothing left to try
@@ -561,13 +568,13 @@ BOOL CPluginFSInterface::DoListCurrentPath(CSalamanderDirectoryAbstract* dir,
             return FALSE;
         case ListOutcome::PathError:
             ShowError(SPLFormatStringOwned(LangStr(IDS_ERR_LIST).c_str(), DisplayPath(curRaw_).c_str(),
-                                           DescribeSshError(listing.error).c_str()));
+                                           DescribeError(listing.error).c_str()));
             errorState_ = FsErrorState::InaccessiblePath;
             return FALSE;
         default: // the connection is broken
             cacheEntries_.reset();
             ShowError(SPLFormatStringOwned(LangStr(IDS_ERR_LIST).c_str(), DisplayPath(curRaw_).c_str(),
-                                           DescribeSshError(listing.error).c_str()));
+                                           DescribeError(listing.error).c_str()));
             errorState_ = FsErrorState::Fatal;
             return FALSE;
         }

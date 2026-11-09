@@ -51,6 +51,7 @@
 #define IDE_SITE_PASSWORD         1314
 #define IDC_SITE_PASSWORD_HINT    1315
 #define IDX_SITE_REMEMBER         1316
+#define IDX_SITE_FORGET           1317
 #define IDX_SITE_AGENT            1320
 #define IDE_SITE_KEYFILE          1321
 #define IDB_SITE_KEYBROWSE        1322

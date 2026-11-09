@@ -4,11 +4,18 @@
 
 #include <cwchar>
 
+int CompareSiteNames(const std::wstring& a, const std::wstring& b)
+{
+    if (a.empty() || b.empty())
+        return a.empty() == b.empty() ? 0 : (a.empty() ? -1 : 1);
+    const int result =
+        CompareStringOrdinal(a.data(), static_cast<int>(a.size()), b.data(), static_cast<int>(b.size()), TRUE);
+    return result == CSTR_LESS_THAN ? -1 : (result == CSTR_GREATER_THAN ? 1 : 0);
+}
+
 bool SiteNamesEqual(const std::wstring& a, const std::wstring& b)
 {
-    return a.size() == b.size() &&
-           (a.empty() || CompareStringOrdinal(a.data(), static_cast<int>(a.size()), b.data(),
-                                              static_cast<int>(b.size()), TRUE) == CSTR_EQUAL);
+    return CompareSiteNames(a, b) == 0;
 }
 
 namespace

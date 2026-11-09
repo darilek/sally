@@ -22,6 +22,24 @@ std::string WsaMessage(int code)
     return "Winsock error " + std::to_string(code);
 }
 
+std::wstring Widen(const std::string& utf8)
+{
+    if (utf8.empty())
+        return std::wstring();
+    int n = MultiByteToWideChar(CP_UTF8, 0, utf8.data(), static_cast<int>(utf8.size()), nullptr, 0);
+    UINT codePage = CP_UTF8;
+    if (n <= 0)
+    {
+        codePage = CP_ACP;
+        n = MultiByteToWideChar(codePage, 0, utf8.data(), static_cast<int>(utf8.size()), nullptr, 0);
+        if (n <= 0)
+            return std::wstring();
+    }
+    std::wstring out(static_cast<size_t>(n), L' '); // overwritten below
+    MultiByteToWideChar(codePage, 0, utf8.data(), static_cast<int>(utf8.size()), &out[0], n);
+    return out;
+}
+
 std::string Msec(int ms)
 {
     return std::to_string(ms / 1000) + " s";
@@ -201,7 +219,7 @@ void CSshSession::CloseAll()
 }
 
 // Non-blocking connect to one address, polled in short slices so the cancel flag and the timeout are honoured.
-SOCKET CSshSession::ConnectAddress(const addrinfo* ai, int timeoutMs, std::string& why)
+SOCKET CSshSession::ConnectAddress(const ADDRINFOEXW* ai, int timeoutMs, std::string& why)
 {
     SOCKET s = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
     if (s == INVALID_SOCKET)
@@ -273,28 +291,84 @@ SOCKET CSshSession::ConnectAddress(const addrinfo* ai, int timeoutMs, std::strin
     return s;
 }
 
-bool CSshSession::ConnectSocket(const CSshSite& site)
+// Name resolution that Cancel() and the timeout can interrupt: getaddrinfo cannot be cancelled and may block for many
+// seconds on a bad name. The overlapped GetAddrInfoExW is polled in the same slices as everything else here. After
+// GetAddrInfoExCancel we always wait for the completion event, so the OVERLAPPED and the result are never used after
+// they went out of scope. On success 'list' is freed by the caller with FreeAddrInfoExW.
+bool CSshSession::ResolveHost(const CSshSite& site, int timeoutMs, ADDRINFOEXW*& list)
 {
-    addrinfo hints = {};
+    list = nullptr;
+    const std::wstring host = Widen(site.host);
+    const std::wstring port = std::to_wstring(site.port);
+    ADDRINFOEXW hints = {};
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
-    addrinfo* list = nullptr;
-    int rc = getaddrinfo(site.host.c_str(), std::to_string(site.port).c_str(), &hints, &list);
-    if (rc != 0 || list == nullptr)
-        return Fail(SshErrorKind::ConnectFailed, "Cannot resolve host '" + site.host + "' (" + WsaMessage(rc) + ")");
 
+    OVERLAPPED overlapped = {};
+    overlapped.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+    if (overlapped.hEvent == nullptr)
+        return Fail(SshErrorKind::Other, "Cannot create the name resolution event");
+
+    ADDRINFOEXW* result = nullptr;
+    HANDLE cancelHandle = nullptr;
+    int rc = GetAddrInfoExW(host.c_str(), port.c_str(), NS_ALL, nullptr, &hints, &result, nullptr, &overlapped, nullptr,
+                            &cancelHandle);
+    bool cancelled = false;
+    bool timedOut = false;
+    if (rc == WSA_IO_PENDING)
+    {
+        const auto deadline = Clock::now() + std::chrono::milliseconds(timeoutMs);
+        while (WaitForSingleObject(overlapped.hEvent, kSliceMs) != WAIT_OBJECT_0)
+        {
+            cancelled = IsCancelled();
+            timedOut = !cancelled && Clock::now() >= deadline;
+            if (cancelled || timedOut)
+            {
+                GetAddrInfoExCancel(&cancelHandle);
+                WaitForSingleObject(overlapped.hEvent, INFINITE); // the completion follows the cancel
+                break;
+            }
+        }
+        rc = GetAddrInfoExOverlappedResult(&overlapped);
+    }
+    CloseHandle(overlapped.hEvent);
+
+    if (cancelled || timedOut)
+    {
+        if (result != nullptr)
+            FreeAddrInfoExW(result); // it completed before the cancel took effect; we do not use it
+        if (cancelled)
+            return Fail(SshErrorKind::Cancelled, std::string());
+        return Fail(SshErrorKind::Timeout, "Resolving host '" + site.host + "' timed out after " + Msec(timeoutMs));
+    }
+    if (rc != 0 || result == nullptr)
+    {
+        if (result != nullptr)
+            FreeAddrInfoExW(result);
+        return Fail(SshErrorKind::ConnectFailed, "Cannot resolve host '" + site.host + "' (" + WsaMessage(rc) + ")");
+    }
+    list = result;
+    return true;
+}
+
+bool CSshSession::ConnectSocket(const CSshSite& site)
+{
     const int timeoutMs = TimeoutMsOf(site);
+    ADDRINFOEXW* list = nullptr;
+    if (!ResolveHost(site, timeoutMs, list))
+        return false;
+
     std::string why;
     bool timedOut = false;
     bool ok = false;
-    for (const addrinfo* ai = list; ai != nullptr && !ok && !IsCancelled(); ai = ai->ai_next)
+    for (const ADDRINFOEXW* ai = list; ai != nullptr && !ok && !IsCancelled(); ai = ai->ai_next)
     {
         why.clear();
         ok = ConnectAddress(ai, timeoutMs, why) != INVALID_SOCKET;
         timedOut = !ok && why == "timeout";
     }
-    freeaddrinfo(list);
+    FreeAddrInfoExW(list);
     if (ok)
         return true;
 

@@ -8,6 +8,8 @@
 
 #include "SallyUrls.h"
 #include "../core/ssh_init.h"
+#include "fs_data.h"
+#include "site_config.h"
 
 #define SFTP_WIDEN_IMPL(value) L##value
 #define SFTP_WIDEN(value) SFTP_WIDEN_IMPL(value)
@@ -20,17 +22,17 @@ public:
 
     virtual BOOL WINAPI Release(HWND parent, BOOL force);
 
-    virtual void WINAPI LoadConfiguration(HWND parent, HKEY regKey, CSalamanderRegistryAbstract* registry) {}
-    virtual void WINAPI SaveConfiguration(HWND parent, HKEY regKey, CSalamanderRegistryAbstract* registry) {}
+    virtual void WINAPI LoadConfiguration(HWND parent, HKEY regKey, CSalamanderRegistryAbstract* registry);
+    virtual void WINAPI SaveConfiguration(HWND parent, HKEY regKey, CSalamanderRegistryAbstract* registry);
     virtual void WINAPI Configuration(HWND parent) {}
 
     virtual void WINAPI Connect(HWND parent, CSalamanderConnectAbstract* salamander);
 
-    virtual void WINAPI ReleasePluginDataInterface(CPluginDataInterfaceAbstract* pluginData) {}
+    virtual void WINAPI ReleasePluginDataInterface(CPluginDataInterfaceAbstract* pluginData);
 
     virtual CPluginInterfaceForArchiverAbstract* WINAPI GetInterfaceForArchiver() { return NULL; }
     virtual CPluginInterfaceForViewerAbstract* WINAPI GetInterfaceForViewer() { return NULL; }
-    virtual CPluginInterfaceForMenuExtAbstract* WINAPI GetInterfaceForMenuExt() { return NULL; }
+    virtual CPluginInterfaceForMenuExtAbstract* WINAPI GetInterfaceForMenuExt();
     virtual CPluginInterfaceForFSAbstract* WINAPI GetInterfaceForFS();
     virtual CPluginInterfaceForThumbLoaderAbstract* WINAPI GetInterfaceForThumbLoader() { return NULL; }
 
@@ -38,11 +40,12 @@ public:
     virtual void WINAPI ClearHistory(HWND parent) {}
     virtual void WINAPI AcceptChangeOnPathNotification(const wchar_t* path, BOOL includingSubdirs) {}
 
-    virtual void WINAPI PasswordManagerEvent(HWND parent, int event) {}
+    virtual void WINAPI PasswordManagerEvent(HWND parent, int event);
 };
 
 CPluginInterface PluginInterface;
 CPluginInterfaceForFS InterfaceForFS;
+CPluginInterfaceForMenuExt InterfaceForMenuExt;
 
 HINSTANCE DLLInstance = NULL; // handle to this DLL
 HINSTANCE HLanguage = NULL;   // module with the language-dependent resources (this DLL)
@@ -65,6 +68,11 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
         DLLInstance = hinstDLL;
 
     return TRUE; // DLL can be loaded
+}
+
+// there is no help yet
+static void WINAPI HelpCallback(HWND window, UINT helpID)
+{
 }
 
 std::wstring LangStr(int resID)
@@ -119,25 +127,41 @@ CPluginInterfaceAbstract* WINAPI SalamanderPluginEntry(CSalamanderPluginEntryAbs
     // obtain the interface providing customized Windows controls used in Salamander
     SalamanderGUI = salamander->GetSalamanderGUI();
 
+    bool winLibInitialized = false;
     try
     {
         // provide basic information about the plugin
-        if (!salamander->SetBasicPluginData(LangStr(IDS_PLUGINNAME).c_str(), FUNCTION_FILESYSTEM,
+        if (!salamander->SetBasicPluginData(LangStr(IDS_PLUGINNAME).c_str(),
+                                            FUNCTION_LOADSAVECONFIGURATION | FUNCTION_FILESYSTEM,
                                             SFTP_WIDEN(VERSINFO_VERSION_NO_PLATFORM), SFTP_WIDEN(VERSINFO_COPYRIGHT),
                                             LangStr(IDS_PLUGIN_DESCRIPTION).c_str(), L"SFTP", NULL, L"sftp"))
             return NULL;
 
         salamander->SetPluginHomePageURL(Sally::Urls::Website);
 
+        // remembered passwords go through Sally's password manager: ask for PasswordManagerEvent calls
+        SalamanderGeneral->SetPluginUsesPasswordManager();
+
         // obtain our FS name (it might not stay "sftp" because Salamander can adjust it)
         AssignedFSName = SPLGetPluginFSNameOwned(SalamanderGeneral, 0);
         if (AssignedFSName.empty())
             return NULL;
 
-        // last step, so that nothing has to be undone when an earlier step fails
+        // WinLib (dark mode, dialogs) is released in Release, or here when a later step fails
+        if (!InitializeWinLib(L"SFTP" /* do not translate */, DLLInstance))
+            return NULL;
+        winLibInitialized = true;
+        SetupWinLibHelp(HelpCallback);
+        const std::wstring invalidNumber = LangStr(IDS_INVALIDNUMBER);
+        const std::wstring pluginTitle = LangStr(IDS_PLUGINNAME);
+        SetWinLibStrings(invalidNumber.c_str(), pluginTitle.c_str());
+
+        // last step, so that nothing more has to be undone when it fails
         CSshError sshInitError;
         if (!SshGlobalInit(&sshInitError))
         {
+            ReleaseWinLib(DLLInstance);
+            winLibInitialized = false;
             SalamanderGeneral->SalMessageBox(salamander->GetParentWindow(),
                                              SPLFormatStringOwned(LangStr(IDS_LIBSSH2_INIT_FAILED).c_str(), sshInitError.libssh2Code).c_str(),
                                              LangStr(IDS_PLUGINNAME).c_str(), MB_OK | MB_ICONERROR);
@@ -147,6 +171,8 @@ CPluginInterfaceAbstract* WINAPI SalamanderPluginEntry(CSalamanderPluginEntryAbs
     catch (...)
     {
         TRACE_E("SalamanderPluginEntry: out of memory.");
+        if (winLibInitialized)
+            ReleaseWinLib(DLLInstance);
         return NULL;
     }
 
@@ -176,12 +202,67 @@ CPluginInterface::About(HWND parent)
     }
 }
 
+void WINAPI
+CPluginInterface::LoadConfiguration(HWND parent, HKEY regKey, CSalamanderRegistryAbstract* registry)
+{
+    CALL_STACK_MESSAGE1("CPluginInterface::LoadConfiguration(, ,)");
+    SiteConfig.Load(regKey, registry); // catches everything itself
+}
+
+void WINAPI
+CPluginInterface::SaveConfiguration(HWND parent, HKEY regKey, CSalamanderRegistryAbstract* registry)
+{
+    CALL_STACK_MESSAGE1("CPluginInterface::SaveConfiguration(, ,)");
+    SiteConfig.Save(regKey, registry); // catches everything itself
+}
+
+// The state at the event: for CHANGED and REMOVED the old key is still usable, for CREATED/CHANGED the new master
+// password is already set (the same order and assumptions as the FTP plugin).
+void WINAPI
+CPluginInterface::PasswordManagerEvent(HWND parent, int event)
+{
+    CALL_STACK_MESSAGE2("CPluginInterface::PasswordManagerEvent(, %d)", event);
+    try
+    {
+        bool allConverted = true;
+        if (event == PME_MASTERPASSWORDCREATED || event == PME_MASTERPASSWORDCHANGED || event == PME_MASTERPASSWORDREMOVED)
+            allConverted &= SiteConfig.ReencryptAll(false); // AES (old key) -> scrambled
+        if (event == PME_MASTERPASSWORDCREATED || event == PME_MASTERPASSWORDCHANGED)
+            SiteConfig.ReencryptAll(true); // scrambled -> AES with the new key
+        if (!allConverted)
+            SalamanderGeneral->SalMessageBox(parent, LangStr(IDS_CANNOT_DECRYPT_SOMEPASSWORDS).c_str(),
+                                             LangStr(IDS_PLUGINNAME).c_str(), MB_OK | MB_ICONEXCLAMATION);
+    }
+    catch (...)
+    {
+        TRACE_E("PasswordManagerEvent: out of memory.");
+    }
+}
+
 BOOL WINAPI
 CPluginInterface::Release(HWND parent, BOOL force)
 {
     CALL_STACK_MESSAGE2("CPluginInterface::Release(, %d)", force);
+    // Every session thread must be gone before libssh2 is shut down and the DLL can be unloaded.
+    try
+    {
+        InterfaceForFS.CloseAllSessions();
+    }
+    catch (...)
+    {
+        TRACE_E("Release: unexpected exception while closing the sessions.");
+    }
     SshGlobalExit();
+    ReleaseWinLib(DLLInstance);
     return TRUE;
+}
+
+// A listing is gone from the panel: release its data interface (created in ListCurrentPath).
+void WINAPI
+CPluginInterface::ReleasePluginDataInterface(CPluginDataInterfaceAbstract* pluginData)
+{
+    CALL_STACK_MESSAGE1("CPluginInterface::ReleasePluginDataInterface()");
+    delete static_cast<CPluginDataInterface*>(pluginData);
 }
 
 void WINAPI
@@ -192,11 +273,23 @@ CPluginInterface::Connect(HWND parent, CSalamanderConnectAbstract* salamander)
     {
         // item in the Change Drive menu and in the Drive bars (-1 = no icon yet)
         salamander->SetChangeDriveMenuItem(LangStr(IDS_CHNGDRVITEM).c_str(), -1);
+
+        // Plugins / SFTP menu. Keep in step with CPluginInterfaceForMenuExt.
+        salamander->AddMenuItem(-1, LangStr(IDS_MENU_CONNECT).c_str(), 0, SftpCmdConnect, FALSE, MENU_EVENT_TRUE,
+                                MENU_EVENT_TRUE, MENU_SKILLLEVEL_ALL);
+        salamander->AddMenuItem(-1, LangStr(IDS_MENU_DISCONNECT).c_str(), 0, SftpCmdDisconnect, FALSE,
+                                MENU_EVENT_THIS_PLUGIN_FS, MENU_EVENT_TRUE, MENU_SKILLLEVEL_ALL);
     }
     catch (...)
     {
         TRACE_E("Connect: out of memory.");
     }
+}
+
+CPluginInterfaceForMenuExtAbstract* WINAPI
+CPluginInterface::GetInterfaceForMenuExt()
+{
+    return &InterfaceForMenuExt;
 }
 
 CPluginInterfaceForFSAbstract* WINAPI

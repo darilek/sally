@@ -4,4 +4,5 @@
 // Resource IDs of the language-neutral resources (sftp.rc). The IDs of the strings are in sftp.rh2,
 // the IDs of the language-dependent dialogs are in lang\lang.rh; the three ranges must not overlap.
 //
-// No neutral resource needs an ID yet.
+// Icon of the file system in the panel and in the Change Drive menu (sftp.rc, sftp_fs.ico)
+#define IDI_SFTP_FS               200

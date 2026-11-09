@@ -1,0 +1,65 @@
+#include <gtest/gtest.h>
+
+#include <windows.h>
+
+#include "text_util.h"
+
+TEST(TextUtil, Utf8DecodeRoundTrip)
+{
+    const std::wstring text = L"caf\u00e9 \u4e2d";
+    const CNameCodec utf8 = CNameCodec::Utf8();
+    EXPECT_EQ(utf8.Decode(utf8.Encode(text)), text);
+    EXPECT_EQ(utf8.Decode(""), L"");
+}
+
+TEST(TextUtil, InvalidUtf8DoesNotCrash)
+{
+    const std::wstring decoded = CNameCodec::Utf8().Decode("a\xff" "b");
+    EXPECT_EQ(decoded, L"a\ufffd" L"b");
+}
+
+TEST(TextUtil, AppDataSallyDirIsAbsoluteAndEndsWithSallySftp)
+{
+    const std::wstring dir = AppDataSallyDir();
+    ASSERT_GT(dir.size(), 12u);
+    EXPECT_EQ(dir[1], L':');
+    EXPECT_EQ(dir.substr(dir.size() - 10), L"Sally\\SFTP");
+}
+
+TEST(TextUtil, EnsureDirectoryCreatesNestedAndIsIdempotent)
+{
+    wchar_t temp[MAX_PATH];
+    ASSERT_GT(GetTempPathW(MAX_PATH, temp), 0u);
+    const std::wstring root = std::wstring(temp) + L"sally_sftp_ops_" + std::to_wstring(GetCurrentProcessId());
+    const std::wstring nested = root + L"\\a\\b";
+
+    EXPECT_TRUE(EnsureDirectory(nested));
+    EXPECT_NE(GetFileAttributesW(nested.c_str()), INVALID_FILE_ATTRIBUTES);
+    EXPECT_TRUE(EnsureDirectory(nested));
+
+    RemoveDirectoryW(nested.c_str());
+    RemoveDirectoryW((root + L"\\a").c_str());
+    RemoveDirectoryW(root.c_str());
+    EXPECT_EQ(GetFileAttributesW(root.c_str()), INVALID_FILE_ATTRIBUTES);
+}
+
+TEST(TextUtil, DescribeSshErrorIsNotEmpty)
+{
+    CSshError error;
+    EXPECT_FALSE(DescribeSshError(error).empty());
+
+    error.kind = SshErrorKind::ConnectFailed;
+    error.message = "Connection refused";
+    error.libssh2Code = -43;
+    const std::wstring text = DescribeSshError(error);
+    EXPECT_NE(text.find(L"Connection refused"), std::wstring::npos);
+    EXPECT_NE(text.find(L"-43"), std::wstring::npos);
+}
+
+TEST(TextUtil, FormatHostPort)
+{
+    EXPECT_EQ(FormatHostPort("example.com", 22), "example.com:22");
+    EXPECT_EQ(FormatHostPort("10.0.0.1", 2222), "10.0.0.1:2222");
+    EXPECT_EQ(FormatHostPort("::1", 22), "[::1]:22");
+    EXPECT_EQ(FormatHostPort("[::1]", 22), "[::1]:22");
+}

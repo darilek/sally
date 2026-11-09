@@ -129,3 +129,24 @@ TEST(Encoding, ReportsUnrepresentableCharacters)
     CNameCodec::Utf8().Encode(L"", &lossy);
     EXPECT_FALSE(lossy);
 }
+
+
+namespace
+{
+// "café.txt" without relying on the source file encoding
+std::wstring kCafeTxt()
+{
+    return std::wstring(L"caf") + static_cast<wchar_t>(0xE9) + L".txt";
+}
+} // namespace
+
+TEST(Encoding, AutoDecidesPerName)
+{
+    const CNameCodec codec = CNameCodec::Auto();
+    // one session can hold both kinds of names
+    EXPECT_EQ(codec.Decode("caf\xC3\xA9.txt"), kCafeTxt());
+    const std::wstring latin1 = codec.Decode("caf\xE9.txt");
+    EXPECT_EQ(latin1.find(kReplacement), std::wstring::npos);
+    if (GetACP() == 1252)
+        EXPECT_EQ(latin1, kCafeTxt());
+}

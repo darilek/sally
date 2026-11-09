@@ -3,8 +3,12 @@
 
 #pragma once
 
-// File-system part of the plugin interface. Milestone 1: stubs only, nothing connects yet;
-// OpenFS reports failure, so Salamander never gets an FS object to work with.
+#include <vector>
+
+class CPluginFSInterface;
+
+// File-system part of the plugin interface: creates and closes the FS objects (one per connection) and handles the
+// Change Drive menu items and the Disconnect command.
 class CPluginInterfaceForFS : public CPluginInterfaceForFSAbstract
 {
 public:
@@ -33,4 +37,30 @@ public:
                                               CSalamanderStringBuffer* fsUserPart);
 
     virtual void WINAPI EnsureShareExistsOnServer(int panel, const wchar_t* server, const wchar_t* share) {}
+
+    // Plugin unload: closes (cancels and joins) the sessions of all FS objects that Salamander has not closed.
+    // Busy objects (a wait is on the stack) are marked closed so that the running call deletes them when it unwinds.
+    void CloseAllSessions();
+
+private:
+    std::vector<CPluginFSInterface*> openFS_; // main thread only
 };
+
+// Shows the site list and opens the chosen site in 'panel' (Change Drive item and plugin menu "Connect..."). Repeats the
+// dialog while the connect fails, so the user keeps what was typed; ends on success or Close.
+void ConnectFromSiteList(HWND parent, int panel);
+
+// The plugin menu: Connect..., Disconnect.
+class CPluginInterfaceForMenuExt : public CPluginInterfaceForMenuExtAbstract
+{
+public:
+    virtual DWORD WINAPI GetMenuItemState(int id, DWORD eventMask);
+    virtual BOOL WINAPI ExecuteMenuItem(CSalamanderForOperationsAbstract* salamander, HWND parent, int id,
+                                        DWORD eventMask);
+    virtual BOOL WINAPI HelpForMenuItem(HWND parent, int id) { return FALSE; }
+    virtual void WINAPI BuildMenu(HWND parent, CSalamanderBuildMenuAbstract* salamander) {}
+};
+
+// IDs of the plugin menu items
+const int SftpCmdConnect = 1;
+const int SftpCmdDisconnect = 2;

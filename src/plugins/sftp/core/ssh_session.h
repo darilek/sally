@@ -243,7 +243,8 @@ private:
     bool FailAuth(const CSshSite& site, const std::string& offered, const CAuthState& state);
 
     bool ConnectSocket(const CSshSite& site);
-    SOCKET ConnectAddress(const addrinfo* ai, int timeoutMs, std::string& why);
+    bool ResolveHost(const CSshSite& site, int timeoutMs, ADDRINFOEXW*& list);
+    SOCKET ConnectAddress(const ADDRINFOEXW* ai, int timeoutMs, std::string& why);
     void SetSocket(SOCKET s);
     void CloseSocket();
 

@@ -16,9 +16,90 @@ STRINGTABLE
  IDS_ABOUT,                  "About SFTP Plugin"
  // arguments: plugin name, plugin version, copyright, description, libssh2 version, OpenSSL version text
  IDS_ABOUT_FORMAT,           "%ls %ls\n\n%ls\n\n%ls\n\nlibssh2 %hs\n%hs"
- IDS_NOT_IMPLEMENTED,        "SFTP: connecting will be available in a later version."
  // argument: libssh2 error code
  IDS_LIBSSH2_INIT_FAILED,    "SFTP: the libssh2 library could not be initialized (error %d). The plugin cannot be loaded."
  // item in the Change Drive menu: hotkey, TAB, title
  IDS_CHNGDRVITEM,            "\tSFTP"
+ // WinLib: text for an invalid number typed into a numeric field
+ IDS_INVALIDNUMBER,          "Invalid number."
+ // master password changed/removed: remembered passwords that could not be converted
+ IDS_CANNOT_DECRYPT_SOMEPASSWORDS, "Some remembered passwords could not be decrypted with the previous master password and may no longer work. You will be asked for them again when connecting."
+ // host key dialog: window titles
+ IDS_HOSTKEY_TITLE_NEW,      "SFTP - Unknown Host Key"
+ IDS_HOSTKEY_TITLE_CHANGED,  "SFTP - WARNING: Host Key Has Changed"
+ IDS_HOSTKEY_TEXT_NEW,       "The authenticity of this server cannot be verified: its host key is not known yet. Compare the fingerprint below with the one from the server administrator before you continue."
+ IDS_HOSTKEY_TEXT_CHANGED,   "WARNING: THE HOST KEY OF THIS SERVER HAS CHANGED!\nSomeone may be intercepting your connection, or the administrator may have reinstalled the server. Do not continue unless you know the reason. The replace button overwrites the stored key with the new one."
+ // host key dialog: text of the "save" button
+ IDS_HOSTKEY_SAVE_NEW,       "&Accept and save"
+ IDS_HOSTKEY_SAVE_CHANGED,   "&Replace stored key"
+ // prompt dialog: default window title (the server gave none)
+ IDS_PROMPT_TITLE,           "SFTP - Authentication"
+ IDS_PROMPT_TOO_MANY,        "The server asks for more input fields than this dialog supports. The login was cancelled."
+ // wait window while the panel waits for the server; argument: host
+ IDS_WAIT_CONNECTING,        "Connecting to %ls..."
+ IDS_WAIT_LISTING,           "Reading directory..."
+ // closing/changing away from a connection; argument: user@host
+ IDS_DETACH_PROMPT,          "Do you want to disconnect from %ls, or keep the connection open so you can return to it later?"
+ IDS_BTN_DISCONNECT,         "&Disconnect"
+ IDS_BTN_KEEP_CONNECTION,    "&Keep Connection"
+ // arguments: host, error text
+ IDS_ERR_CONNECT,            "Cannot connect to %ls.\n\n%ls"
+ // arguments: path, error text
+ IDS_ERR_LIST,               "Cannot read the directory %ls.\n\n%ls"
+ // argument: the path as typed
+ IDS_ERR_BAD_PATH,           """%ls"" is not a valid SFTP path. Use sftp:user@host[:port]/path or sftp:@SiteName/path."
+ // argument: site name
+ IDS_ERR_SITE_UNKNOWN,       "There is no saved SFTP site named ""%ls""."
+ // argument: path
+ IDS_ERR_FILE_NOT_DIR,       """%ls"" is a file, not a directory."
+ IDS_PASSWORD_TITLE,         "SFTP - Password"
+ // arguments: user, host
+ IDS_PASSWORD_PROMPT,        "Password for %ls@%ls:"
+ // panel columns: name (up to 30 characters) and tooltip
+ IDS_COL_PERMISSIONS,        "Permissions"
+ IDS_COL_PERMISSIONS_DESC,   "Unix permissions"
+ IDS_COL_OWNER,              "Owner"
+ IDS_COL_OWNER_DESC,         "Owner (numeric user id)"
+ IDS_COL_GROUP,              "Group"
+ IDS_COL_GROUP_DESC,         "Group (numeric group id)"
+ // context menu of a connection in the Change Drive menu
+ IDS_MENU_SHOWINPANEL,       "&Show in Panel"
+ IDS_MENU_DISCONNECT,        "&Disconnect"
+ IDS_ERR_INTERNAL,           "SFTP: an unexpected error occurred."
+ IDS_ERR_NO_PASSWORD,        "The remembered password for this site could not be decrypted. Enter it when asked."
+ // site list dialog
+ IDS_SITELIST_TITLE,         "SFTP - Sites"
+ IDS_SITELIST_COL_NAME,      "Name"
+ IDS_SITELIST_COL_HOST,      "Host"
+ IDS_SITELIST_COL_USER,      "User"
+ // argument: site name
+ IDS_SITELIST_DELETE_CONFIRM, "Do you want to delete the site ""%ls""?"
+ IDS_SITELIST_BAD_QUICK,     "Enter the server as user@host, user@host:port or user@host/path."
+ // site edit dialog
+ IDS_SITEEDIT_TITLE_NEW,     "New SFTP Site"
+ IDS_SITEEDIT_TITLE_EDIT,    "Edit SFTP Site"
+ IDS_SITEEDIT_TAB_SESSION,   "Session"
+ IDS_SITEEDIT_TAB_AUTH,      "Authentication"
+ IDS_SITEEDIT_TAB_CONNECTION, "Connection"
+ IDS_SITEEDIT_TAB_DIRECTORIES, "Directories"
+ IDS_SITE_KEEP_PASSWORD,     "A password is stored. Leave this field empty to keep it."
+ IDS_SITE_KEEP_PASSPHRASE,   "A passphrase is stored. Leave this field empty to keep it."
+ IDS_SITE_ERR_NAME_EMPTY,    "Enter a name for the site."
+ IDS_SITE_ERR_NAME_INVALID,  "The site name cannot start with @, start or end with a space, or contain / or \ or control characters."
+ IDS_SITE_ERR_NAME_TAKEN,    "A site with this name already exists. Choose another name."
+ IDS_SITE_ERR_HOST_EMPTY,    "Enter the host name or IP address of the server."
+ IDS_SITE_ERR_HOST_INVALID,  "The host name cannot contain spaces, control characters or any of / \ @ [ ]."
+ IDS_SITE_ERR_PORT_RANGE,    "The port must be a number from 1 to 65535."
+ IDS_SITE_ERR_USER_EMPTY,    "Enter the user name."
+ IDS_SITE_ERR_USER_INVALID,  "The user name cannot contain control characters."
+ IDS_SITE_ERR_TIMEOUT_RANGE, "The timeout must be a number of seconds from 1 to 3600."
+ IDS_SITE_ERR_CODEPAGE_INVALID, "Enter the number of an installed code page, for example 1250 or 1252."
+ // file dialog filter: pairs of text and pattern separated by |
+ IDS_SITE_KEY_FILTER,        "All files (*.*)|*.*"
+ IDS_SITE_KEY_BROWSE_TITLE,  "Select Private Key File"
+ IDS_SITE_SECRET_NOT_STORED, "The password or key passphrase could not be stored (the master password was not accepted or encryption failed). The site was saved without it."
+ IDS_SITENAME_TITLE,         "Rename Site"
+ IDS_SITE_SAVE_FAILED,       "The site could not be saved."
+ // plugin menu
+ IDS_MENU_CONNECT,           "&Connect..."
 }

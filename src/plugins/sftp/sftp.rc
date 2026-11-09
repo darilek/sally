@@ -17,4 +17,7 @@ LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
 
 #include "versinfo.rh2"
 #include "versinfo.rc2"
+
+// placeholder art (a blue square with a white S); final icon later
+IDI_SFTP_FS ICON "sftp_fs.ico"
 #endif

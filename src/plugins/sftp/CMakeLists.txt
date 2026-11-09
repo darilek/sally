@@ -140,9 +140,18 @@ sal_add_plugin(NAME sftp
     "${SAL_PLUGINS}/sftp/precomp.cpp"
     "${SAL_PLUGINS}/sftp/fs/sftp.cpp"
     "${SAL_PLUGINS}/sftp/fs/fs_interface.cpp"
+    "${SAL_PLUGINS}/sftp/fs/site_config.cpp"
+    "${SAL_PLUGINS}/sftp/fs/fs_object.cpp"
+    "${SAL_PLUGINS}/sftp/fs/fs_data.cpp"
+    "${SAL_PLUGINS}/sftp/fs/wait_for_request.cpp"
+    "${SAL_PLUGINS}/sftp/ui/host_key_dialog.cpp"
+    "${SAL_PLUGINS}/sftp/ui/prompt_dialog.cpp"
+    "${SAL_PLUGINS}/sftp/ui/interaction_ui.cpp"
+    "${SAL_PLUGINS}/sftp/ui/site_edit_dialog.cpp"
+    "${SAL_PLUGINS}/sftp/ui/site_list_dialog.cpp"
   RC "${SAL_PLUGINS}/sftp/sftp.rc"
   DEF "${SAL_PLUGINS}/sftp/sftp.def"
-  LIBS sftp_core libssh2::libssh2_static ws2_32 crypt32 bcrypt user32 advapi32
+  LIBS sftp_ops sftp_core libssh2::libssh2_static ws2_32 crypt32 bcrypt user32 advapi32 comdlg32 uxtheme
 )
 
 # ---- Unit tests ----------------------------------------------------------------------------------------------
@@ -161,9 +170,18 @@ target_link_libraries(sftp_core PUBLIC libssh2::libssh2_static OpenSSL::Crypto w
 target_compile_definitions(sftp_core PRIVATE ${SAL_COMMON_DEFINES})
 set_target_properties(sftp_core PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 
+# sftp_ops: the Sally-independent part of the operations layer (ops/ may use core/, never Sally). Same rule: no Sally
+# include paths. Linked into plugin_sftp.
+file(GLOB _SFTP_OPS_SOURCES CONFIGURE_DEPENDS "${SAL_PLUGINS}/sftp/ops/*.cpp")
+add_library(sftp_ops STATIC ${_SFTP_OPS_SOURCES})
+target_include_directories(sftp_ops PUBLIC "${SAL_PLUGINS}/sftp/ops")
+target_link_libraries(sftp_ops PUBLIC sftp_core)
+target_compile_definitions(sftp_ops PRIVATE ${SAL_COMMON_DEFINES})
+set_target_properties(sftp_ops PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+
 file(GLOB _SFTP_TEST_SOURCES CONFIGURE_DEPENDS "${SAL_PLUGINS}/sftp/tests/*.cpp")
 add_executable(sftp_tests ${_SFTP_TEST_SOURCES})
-target_link_libraries(sftp_tests PRIVATE sftp_core GTest::gtest GTest::gtest_main)
+target_link_libraries(sftp_tests PRIVATE sftp_ops sftp_core GTest::gtest GTest::gtest_main)
 target_compile_definitions(sftp_tests PRIVATE SFTP_TEST_DIR_DEFAULT="${SAL_PLUGINS}/sftp/tests/docker/out")
 set_target_properties(sftp_tests PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 gtest_discover_tests(sftp_tests DISCOVERY_MODE PRE_TEST)

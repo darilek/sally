@@ -333,6 +333,70 @@ TEST_F(TransportTest, UnresolvableHostFails)
     EXPECT_EQ(s.LastError().kind, SshErrorKind::ConnectFailed);
 }
 
+TEST_F(TransportTest, UnresolvableHostReturnsAnErrorPromptly)
+{
+    CKnownHosts hosts(own_);
+    CTestCallbacks cb;
+    CSshSite site = ServerSite(20);
+    site.host = "no-such-host.invalid";
+    CSshSession s(&cb, &hosts);
+    auto start = Clock::now();
+    EXPECT_FALSE(s.OpenTransport(site));
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - start).count();
+    EXPECT_EQ(s.LastError().kind, SshErrorKind::ConnectFailed) << s.LastError().message;
+    EXPECT_NE(s.LastError().message.find("Cannot resolve host 'no-such-host.invalid'"), std::string::npos)
+        << s.LastError().message;
+    EXPECT_LT(ms, 15000);
+}
+
+// Whatever the resolver does with the name (fails quickly or stalls), Cancel from another thread must end the
+// connect promptly: with Cancelled, or with the resolution error when the resolver was faster than the cancel.
+TEST_F(TransportTest, CancelDuringNameResolution)
+{
+    CKnownHosts hosts(own_);
+    CTestCallbacks cb;
+    CSshSite site = ServerSite(60);
+    site.host = "slow-lookup-cancel-test.invalid";
+    CSshSession s(&cb, &hosts);
+
+    std::thread canceller(
+        [&s]
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            s.Cancel();
+        });
+    auto start = Clock::now();
+    EXPECT_FALSE(s.OpenTransport(site));
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - start).count();
+    canceller.join();
+    EXPECT_LT(ms, 2000);
+    const SshErrorKind kind = s.LastError().kind;
+    EXPECT_TRUE(kind == SshErrorKind::Cancelled || kind == SshErrorKind::ConnectFailed) << s.LastError().message;
+    EXPECT_FALSE(s.IsConnected());
+
+    // the object is reusable after Disconnect
+    s.Disconnect();
+    CSshSite closed = ServerSite(5);
+    closed.port = CSilentListener().ReleasePort();
+    EXPECT_FALSE(s.OpenTransport(closed));
+    EXPECT_EQ(s.LastError().kind, SshErrorKind::ConnectFailed);
+}
+
+TEST_F(TransportTest, CancelBeforeNameResolution)
+{
+    CKnownHosts hosts(own_);
+    CTestCallbacks cb;
+    CSshSite site = ServerSite(60);
+    site.host = "cancel-first.invalid";
+    CSshSession s(&cb, &hosts);
+    s.Cancel();
+    auto start = Clock::now();
+    EXPECT_FALSE(s.OpenTransport(site));
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - start).count();
+    EXPECT_EQ(s.LastError().kind, SshErrorKind::Cancelled) << s.LastError().message;
+    EXPECT_LT(ms, 2000);
+}
+
 TEST_F(TransportTest, HandshakeTimeoutAgainstSilentServer)
 {
     CSilentListener l;

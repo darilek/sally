@@ -1,0 +1,186 @@
+// Tests for ops/site_list (site list, name rules, validation) and the known_hosts path helpers.
+#include <gtest/gtest.h>
+
+#include "site_list.h"
+#include "site_path.h"
+#include "text_util.h"
+
+namespace
+{
+CSite MakeSite(const std::wstring& name)
+{
+    CSite s;
+    s.name = name;
+    s.host = L"example.com";
+    s.user = L"bob";
+    return s;
+}
+} // namespace
+
+TEST(SiteList, AddFindCaseInsensitive)
+{
+    CSiteList list;
+    EXPECT_TRUE(list.Add(MakeSite(L"Work")));
+    ASSERT_NE(list.Find(L"WORK"), nullptr);
+    EXPECT_EQ(list.Find(L"work")->name, L"Work");
+    EXPECT_EQ(list.Find(L"Other"), nullptr);
+    EXPECT_EQ(list.IndexOf(L"wOrK"), 0);
+}
+
+TEST(SiteList, AddRejectsEmptyDuplicateAndInvalid)
+{
+    CSiteList list;
+    EXPECT_TRUE(list.Add(MakeSite(L"Work")));
+    EXPECT_FALSE(list.Add(MakeSite(L"")));
+    EXPECT_FALSE(list.Add(MakeSite(L"work")));
+    EXPECT_FALSE(list.Add(MakeSite(L"a/b")));
+    EXPECT_EQ(list.Count(), 1u);
+}
+
+TEST(SiteList, RemoveKeepsOrder)
+{
+    CSiteList list;
+    list.Add(MakeSite(L"A"));
+    list.Add(MakeSite(L"B"));
+    list.Add(MakeSite(L"C"));
+    EXPECT_TRUE(list.Remove(L"b"));
+    EXPECT_FALSE(list.Remove(L"B"));
+    ASSERT_EQ(list.Count(), 2u);
+    EXPECT_EQ(list.At(0).name, L"A");
+    EXPECT_EQ(list.At(1).name, L"C");
+}
+
+TEST(SiteList, RenameRules)
+{
+    CSiteList list;
+    list.Add(MakeSite(L"A"));
+    list.Add(MakeSite(L"B"));
+    EXPECT_FALSE(list.Rename(L"A", L"b"));  // taken by another site
+    EXPECT_FALSE(list.Rename(L"A", L"x/y")); // invalid
+    EXPECT_FALSE(list.Rename(L"Z", L"Q"));   // unknown
+    EXPECT_TRUE(list.Rename(L"A", L"a"));    // only the letter case
+    EXPECT_EQ(list.At(0).name, L"a");
+    EXPECT_TRUE(list.Rename(L"a", L"Alpha"));
+    EXPECT_EQ(list.At(0).name, L"Alpha");
+}
+
+TEST(SiteList, UpdateReplacesAndMayRename)
+{
+    CSiteList list;
+    list.Add(MakeSite(L"A"));
+    list.Add(MakeSite(L"B"));
+    CSite changed = MakeSite(L"A");
+    changed.host = L"other.org";
+    EXPECT_TRUE(list.Update(L"a", changed));
+    EXPECT_EQ(list.At(0).host, L"other.org");
+    changed.name = L"B";
+    EXPECT_FALSE(list.Update(L"A", changed)); // would clash with B
+    EXPECT_EQ(list.At(0).name, L"A");
+    changed.name = L"C";
+    EXPECT_TRUE(list.Update(L"A", changed));
+    EXPECT_EQ(list.At(0).name, L"C");
+    EXPECT_FALSE(list.Update(L"missing", changed));
+}
+
+TEST(SiteList, MakeUniqueNameAndDuplicate)
+{
+    CSiteList list;
+    EXPECT_EQ(list.MakeUniqueName(L"Name"), L"Name");
+    EXPECT_EQ(list.MakeUniqueName(L""), L"Site");
+    list.Add(MakeSite(L"Name"));
+    EXPECT_EQ(list.MakeUniqueName(L"name"), L"name (2)");
+    EXPECT_EQ(list.Duplicate(L"Name"), L"Name (2)");
+    EXPECT_EQ(list.Duplicate(L"Name"), L"Name (3)");
+    EXPECT_EQ(list.Duplicate(L"Missing"), L"");
+    ASSERT_EQ(list.Count(), 3u);
+    EXPECT_EQ(list.At(1).host, L"example.com");
+}
+
+TEST(SiteList, NameRulesMatchSitePath)
+{
+    EXPECT_EQ(ValidateSiteName(L""), SiteError::NameEmpty);
+    EXPECT_EQ(ValidateSiteName(L"a/b"), SiteError::NameInvalid);
+    EXPECT_EQ(ValidateSiteName(L"a\\b"), SiteError::NameInvalid);
+    EXPECT_EQ(ValidateSiteName(L"@x"), SiteError::NameInvalid);
+    EXPECT_EQ(ValidateSiteName(L" x"), SiteError::NameInvalid);
+    EXPECT_EQ(ValidateSiteName(L"x "), SiteError::NameInvalid);
+    EXPECT_EQ(ValidateSiteName(L"a\tb"), SiteError::NameInvalid);
+
+    // every accepted name survives "@Name/path" through the path parser
+    const wchar_t* good[] = {L"Work", L"my server (2)", L"host:22", L"a@b", L"café 中", L"x.y-z_1"};
+    for (const wchar_t* name : good)
+    {
+        ASSERT_EQ(ValidateSiteName(name), SiteError::None) << name;
+        CSftpPath parsed;
+        ASSERT_TRUE(ParseSftpPath(std::wstring(L"@") + name + L"/home/x", parsed)) << name;
+        EXPECT_TRUE(parsed.isSite);
+        EXPECT_EQ(parsed.siteName, name);
+        EXPECT_EQ(parsed.path, L"/home/x");
+    }
+}
+
+TEST(SiteList, ValidateSiteFields)
+{
+    CSite s = MakeSite(L"ok");
+    EXPECT_EQ(ValidateSite(s), SiteError::None);
+
+    CSite t = s;
+    t.host = L"";
+    EXPECT_EQ(ValidateSite(t), SiteError::HostEmpty);
+    for (const wchar_t* bad : {L"a b", L"a\tb", L"a/b", L"u@h", L"[::1]", L"a\\b"})
+    {
+        t = s;
+        t.host = bad;
+        EXPECT_EQ(ValidateSite(t), SiteError::HostInvalid) << bad;
+    }
+    t = s;
+    t.host = L"::1"; // bare IPv6 is stored without brackets
+    EXPECT_EQ(ValidateSite(t), SiteError::None);
+
+    for (int port : {0, -1, 65536})
+    {
+        t = s;
+        t.port = port;
+        EXPECT_EQ(ValidateSite(t), SiteError::PortRange) << port;
+    }
+    t = s;
+    t.port = 65535;
+    EXPECT_EQ(ValidateSite(t), SiteError::None);
+
+    t = s;
+    t.user = L"";
+    EXPECT_EQ(ValidateSite(t), SiteError::UserEmpty);
+    t.user = L"a\nb";
+    EXPECT_EQ(ValidateSite(t), SiteError::UserInvalid);
+    t.user = L"domain@user"; // '@' is allowed in the user
+    EXPECT_EQ(ValidateSite(t), SiteError::None);
+
+    t = s;
+    t.timeoutSeconds = 0;
+    EXPECT_EQ(ValidateSite(t), SiteError::TimeoutRange);
+
+    t = s;
+    t.encoding = CSite::Encoding::CodePage;
+    t.codePage = 0;
+    EXPECT_EQ(ValidateSite(t), SiteError::CodePageInvalid);
+    t.codePage = 1250;
+    EXPECT_EQ(ValidateSite(t), SiteError::None);
+
+    t = s;
+    t.name = L"";
+    EXPECT_EQ(ValidateSite(t), SiteError::NameEmpty);
+}
+
+TEST(KnownHostsPaths, OwnAndUserPaths)
+{
+    const std::wstring own = KnownHostsOwnPath();
+    ASSERT_GT(own.size(), 20u);
+    EXPECT_EQ(own[1], L':');
+    EXPECT_EQ(own.substr(own.size() - 22), L"Sally\\SFTP\\known_hosts");
+    EXPECT_EQ(own.substr(0, own.size() - 12), AppDataSallyDir());
+
+    const std::wstring user = KnownHostsUserPath();
+    ASSERT_GT(user.size(), 20u);
+    EXPECT_EQ(user[1], L':');
+    EXPECT_EQ(user.substr(user.size() - 17), L"\\.ssh\\known_hosts");
+}

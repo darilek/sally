@@ -1,0 +1,24 @@
+﻿// SPDX-FileCopyrightText: 2026 Sally Authors
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+//
+// lang.rc2 - the English strings of the SFTP plugin
+//
+
+#ifdef APSTUDIO_INVOKED
+#error this file is not editable by Microsoft Visual C++
+#endif //APSTUDIO_INVOKED
+
+STRINGTABLE
+{
+ IDS_PLUGINNAME,             "SFTP"
+ IDS_PLUGIN_DESCRIPTION,     "SFTP client for Sally."
+ IDS_ABOUT,                  "About SFTP Plugin"
+ // arguments: plugin name, plugin version, copyright, description, libssh2 version, OpenSSL version text
+ IDS_ABOUT_FORMAT,           "%ls %ls\n\n%ls\n\n%ls\n\nlibssh2 %hs\n%hs"
+ IDS_NOT_IMPLEMENTED,        "SFTP: connecting will be available in a later version."
+ // argument: libssh2 error code
+ IDS_LIBSSH2_INIT_FAILED,    "SFTP: the libssh2 library could not be initialized (error %d). The plugin cannot be loaded."
+ // item in the Change Drive menu: hotkey, TAB, title
+ IDS_CHNGDRVITEM,            "\tSFTP"
+}

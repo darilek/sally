@@ -1,0 +1,21 @@
+﻿// SPDX-FileCopyrightText: 2026 Sally Authors
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+// WARNING: cannot be replaced by "#pragma once" because it is included from .rc file and it seems resource compiler does not support "#pragma once"
+#ifndef __SFTP_RH2
+#define __SFTP_RH2
+
+#if defined(APSTUDIO_INVOKED) && !defined(APSTUDIO_READONLY_SYMBOLS)
+#error this file is not editable by Microsoft Visual C++
+#endif //defined(APSTUDIO_INVOKED) && !defined(APSTUDIO_READONLY_SYMBOLS)
+
+// IDs of the strings in lang\lang.rc2
+#define IDS_PLUGINNAME           100
+#define IDS_PLUGIN_DESCRIPTION   101
+#define IDS_ABOUT                102
+#define IDS_ABOUT_FORMAT         103
+#define IDS_NOT_IMPLEMENTED      104
+#define IDS_LIBSSH2_INIT_FAILED  105
+#define IDS_CHNGDRVITEM          106
+
+#endif // __SFTP_RH2

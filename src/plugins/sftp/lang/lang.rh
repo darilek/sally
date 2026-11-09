@@ -1,0 +1,7 @@
+﻿// SPDX-FileCopyrightText: 2026 Sally Authors
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+// Resource IDs of the language-dependent resources (dialogs, controls). The IDs of the strings
+// are in ..\sftp.rh2; the ranges must not overlap.
+//
+// No dialog yet.

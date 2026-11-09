@@ -1,0 +1,20 @@
+﻿// SPDX-FileCopyrightText: 2026 Sally Authors
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+// Language-neutral resources of sftp.dll: the version information. The strings and dialogs are
+// language-dependent and live in lang\ (compiled in through lang\languages.rc).
+// This file is not edited by Microsoft Visual C++.
+
+#pragma code_page(65001)
+
+#include "winresrc.h"
+
+#include "sftp.rh"
+#include "sftp.rh2"
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEU)
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+
+#include "versinfo.rh2"
+#include "versinfo.rc2"
+#endif

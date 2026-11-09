@@ -1,0 +1,17 @@
+﻿// SPDX-FileCopyrightText: 2026 Sally Authors
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+// English resources of the SFTP plugin. Hand-written: not edited by Microsoft Visual C++.
+
+#pragma code_page(65001)
+
+#include "winresrc.h"
+
+#include "lang.rh"
+#include "..\sftp.rh2"
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEU)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+
+#include "lang.rc2" // strings
+#endif

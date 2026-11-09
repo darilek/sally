@@ -142,5 +142,28 @@ sal_add_plugin(NAME sftp
     "${SAL_PLUGINS}/sftp/fs/fs_interface.cpp"
   RC "${SAL_PLUGINS}/sftp/sftp.rc"
   DEF "${SAL_PLUGINS}/sftp/sftp.def"
-  LIBS libssh2::libssh2_static ws2_32 crypt32 bcrypt user32 advapi32
+  LIBS sftp_core libssh2::libssh2_static ws2_32 crypt32 bcrypt user32 advapi32
 )
+
+# ---- Unit tests ----------------------------------------------------------------------------------------------
+# sftp_core: the Sally-independent part of the plugin (libssh2/OpenSSL/zlib only). It gets no Sally include paths,
+# so the layer rule (core/ includes nothing from Sally) is enforced by the build. Linked into plugin_sftp.
+enable_testing()
+include(GoogleTest)
+find_package(GTest CONFIG REQUIRED)
+
+file(GLOB _SFTP_CORE_SOURCES CONFIGURE_DEPENDS "${SAL_PLUGINS}/sftp/core/*.cpp")
+add_library(sftp_core STATIC ${_SFTP_CORE_SOURCES})
+target_include_directories(sftp_core PUBLIC "${SAL_PLUGINS}/sftp/core")
+target_link_libraries(sftp_core PUBLIC libssh2::libssh2_static OpenSSL::Crypto ws2_32 crypt32 bcrypt)
+# the same Windows target definitions as the plugin (WINVER/_WIN32_WINNT 0x0601, CRT warnings); not the Sally debug
+# defines (TRACE_ENABLE, ...): they belong to the Sally headers, which core/ does not use
+target_compile_definitions(sftp_core PRIVATE ${SAL_COMMON_DEFINES})
+set_target_properties(sftp_core PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+
+file(GLOB _SFTP_TEST_SOURCES CONFIGURE_DEPENDS "${SAL_PLUGINS}/sftp/tests/*.cpp")
+add_executable(sftp_tests ${_SFTP_TEST_SOURCES})
+target_link_libraries(sftp_tests PRIVATE sftp_core GTest::gtest GTest::gtest_main)
+target_compile_definitions(sftp_tests PRIVATE SFTP_TEST_DIR_DEFAULT="${SAL_PLUGINS}/sftp/tests/docker/out")
+set_target_properties(sftp_tests PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+gtest_discover_tests(sftp_tests DISCOVERY_MODE PRE_TEST)

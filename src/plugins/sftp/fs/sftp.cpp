@@ -7,6 +7,7 @@
 #include <openssl/crypto.h>
 
 #include "SallyUrls.h"
+#include "../core/ssh_init.h"
 
 #define SFTP_WIDEN_IMPL(value) L##value
 #define SFTP_WIDEN(value) SFTP_WIDEN_IMPL(value)
@@ -134,11 +135,11 @@ CPluginInterfaceAbstract* WINAPI SalamanderPluginEntry(CSalamanderPluginEntryAbs
             return NULL;
 
         // last step, so that nothing has to be undone when an earlier step fails
-        const int sshInit = libssh2_init(0);
-        if (sshInit != 0)
+        CSshError sshInitError;
+        if (!SshGlobalInit(&sshInitError))
         {
             SalamanderGeneral->SalMessageBox(salamander->GetParentWindow(),
-                                             SPLFormatStringOwned(LangStr(IDS_LIBSSH2_INIT_FAILED).c_str(), sshInit).c_str(),
+                                             SPLFormatStringOwned(LangStr(IDS_LIBSSH2_INIT_FAILED).c_str(), sshInitError.libssh2Code).c_str(),
                                              LangStr(IDS_PLUGINNAME).c_str(), MB_OK | MB_ICONERROR);
             return NULL;
         }
@@ -179,7 +180,7 @@ BOOL WINAPI
 CPluginInterface::Release(HWND parent, BOOL force)
 {
     CALL_STACK_MESSAGE2("CPluginInterface::Release(, %d)", force);
-    libssh2_exit();
+    SshGlobalExit();
     return TRUE;
 }
 

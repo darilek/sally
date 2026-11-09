@@ -10,11 +10,13 @@
       "features": [ "openssl", "zlib" ]
     },
     "openssl",
-    "zlib"
+    "zlib",
+    "gtest"
   ],
   "overrides": [
     { "name": "libssh2", "version": "1.11.1", "port-version": 3 },
     { "name": "openssl", "version": "3.6.5", "port-version": 2 },
-    { "name": "zlib", "version": "1.3.2", "port-version": 2 }
+    { "name": "zlib", "version": "1.3.2", "port-version": 2 },
+    { "name": "gtest", "version": "1.18.0" }
   ]
 }

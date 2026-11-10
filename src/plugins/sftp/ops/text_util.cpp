@@ -86,3 +86,14 @@ void SplitPathAndMask(const std::wstring& payload, std::wstring& path, std::wstr
     path = payload.substr(0, separator);
     mask = separator == std::wstring::npos ? std::wstring() : payload.substr(separator + 1);
 }
+
+TargetMaskKind ClassifyTargetMask(const std::wstring& mask, std::wstring& newName)
+{
+    newName.clear();
+    if (mask.empty() || mask == L"*" || mask == L"*.*")
+        return TargetMaskKind::KeepName;
+    if (mask.find_first_of(L"*?") != std::wstring::npos)
+        return TargetMaskKind::Wildcard;
+    newName = mask;
+    return TargetMaskKind::Rename;
+}

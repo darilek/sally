@@ -36,3 +36,15 @@ std::string FormatHostPort(const std::string& host, int port);
 // The target path Sally hands to CopyOrMoveFromFS is "path", optionally followed by a NUL and an operation mask.
 // Splits at the first NUL ('mask' is empty when there is none).
 void SplitPathAndMask(const std::wstring& payload, std::wstring& path, std::wstring& mask);
+
+// What the operation mask of a download means for ONE selected file (Sally splits "C:/dir/new.txt" into the folder and
+// the mask "new.txt").
+enum class TargetMaskKind
+{
+    KeepName, // empty, "*" or "*.*": the file keeps its name
+    Rename,   // a plain name: the file is saved under it
+    Wildcard  // contains '*' or '?' (and is not "*" or "*.*"): not supported
+};
+
+// 'newName' is the plain name for Rename (empty otherwise).
+TargetMaskKind ClassifyTargetMask(const std::wstring& mask, std::wstring& newName);

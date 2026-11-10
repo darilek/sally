@@ -89,3 +89,20 @@ TEST(TextUtil, SplitPathAndMask)
     EXPECT_EQ(L"", path);
     EXPECT_EQ(L"", mask);
 }
+
+TEST(TextUtil, ClassifyTargetMask)
+{
+    std::wstring name = L"stale";
+    EXPECT_EQ(ClassifyTargetMask(L"", name), TargetMaskKind::KeepName);
+    EXPECT_TRUE(name.empty());
+    EXPECT_EQ(ClassifyTargetMask(L"*", name), TargetMaskKind::KeepName);
+    EXPECT_EQ(ClassifyTargetMask(L"*.*", name), TargetMaskKind::KeepName);
+
+    EXPECT_EQ(ClassifyTargetMask(L"new name.ext", name), TargetMaskKind::Rename);
+    EXPECT_EQ(name, L"new name.ext");
+
+    EXPECT_EQ(ClassifyTargetMask(L"*.txt", name), TargetMaskKind::Wildcard);
+    EXPECT_TRUE(name.empty());
+    EXPECT_EQ(ClassifyTargetMask(L"a?c", name), TargetMaskKind::Wildcard);
+    EXPECT_EQ(ClassifyTargetMask(L"data*", name), TargetMaskKind::Wildcard);
+}

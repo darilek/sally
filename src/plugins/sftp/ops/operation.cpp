@@ -54,7 +54,7 @@ std::vector<CQueueItem> COperation::BuildDownloadRoots(const std::vector<CRemote
         while (path.size() > 1 && path.back() == '/')
             path.pop_back();
         AddDownloadItems(items, path, LastRemoteName(path), source.isDir, source.size, source.mtime, settings.localRoot,
-                         codec, 0);
+                         codec, 0, source.targetName);
     }
     return items;
 }
@@ -251,6 +251,16 @@ bool COperation::IsFinished() const
 {
     std::lock_guard<std::mutex> lock(mutex_);
     return IsFinishedLocked();
+}
+
+bool COperation::IsDisposable() const
+{
+    if (!IsFinished())
+        return false;
+    if (WasCancelled())
+        return true;
+    const OperationState state = State();
+    return state == OperationState::Finished || state == OperationState::FinishedWithSkips;
 }
 
 // mutex_ held. The queue is called under it (queue is a leaf below the operation in the lock order).

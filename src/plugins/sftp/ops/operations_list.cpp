@@ -32,6 +32,14 @@ bool COperationsList::Remove(uint64_t uid)
     return true; // 'removed' goes out of scope here, without the lock: the destructor may join threads
 }
 
+bool COperationsList::RemoveFinished(uint64_t uid)
+{
+    const std::shared_ptr<COperation> operation = Get(uid); // asked without the list lock (lock order)
+    if (!operation || !operation->IsDisposable())
+        return false;
+    return Remove(uid); // 'operation' above still holds it: the destructor runs when this function returns, no lock held
+}
+
 std::vector<COperationInfo> COperationsList::Snapshot() const
 {
     std::vector<std::shared_ptr<COperation>> operations;

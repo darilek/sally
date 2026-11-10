@@ -12,6 +12,7 @@ COperationsRegistry OperationsRegistry;
 bool COperationsRegistry::Launch(COperationSettings settings, CPanelConnectParams params,
                                  std::vector<CQueueItem> roots, const COperationLaunch& launch)
 {
+    DropClosedFinished();
     COperationWindowOptions options;
     options.source = launch.source;
     options.target = launch.target;
@@ -58,8 +59,22 @@ bool COperationsRegistry::ShowWindowOf(uint64_t uid)
     return it != entries_.end() && it->second.window->Show();
 }
 
+// The window thread never calls into the registry: this runs on the main thread only. RemoveFinished may join the
+// window thread (already ended, because the window is closed) while no lock is held.
+void COperationsRegistry::DropClosedFinished()
+{
+    for (auto it = entries_.begin(); it != entries_.end();)
+    {
+        if (!it->second.window->IsWindowOpen() && list_.RemoveFinished(it->first))
+            it = entries_.erase(it);
+        else
+            ++it;
+    }
+}
+
 void COperationsRegistry::ShowDialog(HWND parent)
 {
+    DropClosedFinished();
     COperationsDialogCallbacks callbacks;
     callbacks.describe = [this](uint64_t uid) { return DescriptionOf(uid); };
     callbacks.showWindow = [this](uint64_t uid) { return ShowWindowOf(uid); };

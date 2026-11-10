@@ -49,6 +49,11 @@ private:
         std::wstring description; // "source -> target"
     };
 
+    // Drops the operations that are over (nothing left for the user) and whose window is closed. Running, paused and
+    // parked operations stay, and so does one whose window is only hidden. Called when a new operation starts and when the
+    // operations list opens, so a window that was closed since then is gone from the list.
+    void DropClosedFinished();
+
     std::wstring DescriptionOf(uint64_t uid) const;
     bool ShowWindowOf(uint64_t uid);
 

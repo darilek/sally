@@ -609,16 +609,24 @@ TEST_F(OperationFlowTest, OperationsListAddsGetsRemovesAndCancelsEverything)
         EXPECT_FALSE(info[1].cancelled);
         EXPECT_TRUE(list.HasRunning());
         EXPECT_FALSE(list.WaitAllFinished(100)); // the big one is still going
+        EXPECT_FALSE(huge->IsDisposable());
+        EXPECT_FALSE(list.RemoveFinished(hugeUid)); // running: stays
+        EXPECT_FALSE(list.RemoveFinished(9999));
+        EXPECT_NE(list.Get(hugeUid), nullptr);
 
         list.CancelAll();
         EXPECT_TRUE(list.WaitAllFinished(15000));
         EXPECT_FALSE(list.HasRunning());
         EXPECT_TRUE(huge->WasCancelled());
 
-        EXPECT_TRUE(list.Remove(quickUid));
-        EXPECT_FALSE(list.Remove(quickUid));
+        EXPECT_TRUE(quick->IsDisposable());
+        EXPECT_TRUE(huge->IsDisposable()); // cancelled and the workers are gone
+        EXPECT_TRUE(list.RemoveFinished(quickUid));
+        EXPECT_FALSE(list.RemoveFinished(quickUid));
         EXPECT_EQ(list.Get(quickUid), nullptr);
         EXPECT_EQ(list.Snapshot().size(), 1u);
+        EXPECT_TRUE(list.Remove(hugeUid));
+        EXPECT_FALSE(list.Remove(hugeUid));
     }
     EXPECT_LE(HandleCount(), handlesBefore + 2);
 }

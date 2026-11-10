@@ -37,6 +37,9 @@ public:
     std::shared_ptr<COperation> Get(uint64_t uid) const; // empty when unknown
     // Takes the operation out of the list. The caller of the last release runs its destructor (cancel + join).
     bool Remove(uint64_t uid);
+    // Like Remove, but only for an operation that is disposable (COperation::IsDisposable: finished with nothing left
+    // for the user). False (and nothing removed) for a running, paused, parked or unknown one.
+    bool RemoveFinished(uint64_t uid);
 
     std::vector<COperationInfo> Snapshot() const;
     // True when some operation has not finished (a parked operation waiting for the user counts as finished).

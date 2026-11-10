@@ -77,6 +77,7 @@ struct CRemoteSource
     bool isDir = false;
     uint64_t size = 0;
     int64_t mtime = 0;
+    std::wstring targetName; // the local name to use instead of the remote one (a rename on download); empty: keep
 };
 
 // A selected item to upload.
@@ -117,6 +118,9 @@ public:
     bool WaitFinished(DWORD timeoutMs);
 
     bool IsFinished() const;
+    // Finished with nothing left for the user to do: all done, only skips, or cancelled with the workers gone. A parked
+    // or failed item can still be retried, so such an operation is not disposable.
+    bool IsDisposable() const;
     bool WasCancelled() const { return cancelRequested_.load(); }
     OperationState State() const { return queue_.GetOperationState(); } // Running also after a cancel
     CQueueSummary Summary() const { return queue_.Summary(); }

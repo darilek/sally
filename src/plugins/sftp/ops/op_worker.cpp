@@ -245,10 +245,11 @@ std::string LastRemoteName(const std::string& path)
 }
 
 void AddDownloadItems(std::vector<CQueueItem>& out, const std::string& remotePath, const std::string& rawName, bool isDir,
-                      uint64_t size, int64_t mtime, const std::wstring& localDir, const CNameCodec& codec, int depth)
+                      uint64_t size, int64_t mtime, const std::wstring& localDir, const CNameCodec& codec, int depth,
+                      const std::wstring& targetName)
 {
     bool lossy = false;
-    const std::wstring name = DecodeRemoteNameToLocal(codec, rawName, &lossy);
+    const std::wstring name = targetName.empty() ? DecodeRemoteNameToLocal(codec, rawName, &lossy) : targetName;
     const bool valid = !lossy && IsValidLocalName(name);
 
     CQueueItem item;

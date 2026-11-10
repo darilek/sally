@@ -63,12 +63,13 @@ public:
 std::string AppendRemoteName(const std::string& dir, const std::string& rawName); // dir + "/" + name
 std::string LastRemoteName(const std::string& path);                              // ignores trailing '/'
 
-// Queue items for one source entry. Download: the local name is the decoded raw name; when it is not a valid Windows
+// Queue items for one source entry. Download: the local name is the decoded raw name (or 'targetName', a rename, when given); when it is not a valid Windows
 // name (or the decoding lost data) the items get an EMPTY localPath, which makes the worker park them with
 // Problem::InvalidLocalName. A directory gives MakeDirLocal + ExploreRemote. Upload: the remote name is the encoded
 // local name; one the site's encoding cannot write gets an EMPTY remotePath (worker: Problem::InvalidRemoteName).
 void AddDownloadItems(std::vector<CQueueItem>& out, const std::string& remotePath, const std::string& rawName, bool isDir,
-                      uint64_t size, int64_t mtime, const std::wstring& localDir, const CNameCodec& codec, int depth);
+                      uint64_t size, int64_t mtime, const std::wstring& localDir, const CNameCodec& codec, int depth,
+                      const std::wstring& targetName = std::wstring());
 void AddUploadItems(std::vector<CQueueItem>& out, const std::wstring& localPath, const std::wstring& name, bool isDir,
                     uint64_t size, int64_t mtime, const std::string& remoteDir, const CNameCodec& codec, int depth);
 

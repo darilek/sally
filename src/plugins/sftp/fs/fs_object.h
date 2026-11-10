@@ -205,11 +205,27 @@ private:
         bool valid = false;
     };
 
+    // What happened to a target typed or dropped as an sftp: path (see TryMoveToSftpTarget).
+    enum class SftpTargetResult
+    {
+        NotSftp,    // not an sftp: path: a Windows path (or something Sally reports itself)
+        Moved,      // moved on the server
+        MoveFailed, // started but cancelled or failed (a message was shown)
+        Refused     // a bad path, a copy, or another server (a message was shown): nothing was done
+    };
+
     BOOL DoCopyOrMoveFromFS(BOOL copy, int mode, const wchar_t* fsName, HWND parent, int panel, int selectedFiles,
-                            int selectedDirs, std::wstring& path, BOOL& operationMask, BOOL& cancelOrHandlePath);
+                            int selectedDirs, std::wstring& path, const std::wstring& mask, BOOL& operationMask,
+                            BOOL& cancelOrHandlePath);
+    SftpTargetResult TryMoveToSftpTarget(BOOL copy, const std::wstring& targetText, const std::wstring& ownName,
+                                         HWND parent, int panel, int selectedFiles, int selectedDirs);
+    bool IsSingleFile(int panel, int selectedFiles, int selectedDirs) const;
+    bool IsSameServerFsPath(const wchar_t* fsPath) const;
     BOOL AskDownloadTarget(BOOL copy, const wchar_t* fsName, HWND parent, int panel, int selectedFiles,
                            int selectedDirs, int mode, std::wstring& path, BOOL& operationMask,
                            BOOL& cancelOrHandlePath);
+    BOOL DropOnTarget(BOOL copy, const wchar_t* fsName, HWND parent, int panel, int selectedFiles, int selectedDirs,
+                      std::wstring& path, BOOL& cancelOrHandlePath);
     BOOL DropToWindowsFolder(BOOL copy, HWND parent, int panel, int selectedFiles, int selectedDirs,
                              std::wstring& path, BOOL& cancelOrHandlePath);
     BOOL DoCopyOrMoveFromDiskToFS(BOOL copy, int mode, const wchar_t* fsName, HWND parent, const wchar_t* sourcePath,
@@ -219,7 +235,7 @@ private:
     bool MakeWorkerParams(const CSftpPath& server, CPanelConnectParams& params);
     static void SetKnownHostsPaths(CPanelConnectParams& params);
     bool StartDownload(BOOL copy, int panel, int selectedFiles, int selectedDirs, const std::wstring& localDir,
-                       ConflictPolicy policy, bool preserveTime);
+                       ConflictPolicy policy, bool preserveTime, const std::wstring& targetName);
     bool MoveOnServer(HWND parent, int panel, int selectedFiles, int selectedDirs, const CSftpPath& target);
     std::wstring FullFsPath(const std::string& rawPath) const; // "sftp:user@host/path"
 

@@ -85,6 +85,7 @@ private:
     void OnState();
     void OnCommand(int id, int code);
     void HideWindow();
+    void CloseOrHide();
     void ShowAndFront();
     void TogglePause();
     void ConfirmCancel();
@@ -176,14 +177,14 @@ INT_PTR COperationWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
         if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) // Enter and Esc: the base class would destroy the window
         {
             if (LOWORD(wParam) == IDCANCEL)
-                HideWindow();
+                CloseOrHide();
             return TRUE;
         }
         OnCommand(LOWORD(wParam), HIWORD(wParam));
         return TRUE;
 
-    case WM_CLOSE: // the X button: hide, the operation goes on (the window is destroyed by the host or when done)
-        HideWindow();
+    case WM_CLOSE: // the X button: hide while the operation matters, close it when nothing is left to do
+        CloseOrHide();
         return TRUE;
 
     case WM_NOTIFY:
@@ -611,6 +612,16 @@ void COperationWindow::HideWindow()
 {
     host_.SetWantVisible(false);
     ShowWindow(HWindow, SW_HIDE);
+}
+
+// X and Esc. A running (or parked) operation goes on in the background, so its window only hides. One that is over and
+// needs nothing more is closed for good; the operations registry then drops it from the operations list.
+void COperationWindow::CloseOrHide()
+{
+    if (op_.IsDisposable())
+        RequestDestroy();
+    else
+        HideWindow();
 }
 
 void COperationWindow::ShowAndFront()

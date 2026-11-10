@@ -193,4 +193,5 @@ STRINGTABLE
  IDS_MENU_OPERATIONS, "&Operations..."
  IDS_WAIT_MOVING, "Moving on the server..."
  IDS_ERR_NOT_CONNECTED, "The connection to the server is not available."
+ IDS_ERR_MASK_UNSUPPORTED, "Masks with * or ? are not supported when downloading from an SFTP server. Enter a folder, or a single file name when one file is selected."
 }

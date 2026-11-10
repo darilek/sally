@@ -120,6 +120,10 @@ struct CPanelConnectParams
     CSecret passphrase;
     std::string hostKeyType;        // "ssh-ed25519", ...
     std::string hostKeyFingerprint; // "SHA256:..." of the key the panel connection accepted
+    // Filled by the caller (fs/). Each worker builds its own CKnownHosts from them: the own file is read, and written for
+    // "Accept and save"; the user's OpenSSH file is only read. Empty = not used. UTF-8.
+    std::string knownHostsOwnPath;
+    std::string knownHostsUserPath;
 };
 
 class CPanelSession : private ISshCallbacks

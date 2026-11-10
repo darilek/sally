@@ -125,6 +125,7 @@ public:
     // that was reached stays reached: Stall(false) lets the traffic go again, and the counter keeps counting.
     void StallAfter(uint64_t totalBytes) { limit_ = totalBytes; }
     uint64_t Forwarded() const { return forwarded_; }
+    int Accepted() const { return accepted_; } // connections that reached the target
     bool IsStalled() const { return stalled_; }
 
 private:
@@ -151,6 +152,7 @@ private:
             return;
         }
         pairs_.push_back({c, s});
+        ++accepted_;
     }
 
     bool Forward(SOCKET from, SOCKET to)
@@ -219,6 +221,7 @@ private:
     std::atomic<bool> stalled_{false};
     std::atomic<uint64_t> limit_{0};
     std::atomic<uint64_t> forwarded_{0};
+    std::atomic<int> accepted_{0};
     std::vector<Pair> pairs_;
     std::thread thread_;
 };

@@ -217,6 +217,7 @@ private:
                                   BOOL* invalidPathOrCancel);
     bool CollectSelection(int panel, int selectedFiles, int selectedDirs, std::vector<CSelectedItem>& items) const;
     bool MakeWorkerParams(const CSftpPath& server, CPanelConnectParams& params);
+    static void SetKnownHostsPaths(CPanelConnectParams& params);
     bool StartDownload(BOOL copy, int panel, int selectedFiles, int selectedDirs, const std::wstring& localDir,
                        ConflictPolicy policy, bool preserveTime);
     bool MoveOnServer(HWND parent, int panel, int selectedFiles, int selectedDirs, const CSftpPath& target);

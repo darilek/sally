@@ -579,6 +579,22 @@ bool CSshSession::Rename(const std::string& from, const std::string& to, bool ov
     return RenameAside(from, to);
 }
 
+// libssh2 takes "what the link points to" first and the new link's path second (the order OpenSSH's server expects).
+bool CSshSession::Symlink(const std::string& target, const std::string& linkPath)
+{
+    if (!BeginSftp())
+        return false;
+    int rc = Run(
+        [&]
+        {
+            return libssh2_sftp_symlink_ex(sftp_, target.data(), static_cast<unsigned int>(target.size()),
+                                           const_cast<char*>(linkPath.data()),
+                                           static_cast<unsigned int>(linkPath.size()), LIBSSH2_SFTP_SYMLINK);
+        },
+        timeoutMs_);
+    return rc == 0 || FailSftp("Cannot create the link", linkPath, rc);
+}
+
 bool CSshSession::Chmod(const std::string& path, uint32_t mode)
 {
     if (!BeginSftp())

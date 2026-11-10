@@ -321,3 +321,62 @@ TEST_F(OperationTest, DestroyingARunningOperationJoinsEverything)
     }                // ~COperation cancels and joins
     EXPECT_LE(HandleCount(), before + 2);
 }
+
+// ---- links and loops -----------------------------------------------------------------------------------------------
+
+TEST_F(OperationTest, MovingADirectoryLinkRemovesTheLinkAndKeepsWhatItPointsTo)
+{
+    ASSERT_TRUE(admin_.Mkdir(remoteDir_ + "/dirA"));
+    ASSERT_TRUE(admin_.Mkdir(remoteDir_ + "/dirB"));
+    PutRemoteFile(remoteDir_ + "/dirB/file.txt", "kept\n");
+    PutRemoteFile(remoteDir_ + "/dirA/own.txt", "own\n");
+    ASSERT_TRUE(admin_.Symlink("../dirB", remoteDir_ + "/dirA/link")) << admin_.LastError().message;
+
+    auto op = MakeDownload({RemoteSrc(remoteDir_ + "/dirA", true)}, true);
+    CTestObserver observer;
+    ASSERT_TRUE(Run(*op, observer));
+    EXPECT_EQ(op->State(), OperationState::Finished) << Describe(*op);
+
+    EXPECT_EQ(ReadAll(local_ / "dirA" / "link" / "file.txt"), "kept\n"); // transferred through the link
+    EXPECT_EQ(ReadAll(local_ / "dirA" / "own.txt"), "own\n");
+    EXPECT_EQ(GetRemoteFile(remoteDir_ + "/dirB/file.txt"), "kept\n");    // the target of the link is untouched
+    EXPECT_FALSE(RemoteExists(remoteDir_ + "/dirA/link"));
+    EXPECT_FALSE(RemoteExists(remoteDir_ + "/dirA/own.txt"));
+    EXPECT_FALSE(RemoteExists(remoteDir_ + "/dirA"));
+}
+
+TEST_F(OperationTest, MovingUpAJunctionRemovesTheJunctionAndKeepsWhatItPointsTo)
+{
+    WriteAll(local_ / "src" / "tree" / "own.txt", "own\n");
+    WriteAll(local_ / "other" / "inner.txt", "kept\n");
+    if (!MakeJunction(local_ / "src" / "tree" / "jl", local_ / "other"))
+        GTEST_SKIP() << "cannot create a junction here";
+
+    auto op = MakeUpload({LocalSrc(local_ / "src" / "tree", true)}, remoteDir_ + "/dest", true);
+    CTestObserver observer;
+    ASSERT_TRUE(Run(*op, observer));
+    EXPECT_EQ(op->State(), OperationState::Finished) << Describe(*op);
+
+    EXPECT_EQ(GetRemoteFile(remoteDir_ + "/dest/tree/jl/inner.txt"), "kept\n");
+    EXPECT_EQ(GetRemoteFile(remoteDir_ + "/dest/tree/own.txt"), "own\n");
+    EXPECT_EQ(ReadAll(local_ / "other" / "inner.txt"), "kept\n"); // not deleted
+    EXPECT_FALSE(fs::exists(local_ / "src" / "tree"));            // own file, the junction and the folder are gone
+}
+
+TEST_F(OperationTest, AJunctionToAnAncestorFailsTheLoopItemOnly)
+{
+    WriteAll(local_ / "src" / "tree" / "a.txt", "a\n");
+    const fs::path junction = local_ / "src" / "tree" / "back";
+    if (!MakeJunction(junction, local_ / "src" / "tree"))
+        GTEST_SKIP() << "cannot create a junction here";
+
+    auto op = MakeUpload({LocalSrc(local_ / "src" / "tree", true)}, remoteDir_ + "/dest");
+    CTestObserver observer;
+    const bool ran = Run(*op, observer);
+    RemoveDirectoryW(junction.c_str()); // before anything can walk the loop (the test folder is deleted afterwards)
+    ASSERT_TRUE(ran);
+
+    EXPECT_EQ(op->State(), OperationState::FinishedWithErrors);
+    EXPECT_EQ(ItemsWithProblem(*op, Problem::SymlinkLoop).size(), 1u) << Describe(*op);
+    EXPECT_EQ(GetRemoteFile(remoteDir_ + "/dest/tree/a.txt"), "a\n");
+}

@@ -28,8 +28,11 @@ bool COperationsRegistry::Launch(COperationSettings settings, CPanelConnectParam
     CWindowedOperation made = COperationWindowHost::Create(std::move(settings), std::move(params), std::move(roots),
                                                            std::move(options));
     const uint64_t uid = list_.Add(made.operation);
+    // shown before the workers start: a question of a worker never finds a window that is not coming
+    made.window->Show();
     if (!made.operation->Start())
     {
+        made.window->Close();
         list_.Remove(uid);
         SalamanderGeneral->SalMessageBox(SalamanderGeneral->GetMsgBoxParent(), LangStr(IDS_ERR_OP_START).c_str(),
                                          LangStr(IDS_PLUGINNAME).c_str(), MB_OK | MB_ICONEXCLAMATION);
@@ -40,7 +43,6 @@ bool COperationsRegistry::Launch(COperationSettings settings, CPanelConnectParam
     entry.description = SPLFormatStringOwned(LangStr(IDS_OPS_DESCRIPTION).c_str(), launch.source.c_str(),
                                              launch.target.c_str());
     entries_[uid] = std::move(entry);
-    made.window->Show();
     return true;
 }
 

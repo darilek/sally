@@ -62,7 +62,10 @@ std::wstring MakeLocalPath(const std::wstring& dir, const std::wstring& name)
 
 std::wstring ExtendedLocalPath(const std::wstring& path)
 {
-    if (path.size() < MAX_PATH || StartsWith(path, L"\\\\?\\") || StartsWith(path, L"\\\\.\\"))
+    // CreateDirectory fails from 248 characters on (MAX_PATH minus room for an 8.3 file name), although a file path
+    // may have 259: the prefix starts there, so a deep folder can be created too.
+    constexpr size_t kPrefixFrom = 248;
+    if (path.size() < kPrefixFrom || StartsWith(path, L"\\\\?\\") || StartsWith(path, L"\\\\.\\"))
         return path;
     if (StartsWith(path, L"\\\\"))
         return L"\\\\?\\UNC\\" + path.substr(2);

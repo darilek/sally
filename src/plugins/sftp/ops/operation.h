@@ -109,6 +109,9 @@ public:
     void Pause();
     void Resume();
     bool IsPaused() const override { return paused_.load(); }
+    // Why the operation paused itself (a login that failed, see IWorkerHost::PauseForLoginProblem); empty for a pause of
+    // the user and while running. Cleared by Resume.
+    std::wstring PauseReason() const;
     // True when the current run is finished (observer told) or the operation was cancelled and the workers ended,
     // within timeoutMs (INFINITE allowed).
     bool WaitFinished(DWORD timeoutMs);
@@ -129,9 +132,9 @@ public:
 
     // ---- worker interactions. Hands out each interaction once (false when none is waiting or it was handed out
     // already). 'workerIndex' (optional) tells which worker asks. The answer functions return false when no such
-    // interaction is waiting (answered already, cancelled, or of the other kind). AcceptAndSave is handled like
-    // AcceptOnce here (the key is trusted for the rest of this operation); saving it is up to the caller, which knows
-    // host, port, type and fingerprint from the CInteraction it received.
+    // interaction is waiting (answered already, cancelled, or of the other kind). AcceptAndSave: the worker that
+    // asked writes the key into the plugin's known_hosts file (its own libssh2 session is needed for that); either way
+    // all workers trust the key for the rest of this operation.
     bool TryGetInteraction(CInteraction& out, int* workerIndex = nullptr);
     bool AnswerHostKey(HostKeyDecision decision);
     bool AnswerPrompt(bool ok, CSecret answer);
@@ -153,6 +156,7 @@ private:
     bool SleepUnlessInterrupted(unsigned ms) override;
     void CheckRunOver() override { FinishRun(false); }
     CExploredDirs& ExploredDirs() override { return explored_; }
+    void PauseForLoginProblem(const std::wstring& text) override;
     HostKeyDecision AskHostKey(int workerIndex, const std::string& host, int port, const std::string& keyType,
                                const std::string& fingerprint, bool changed) override;
     bool AskPrompt(int workerIndex, PromptKind kind, const std::string& name, const std::string& instruction,
@@ -188,8 +192,9 @@ private:
     uint64_t notifiedRun_ = UINT64_MAX;
 
     // pause and backoff waits: a leaf lock around the flags, so a change cannot be missed
-    std::mutex waitMutex_;
+    mutable std::mutex waitMutex_;
     std::condition_variable waitCv_;
+    std::wstring pauseReason_; // guarded by waitMutex_
 
     // the one interaction at a time: a leaf lock
     std::mutex interMutex_;

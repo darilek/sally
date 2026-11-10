@@ -44,9 +44,6 @@ struct COperationWindowOptions
     std::wstring hostName; // "host:port", named in the questions the workers ask
     bool closeWhenDone = false;  // initial state of "Close this window when done"
     bool errorsOnly = true;      // initial state of "Errors only"
-    // The user chose "Accept and save" for this host key: the owner stores it (the operation itself trusts it only for
-    // the rest of its run).
-    std::function<void(const CInteraction&)> saveHostKey;
     // The checkbox "Close this window when done" changed.
     std::function<void(bool)> closeWhenDoneChanged;
     // A run of the operation is over (also after a cancel). Called on a WORKER thread, so it must be thread safe and

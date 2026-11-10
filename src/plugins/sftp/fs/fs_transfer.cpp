@@ -88,6 +88,14 @@ bool CPluginFSInterface::CollectSelection(int panel, int selectedFiles, int sele
     return !items.empty();
 }
 
+// The workers check the host key against the same files as the panel (their own CKnownHosts, built on the worker).
+void CPluginFSInterface::SetKnownHostsPaths(CPanelConnectParams& params)
+{
+    const CNameCodec utf8 = CNameCodec::Utf8();
+    params.knownHostsOwnPath = utf8.Encode(KnownHostsOwnPath());
+    params.knownHostsUserPath = utf8.Encode(KnownHostsUserPath());
+}
+
 // What a worker needs to log in: the panel connection's site, secrets and accepted host key when this FS is connected to
 // that server (D35); otherwise (a temporary FS from OpenFS, or a panel connection that is gone) the site from the
 // configuration with its remembered secrets, asking for a password when needed. Without a pinned host key the worker
@@ -98,7 +106,10 @@ bool CPluginFSInterface::MakeWorkerParams(const CSftpPath& server, CPanelConnect
     {
         params = session_->CopyConnectParams();
         if (params.valid)
+        {
+            SetKnownHostsPaths(params);
             return true;
+        }
     }
     CSite site;
     CSecret password;
@@ -110,6 +121,7 @@ bool CPluginFSInterface::MakeWorkerParams(const CSftpPath& server, CPanelConnect
     params.site = site;
     params.password = std::move(password);
     params.passphrase = std::move(passphrase);
+    SetKnownHostsPaths(params); // no pinned key here: the workers check the known_hosts files or ask
     return true;
 }
 

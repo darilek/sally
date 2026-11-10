@@ -38,19 +38,19 @@ TEST(LocalPath, JoinsWithBackslash)
 
 TEST(LocalPath, ShortPathHasNoPrefix)
 {
-    const std::wstring dir = L"C:\\" + std::wstring(200, L'd');
-    const std::wstring path = MakeLocalPath(dir, std::wstring(50, L'f')); // 3 + 200 + 1 + 50 = 254
+    const std::wstring dir = L"C:\\" + std::wstring(150, L'd');
+    const std::wstring path = MakeLocalPath(dir, std::wstring(50, L'f')); // 3 + 150 + 1 + 50 = 204
     EXPECT_EQ(path.find(L"\\\\?\\"), std::wstring::npos);
 }
 
-TEST(LocalPath, BoundaryIsMaxPath)
+TEST(LocalPath, BoundaryIs248)
 {
-    // 259 characters is the longest path that still works without the prefix
+    // CreateDirectory refuses 248 characters or more without the prefix, so the prefix starts there
     const std::wstring dir = L"C:\\" + std::wstring(200, L'd');
-    EXPECT_EQ(MakeLocalPath(dir, std::wstring(55, L'f')).size(), 259u);
-    EXPECT_EQ(MakeLocalPath(dir, std::wstring(55, L'f')).find(L"\\\\?\\"), std::wstring::npos);
-    const std::wstring p260 = MakeLocalPath(dir, std::wstring(56, L'f'));
-    EXPECT_EQ(p260.compare(0, 4, L"\\\\?\\"), 0);
+    EXPECT_EQ(MakeLocalPath(dir, std::wstring(43, L'f')).size(), 247u);
+    EXPECT_EQ(MakeLocalPath(dir, std::wstring(43, L'f')).find(L"\\\\?\\"), std::wstring::npos);
+    const std::wstring p248 = MakeLocalPath(dir, std::wstring(44, L'f'));
+    EXPECT_EQ(p248.compare(0, 4, L"\\\\?\\"), 0);
 }
 
 TEST(LocalPath, LongDrivePathGetsPrefix)

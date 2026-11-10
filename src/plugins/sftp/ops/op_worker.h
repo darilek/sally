@@ -47,6 +47,9 @@ public:
     // A worker has nothing to do and the queue is not Running: lets the operation report the end of the run.
     virtual void CheckRunOver() = 0;
     virtual CExploredDirs& ExploredDirs() = 0;
+    // A login that will fail the same way for every item (rejected host key, wrong password, bad key file, cancelled
+    // prompt): pauses the operation and shows 'text'; Resume tries the login again.
+    virtual void PauseForLoginProblem(const std::wstring& text) = 0;
 
     // Logins the worker cannot decide alone (a host key other than the pinned one, a prompt). They block until the
     // user answered, the operation was cancelled or the operation cannot ask (then: reject / false).
@@ -124,6 +127,8 @@ private:
 
     // connection
     bool EnsureConnected(CItemResult& failure);
+    static bool IsLoginProblem(SshErrorKind kind);
+    void StopAfterLoginProblem(CItemResult& failure);
     CItemResult FromSessionError(Problem fallback);
 
     // items
@@ -135,7 +140,9 @@ private:
     CItemResult MakeDirRemote(const CQueueItem& item);
     CItemResult DeleteRemote(const CQueueItem& item, bool isDir);
     CItemResult DeleteLocal(const CQueueItem& item, bool isDir);
-    CItemResult ReplaceWithChildren(const CQueueItem& item, std::vector<CQueueItem> children, ItemType afterType);
+    CItemResult ReplaceWithChildren(const CQueueItem& item, std::vector<CQueueItem> children, ItemType afterType,
+                                    bool childrenViaLink);
+    bool IsRemoteLink(const std::string& path);
 
     // conflicts (a transfer item: where does it go, and what to do when the target exists)
     bool ResolveLocalTarget(const CQueueItem& item, std::wstring& target, bool& userNamed, CItemResult& stop);
@@ -161,9 +168,13 @@ private:
     IWorkerHost& host_;
     const int index_;
     std::thread thread_;
+    CKnownHosts hosts_; // this worker's view of the known_hosts files (before session_: it uses it)
     CSshSession session_;
     CNameCodec codec_;
     bool unreachable_ = false; // the last item ended with "connection lost": no more backoff until a connect works
+    // A login problem in a non-interactive operation (nobody to pause for): every later item fails the same way at once.
+    bool loginFailed_ = false;
+    CItemResult loginFailure_;
 
     // the running transfer (worker thread only)
     uint64_t transferUid_ = 0;

@@ -24,6 +24,13 @@ TEST(SolveOffers, InvalidNameWantsRenameNotOverwrite)
     EXPECT_FALSE(o.resume);
 }
 
+TEST(SolveOffers, InvalidNameOfADirectoryOffersRename)
+{
+    EXPECT_TRUE(SolveOffersFor(Problem::InvalidLocalName, ItemType::ExploreRemote).rename);
+    EXPECT_TRUE(SolveOffersFor(Problem::InvalidRemoteName, ItemType::ExploreLocal).rename);
+    EXPECT_FALSE(SolveOffersFor(Problem::InvalidLocalName, ItemType::DeleteRemoteDir).rename);
+}
+
 TEST(SolveOffers, ResumeOnlyForTransfersAfterInterruption)
 {
     EXPECT_TRUE(SolveOffersFor(Problem::TransferFailed, ItemType::Upload).resume);

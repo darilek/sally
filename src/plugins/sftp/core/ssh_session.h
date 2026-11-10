@@ -89,6 +89,8 @@ public:
     // as target gives Exists and nothing is touched. If only deleting the aside copy fails the call succeeds and
     // LastError() (kind None) names the leftover. Without overwrite an existing target gives Exists.
     bool Rename(const std::string& from, const std::string& to, bool overwrite);
+    // Creates the symbolic link linkPath that points to target (target is stored as given).
+    bool Symlink(const std::string& target, const std::string& linkPath);
     bool Chmod(const std::string& path, uint32_t mode); // permission bits only (mode & 07777)
     // libssh2 carries the times as unsigned long (32 bits on Windows): values outside 0..4294967295 give Unsupported.
     bool SetTimes(const std::string& path, int64_t atime, int64_t mtime);

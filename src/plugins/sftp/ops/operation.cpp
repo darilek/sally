@@ -175,12 +175,28 @@ void COperation::Pause()
     NotifyObserverState();
 }
 
+void COperation::PauseForLoginProblem(const std::wstring& text)
+{
+    {
+        std::lock_guard<std::mutex> lock(waitMutex_);
+        pauseReason_ = text.empty() ? std::wstring(1, L'?') : text; // non-empty: that is what tells it from a user pause
+    }
+    Pause();
+}
+
+std::wstring COperation::PauseReason() const
+{
+    std::lock_guard<std::mutex> lock(waitMutex_);
+    return pauseReason_;
+}
+
 void COperation::Resume()
 {
     {
         std::lock_guard<std::mutex> lock(waitMutex_);
         if (!paused_.exchange(false))
             return;
+        pauseReason_.clear();
     }
     waitCv_.notify_all();
     queue_.WakeAll();
@@ -402,7 +418,7 @@ HostKeyDecision COperation::AskHostKey(int workerIndex, const std::string& host,
     if (decision != HostKeyDecision::Reject)
         trustedKeys_.insert(fingerprint);
     EndInteraction();
-    return decision == HostKeyDecision::AcceptAndSave ? HostKeyDecision::AcceptOnce : decision;
+    return decision;
 }
 
 bool COperation::AskPrompt(int workerIndex, PromptKind kind, const std::string& name, const std::string& instruction,

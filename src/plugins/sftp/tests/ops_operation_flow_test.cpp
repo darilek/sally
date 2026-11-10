@@ -338,6 +338,7 @@ TEST_F(OperationFlowTest, AnUnknownHostKeyIsPublishedAndAcceptOnceTrustsItForAll
 {
     CPanelConnectParams params = Params();
     params.hostKeyFingerprint = "SHA256:not-the-key"; // the panel saw another key
+    params.knownHostsOwnPath = (local_ / "kh_once").string();
     const COperationSettings settings = Settings(TransferDirection::Download, false, 2);
     COperation op(settings, std::move(params),
                   COperation::BuildDownloadRoots({RemoteSrc("fixtures/small", true), RemoteSrc("fixtures/nested", true)},
@@ -354,14 +355,14 @@ TEST_F(OperationFlowTest, AnUnknownHostKeyIsPublishedAndAcceptOnceTrustsItForAll
     EXPECT_EQ(ask.fingerprint, admin_.HostKeyFingerprint());
     EXPECT_EQ(ask.host, "127.0.0.1");
     EXPECT_EQ(ask.port, sftptest::kPort);
-    EXPECT_FALSE(ask.changed);
+    EXPECT_TRUE(ask.changed); // the panel pinned another key: a changed key, whatever the known_hosts files say
     EXPECT_GE(worker, 0);
     EXPECT_NE(ask.threadId, std::this_thread::get_id()); // asked on a worker thread
     CInteraction again;
     EXPECT_FALSE(op.TryGetInteraction(again)); // handed out once
     EXPECT_FALSE(op.AnswerPrompt(true, CSecret("x"))); // wrong kind
 
-    EXPECT_TRUE(op.AnswerHostKey(HostKeyDecision::AcceptAndSave));
+    EXPECT_TRUE(op.AnswerHostKey(HostKeyDecision::AcceptOnce));
     EXPECT_FALSE(op.AnswerHostKey(HostKeyDecision::AcceptOnce)); // answered already
 
     ASSERT_TRUE(op.WaitFinished(60000));
@@ -369,9 +370,75 @@ TEST_F(OperationFlowTest, AnUnknownHostKeyIsPublishedAndAcceptOnceTrustsItForAll
     EXPECT_EQ(observer.interactions.load(), 1); // the second worker did not ask again
     EXPECT_EQ(ReadAll(local_ / "small" / "hello.txt"), "hello\n");
     EXPECT_EQ(ReadAll(local_ / "nested" / "a" / "b" / "c" / "deep.txt"), "deep\n");
+    EXPECT_FALSE(fs::exists(local_ / "kh_once")); // accepted once: nothing saved
 }
 
-TEST_F(OperationFlowTest, RejectingTheHostKeyFailsTheItemWithConnectionLost)
+// "Accept and save" writes the plugin's known_hosts file; the next operation finds the key there and asks nothing, even
+// with a different pinned key (the file vouches for it).
+TEST_F(OperationFlowTest, AcceptAndSaveWritesTheKnownHostsFileAndTheNextOperationDoesNotAsk)
+{
+    const fs::path hostsFile = local_ / "kh_saved";
+    {
+        CPanelConnectParams params = Params();
+        params.hostKeyFingerprint.clear();
+        params.knownHostsOwnPath = hostsFile.string();
+        const COperationSettings settings = Settings(TransferDirection::Download, false, 1);
+        COperation op(settings, std::move(params),
+                      COperation::BuildDownloadRoots({RemoteSrc("fixtures/small/hello.txt", false, 6)}, settings,
+                                                     CNameCodec::Auto()));
+        CTestObserver observer;
+        op.SetObserver(&observer);
+        ASSERT_TRUE(op.Start());
+        ASSERT_TRUE(WaitUntil([&] { return observer.interactions.load() > 0; }, 20000));
+        CInteraction ask;
+        ASSERT_TRUE(op.TryGetInteraction(ask));
+        EXPECT_FALSE(ask.changed); // no pinned key, nothing in the files: just unknown
+        EXPECT_TRUE(op.AnswerHostKey(HostKeyDecision::AcceptAndSave));
+        ASSERT_TRUE(op.WaitFinished(30000));
+        EXPECT_EQ(op.State(), OperationState::Finished) << Describe(op);
+    }
+    const std::string saved = ReadAll(hostsFile);
+    EXPECT_NE(saved.find("[127.0.0.1]:" + std::to_string(sftptest::kPort) + " ssh-ed25519 "), std::string::npos) << saved;
+
+    fs::remove(local_ / "hello.txt"); // the first operation downloaded it
+    CPanelConnectParams params = Params();
+    params.hostKeyFingerprint = "SHA256:not-the-key";
+    params.knownHostsOwnPath = hostsFile.string();
+    const COperationSettings settings = Settings(TransferDirection::Download, false, 1);
+    COperation op(settings, std::move(params),
+                  COperation::BuildDownloadRoots({RemoteSrc("fixtures/small/hello.txt", false, 6)}, settings,
+                                                 CNameCodec::Auto()));
+    CTestObserver observer;
+    ASSERT_TRUE(Run(op, observer));
+    EXPECT_EQ(observer.interactions.load(), 0);
+    EXPECT_EQ(op.State(), OperationState::Finished) << Describe(op);
+}
+
+// A key that the known_hosts file knows differently is reported as changed even without a pinned key.
+TEST_F(OperationFlowTest, AWrongKeyInTheKnownHostsFileIsReportedAsChanged)
+{
+    const fs::path hostsFile = local_ / "kh_wrong";
+    WriteAll(hostsFile, "[127.0.0.1]:" + std::to_string(sftptest::kPort) +
+                            " ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4f\n");
+    CPanelConnectParams params = Params();
+    params.hostKeyFingerprint.clear();
+    params.knownHostsOwnPath = hostsFile.string();
+    const COperationSettings settings = Settings(TransferDirection::Download, false, 1);
+    COperation op(settings, std::move(params),
+                  COperation::BuildDownloadRoots({RemoteSrc("fixtures/small/hello.txt", false, 6)}, settings,
+                                                 CNameCodec::Auto()));
+    CTestObserver observer;
+    op.SetObserver(&observer);
+    ASSERT_TRUE(op.Start());
+    ASSERT_TRUE(WaitUntil([&] { return observer.interactions.load() > 0; }, 20000));
+    CInteraction ask;
+    ASSERT_TRUE(op.TryGetInteraction(ask));
+    EXPECT_TRUE(ask.changed);
+    EXPECT_TRUE(op.AnswerHostKey(HostKeyDecision::Reject));
+    ASSERT_TRUE(WaitUntil([&] { return op.IsPaused(); }, 10000));
+}
+
+TEST_F(OperationFlowTest, RejectingTheHostKeyPausesTheOperationAndResumeAsksAgain)
 {
     CPanelConnectParams params = Params();
     params.hostKeyFingerprint = "SHA256:not-the-key";
@@ -386,10 +453,47 @@ TEST_F(OperationFlowTest, RejectingTheHostKeyFailsTheItemWithConnectionLost)
     CInteraction ask;
     ASSERT_TRUE(op.TryGetInteraction(ask));
     EXPECT_TRUE(op.AnswerHostKey(HostKeyDecision::Reject));
-    ASSERT_TRUE(op.WaitFinished(30000));
-    EXPECT_EQ(op.State(), OperationState::FinishedWithErrors);
-    EXPECT_EQ(ItemsWithProblem(op, Problem::ConnectionLost).size(), 1u);
+
+    // a refused key would be refused for every item: the operation pauses and the item keeps its state
+    ASSERT_TRUE(WaitUntil([&] { return op.IsPaused(); }, 10000));
+    EXPECT_FALSE(op.PauseReason().empty());
+    EXPECT_EQ(op.State(), OperationState::Running);
+    EXPECT_EQ(ItemsWithProblem(op, Problem::ConnectionLost).size(), 0u);
     EXPECT_FALSE(fs::exists(local_ / "hello.txt"));
+
+    op.Resume(); // tries the login again: the key is asked again
+    ASSERT_TRUE(WaitUntil([&] { return observer.interactions.load() > 1; }, 20000));
+    EXPECT_TRUE(op.PauseReason().empty());
+    ASSERT_TRUE(op.TryGetInteraction(ask));
+    EXPECT_TRUE(op.AnswerHostKey(HostKeyDecision::AcceptOnce));
+    ASSERT_TRUE(op.WaitFinished(30000));
+    EXPECT_EQ(op.State(), OperationState::Finished) << Describe(op);
+    EXPECT_EQ(ReadAll(local_ / "hello.txt"), "hello\n");
+}
+
+// A wrong password fails the same way for every item: the operation pauses after the first attempts instead of logging
+// in again for each of the files.
+TEST_F(OperationFlowTest, AWrongPasswordPausesTheOperationInsteadOfLoggingInPerItem)
+{
+    sftptest::CStallProxy proxy(sftptest::kPort); // counts the connections
+    port_ = proxy.Port();
+    for (int i = 0; i < 30; ++i)
+        WriteAll(local_ / "many" / ("f" + std::to_string(i) + ".txt"), "x\n");
+    CPanelConnectParams params = Params();
+    params.password = CSecret("wrong password");
+    const COperationSettings settings = Settings(TransferDirection::Upload, false, 2);
+    COperation op(settings, std::move(params),
+                  COperation::BuildUploadRoots({LocalSrc(local_ / "many", true)}, settings, CNameCodec::Auto()));
+    CTestObserver observer;
+    op.SetObserver(&observer);
+    ASSERT_TRUE(op.Start());
+    ASSERT_TRUE(WaitUntil([&] { return op.IsPaused(); }, 20000));
+    Sleep(500); // would be enough for many more attempts
+
+    EXPECT_LE(proxy.Accepted(), 4); // at most a few per worker (the first items), nowhere near 30
+    EXPECT_FALSE(op.PauseReason().empty());
+    EXPECT_EQ(op.State(), OperationState::Running);
+    EXPECT_TRUE(op.Queue().Items(true).empty()) << "no item failed; they wait for Resume";
 }
 
 TEST_F(OperationFlowTest, DestroyingTheOperationWhileAWorkerWaitsForTheUserDoesNotHang)

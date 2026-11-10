@@ -90,6 +90,9 @@ struct CQueueItem
     // Set by the workers while they transfer
     std::wstring parentLocal;  // downloads: the folder the target goes into (a Rename solve builds the new path from it)
     std::string parentRemote;  // uploads: the same on the server (raw bytes)
+    // Reached through a directory link (a remote symlink or a local junction/symlink): a move transfers it but must not
+    // delete the source, because that is the content of the link's target. The link itself is removed as a link.
+    bool viaLink = false;
     bool ownsPartial = false;  // this operation has written (part of) the target: a retry resumes it whatever the policy
     uint64_t targetSize = 0;   // what the last conflict check saw at the target (for the solve dialog)
     int64_t targetMtime = 0;

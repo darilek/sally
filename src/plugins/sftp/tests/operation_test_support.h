@@ -325,6 +325,24 @@ protected:
         return result;
     }
 
+    // A directory junction (needs no privilege, unlike a symbolic link): link -> target.
+    static bool MakeJunction(const fs::path& link, const fs::path& target)
+    {
+        const std::wstring command = L"cmd.exe /c mklink /J \"" + link.wstring() + L"\" \"" + target.wstring() +
+                                     L"\" >nul 2>nul";
+        std::vector<wchar_t> buffer(command.begin(), command.end());
+        buffer.push_back(L'\0');
+        STARTUPINFOW startup = {sizeof(startup)};
+        PROCESS_INFORMATION process = {};
+        if (!CreateProcessW(nullptr, buffer.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &startup,
+                            &process))
+            return false;
+        WaitForSingleObject(process.hProcess, 20000);
+        CloseHandle(process.hProcess);
+        CloseHandle(process.hThread);
+        return fs::exists(link);
+    }
+
     CAcceptAll acceptAll_;
     CSshSession admin_{&acceptAll_, nullptr};
     std::string remoteDir_;

@@ -159,5 +159,6 @@
 #define IDS_MENU_OPERATIONS                244
 #define IDS_WAIT_MOVING                    245
 #define IDS_ERR_NOT_CONNECTED              246
+#define IDS_OP_STATUS_PAUSED_REASON        247
 
 #endif // __SFTP_RH2

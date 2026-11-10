@@ -20,7 +20,7 @@ CSolveOffers SolveOffersFor(Problem problem, ItemType type)
     case Problem::InvalidRemoteName:
         // the same name fails again: a new name or skip (retry stays for the case the user fixed the encoding setting)
         offers.retry = true;
-        offers.rename = transfer;
+        offers.rename = transfer || IsExploreType(type); // a directory that cannot be named can get a name too
         break;
 
     case Problem::TransferFailed:

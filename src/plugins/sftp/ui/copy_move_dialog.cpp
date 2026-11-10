@@ -115,10 +115,11 @@ INT_PTR CCopyMoveDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
             SetWindowTextW(HWindow, LangStr(copy_ ? IDS_COPYMOVE_TITLE_COPY : IDS_COPYMOVE_TITLE_MOVE).c_str());
             SetDlgItemTextW(HWindow, IDC_COPYMOVE_SUBJECT, subject_.c_str());
         }
+        return CCenteredDialog::DialogProc(uMsg, wParam, lParam);
     }
     catch (...)
     {
         TRACE_E("CCopyMoveDialog: unexpected exception in a window message.");
     }
-    return CCenteredDialog::DialogProc(uMsg, wParam, lParam);
+    return FALSE;
 }

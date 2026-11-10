@@ -173,6 +173,41 @@ std::wstring FreeLocalPath(const std::wstring& target)
     return free.empty() ? std::wstring() : MakeLocalPath(dir, free);
 }
 
+// A symbolic link or junction (not any reparse point: cloud placeholders and the like are normal files and folders).
+bool IsLocalLink(const std::wstring& path)
+{
+    WIN32_FIND_DATAW data;
+    HANDLE find = FindFirstFileW(ExtendedLocalPath(path).c_str(), &data);
+    if (find == INVALID_HANDLE_VALUE)
+        return false;
+    FindClose(find);
+    return (data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0 &&
+           (data.dwReserved0 == IO_REPARSE_TAG_SYMLINK || data.dwReserved0 == IO_REPARSE_TAG_MOUNT_POINT);
+}
+
+// Names a local directory after links are followed (volume + file index), for the loop guard. Empty when that cannot be
+// read: the depth limit still stops a loop then.
+std::string LocalDirKey(const std::wstring& path)
+{
+    HANDLE h = CreateFileW(ExtendedLocalPath(path).c_str(), FILE_READ_ATTRIBUTES,
+                           FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING,
+                           FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+    if (h == INVALID_HANDLE_VALUE)
+        return std::string();
+    CHandleGuard guard(h);
+    BY_HANDLE_FILE_INFORMATION info;
+    if (!GetFileInformationByHandle(h, &info))
+        return std::string();
+    return "local:" + std::to_string(info.dwVolumeSerialNumber) + ":" +
+           std::to_string(SizeOf(info.nFileIndexHigh, info.nFileIndexLow));
+}
+
+void MarkViaLink(std::vector<CQueueItem>& items, bool viaLink)
+{
+    for (CQueueItem& item : items)
+        item.viaLink = viaLink;
+}
+
 // A symbolic link or junction: take size, time and "is a directory" from what it points to.
 void FollowReparsePoint(const std::wstring& path, DWORD& attributes, uint64_t& size, FILETIME& writeTime)
 {
@@ -311,7 +346,9 @@ CWorker::CItemResult CWorker::Replaced()
 
 // ---- thread ---------------------------------------------------------------------------------------------------
 
-CWorker::CWorker(IWorkerHost& host, int index) : host_(host), index_(index), session_(this, nullptr)
+CWorker::CWorker(IWorkerHost& host, int index)
+    : host_(host), index_(index),
+      hosts_(host.ConnectParams().knownHostsOwnPath, host.ConnectParams().knownHostsUserPath), session_(this, &hosts_)
 {
 }
 
@@ -541,13 +578,19 @@ CWorker::CItemResult CWorker::ExecuteOnce(const CQueueItem& item)
 
 // ---- connection -----------------------------------------------------------------------------------------------
 
-// Exactly the key the panel accepted is trusted without asking; any other key, and every prompt, goes to the operation
-// (which asks the user through its observer, or rejects).
+// Called only for a key the known_hosts files do not vouch for. Exactly the key the panel accepted is trusted without
+// asking. When the panel pinned a key and the server shows another one, that is a changed key whatever the files say
+// (a man in the middle looks like this); every other key goes to the operation (which asks the user, or rejects).
 HostKeyDecision CWorker::VerifyHostKey(const std::string& host, int port, const std::string& keyType,
                                        const std::string& fingerprintSha256, bool changed)
 {
-    if (fingerprintSha256 == host_.ConnectParams().hostKeyFingerprint)
-        return HostKeyDecision::AcceptOnce;
+    const std::string& pinned = host_.ConnectParams().hostKeyFingerprint;
+    if (!pinned.empty())
+    {
+        if (fingerprintSha256 == pinned)
+            return HostKeyDecision::AcceptOnce;
+        changed = true;
+    }
     return host_.AskHostKey(index_, host, port, keyType, fingerprintSha256, changed);
 }
 
@@ -589,11 +632,43 @@ void CWorker::EndTransfer(uint64_t bytesTransferred)
     }
 }
 
+// A problem that every further item would meet in the same way (the server or the user said no); network trouble is not.
+bool CWorker::IsLoginProblem(SshErrorKind kind)
+{
+    return kind == SshErrorKind::HostKeyRejected || kind == SshErrorKind::HostKeyChanged ||
+           kind == SshErrorKind::AuthFailed || kind == SshErrorKind::KeyFileError || kind == SshErrorKind::NoSftp;
+}
+
+// An interactive operation pauses (the window shows the reason, Resume tries again) and the item goes back to Waiting.
+// Without a user the item fails and the next ones fail at once, without another login attempt.
+void CWorker::StopAfterLoginProblem(CItemResult& failure)
+{
+    if (host_.Settings().interactive)
+    {
+        host_.PauseForLoginProblem(failure.text);
+        failure = Returned();
+        return;
+    }
+    loginFailed_ = true;
+    loginFailure_ = failure;
+}
+
 bool CWorker::EnsureConnected(CItemResult& failure)
 {
     if (session_.IsConnected() && session_.HasSftp())
         return true;
-    session_.Disconnect(); // a broken or half-open session starts from nothing
+    if (loginFailed_)
+    {
+        failure = loginFailure_;
+        return false;
+    }
+    session_.Disconnect(); // a broken or half-open session starts from nothing; this also forgets an earlier Cancel
+    // so a cancel or pause that came in since RunItem looked is checked again here (later ones reach Connect itself)
+    if (host_.IsCancelRequested() || host_.IsPaused())
+    {
+        failure = Returned();
+        return false;
+    }
 
     const CPanelConnectParams& params = host_.ConnectParams();
     if (!session_.Connect(ToSshSite(params.site, params.password.Clone(), params.passphrase.Clone())))
@@ -608,6 +683,8 @@ bool CWorker::EnsureConnected(CItemResult& failure)
         failure = Failure(Problem::ConnectionLost, ToWide(error.message));
         // network trouble may pass; a refused host key, a failed login or a bad key file will not
         failure.connectionLost = error.kind == SshErrorKind::ConnectFailed || error.kind == SshErrorKind::Timeout;
+        if (IsLoginProblem(error.kind))
+            StopAfterLoginProblem(failure);
         return false;
     }
     return true;
@@ -629,11 +706,14 @@ CWorker::CItemResult CWorker::FromSessionError(Problem fallback)
 
 // ---- explore --------------------------------------------------------------------------------------------------
 
+// childrenViaLink: the directory is a link, or below one (see CQueueItem::viaLink). A move then still removes the link
+// itself (this item's "after" action deletes it as a link) but nothing below it; below a link no "after" item is made.
 CWorker::CItemResult CWorker::ReplaceWithChildren(const CQueueItem& item, std::vector<CQueueItem> children,
-                                                  ItemType afterType)
+                                                  ItemType afterType, bool childrenViaLink)
 {
     CQueue& queue = host_.Queue();
-    if (host_.Settings().move)
+    MarkViaLink(children, childrenViaLink);
+    if (host_.Settings().move && !item.viaLink)
     {
         CQueueItem after; // the directory itself is deleted once everything in it is done
         after.type = afterType;
@@ -660,6 +740,8 @@ CWorker::CItemResult CWorker::ExploreRemote(const CQueueItem& item)
         return stop;
     if (renamed && !EnsureDirectory(localDir)) // no MakeDirLocal item exists for a directory that had an invalid name
         return Failure(Problem::DirCreateFailed, WindowsErrorText(GetLastError()));
+
+    const bool isLink = host_.Settings().move && !item.viaLink && IsRemoteLink(item.remotePath);
 
     // Loop guard: a link back to a directory that was explored already resolves to the same real path.
     std::string realPath;
@@ -699,7 +781,13 @@ CWorker::CItemResult CWorker::ExploreRemote(const CQueueItem& item)
         }
         AddDownloadItems(children, remote, entry.rawName, isDir, size, mtime, localDir, codec_, item.depth + 1);
     }
-    return ReplaceWithChildren(item, std::move(children), ItemType::DeleteRemoteDir);
+    return ReplaceWithChildren(item, std::move(children), ItemType::DeleteRemoteDir, item.viaLink || isLink);
+}
+
+bool CWorker::IsRemoteLink(const std::string& path)
+{
+    CSftpEntry entry;
+    return session_.LStat(path, entry) && entry.isLink; // a failed LStat: the next call reports the problem
 }
 
 CWorker::CItemResult CWorker::ExploreLocal(const CQueueItem& item)
@@ -711,6 +799,12 @@ CWorker::CItemResult CWorker::ExploreLocal(const CQueueItem& item)
     CItemResult stop;
     if (!ResolveRemoteTarget(item, remoteDir, renamed, stop))
         return stop;
+
+    // Loop guard like the remote one: a junction or link back to a directory that was explored already.
+    const std::string dirKey = LocalDirKey(item.localPath);
+    if (!dirKey.empty() && host_.ExploredDirs().Contains(dirKey))
+        return Failure(Problem::SymlinkLoop, item.localPath);
+    const bool isLink = host_.Settings().move && !item.viaLink && IsLocalLink(item.localPath);
 
     WIN32_FIND_DATAW data;
     HANDLE find = FindFirstFileW(MakeLocalPath(item.localPath, L"*").c_str(), &data);
@@ -750,7 +844,10 @@ CWorker::CItemResult CWorker::ExploreLocal(const CQueueItem& item)
     FindClose(find);
     if (error != ERROR_NO_MORE_FILES)
         return Failure(Problem::LocalIoError, WindowsErrorText(error));
-    return ReplaceWithChildren(item, std::move(children), ItemType::DeleteLocalDir);
+    // remembered only now: a listing that failed above can be retried
+    if (!dirKey.empty() && !host_.ExploredDirs().Insert(dirKey)) // another worker was faster
+        return Failure(Problem::SymlinkLoop, item.localPath);
+    return ReplaceWithChildren(item, std::move(children), ItemType::DeleteLocalDir, item.viaLink || isLink);
 }
 
 // ---- transfers ------------------------------------------------------------------------------------------------
@@ -965,7 +1062,7 @@ CWorker::CItemResult CWorker::Download(const CQueueItem& item)
     if (!ok)
         return FromSessionError(Problem::TransferFailed); // the partial file stays: the next attempt continues it
 
-    if (settings.move && !RemoveRemote(item.remotePath, false))
+    if (settings.move && !item.viaLink && !RemoveRemote(item.remotePath, false))
         return FromSessionError(Problem::DeleteFailed);
     return Done();
 }
@@ -1075,10 +1172,10 @@ CWorker::CItemResult CWorker::Upload(const CQueueItem& item)
 
     if (settings.preserveTime && source.mtime > 0)
         session_.SetTimes(target, source.mtime, source.mtime); // best effort, like the local side
-    if (settings.setUploadPermissions && !session_.Chmod(target, settings.uploadPermissions))
-        return FromSessionError(Problem::Other);
+    if (settings.setUploadPermissions)
+        session_.Chmod(target, settings.uploadPermissions); // best effort too: the file is there and complete
 
-    if (settings.move)
+    if (settings.move && !item.viaLink)
     {
         guard.Close(); // the open source file blocks its own deletion
         DWORD error = 0;

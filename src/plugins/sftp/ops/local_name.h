@@ -11,7 +11,7 @@
 bool IsValidLocalName(const std::wstring& name);
 
 // Joins `dir` and `name` with a backslash (no doubled backslash when `dir` already ends with one). When the result
-// is MAX_PATH (260) characters or longer, the extended-length prefix is added: `\\?\C:\...` for a drive path,
+// is 248 characters or longer (the limit of CreateDirectory), the extended-length prefix is added: `\\?\C:\...` for a drive path,
 // `\\?\UNC\server\share\...` for a UNC path. Input that already starts with `\\?\` or `\\.\` is not prefixed again.
 // (In .NET terms: the prefix is what lets Win32 file APIs accept paths longer than 260 characters.)
 std::wstring MakeLocalPath(const std::wstring& dir, const std::wstring& name);

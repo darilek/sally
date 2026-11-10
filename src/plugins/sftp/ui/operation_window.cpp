@@ -91,6 +91,7 @@ private:
     void SolveSelected();
     void RequestDestroy();
     void FinishModal();
+    bool CloseTopmostModal();
 
     void HandleInteractions();
     void AnswerInteraction(const CInteraction& in);
@@ -389,8 +390,12 @@ void COperationWindow::UpdateSummary()
             text = Str(IDS_OP_STATUS_RUNNING);
             break;
         case OperationStatus::Paused:
-            text = Str(IDS_OP_STATUS_PAUSED);
+        {
+            const std::wstring reason = op_.PauseReason(); // a login problem paused it
+            text = reason.empty() ? Str(IDS_OP_STATUS_PAUSED)
+                                  : SPLFormatStringOwned(Str(IDS_OP_STATUS_PAUSED_REASON).c_str(), reason.c_str());
             break;
+        }
         case OperationStatus::Cancelling:
             text = Str(IDS_OP_STATUS_CANCELLING);
             break;
@@ -675,24 +680,60 @@ void COperationWindow::OnState()
         RequestDestroy();
 }
 
-// Destroys the window now, or when the open message box / question dialog has been closed (it is closed here: "reject"/"no").
+// Destroys the window now, or when the open message boxes / question dialogs have been closed (they are closed here, one
+// after the other: "reject"/"no").
 void COperationWindow::RequestDestroy()
 {
     closeRequested_ = true;
     if (modalDepth_ > 0)
     {
-        HWND popup = GetWindow(HWindow, GW_ENABLEDPOPUP);
-        if (popup != NULL)
-            EndDialog(popup, IDCANCEL); // works for message boxes and for our dialogs; we are on the thread that owns them
+        CloseTopmostModal();
         return;
     }
     DestroyWindow(HWindow);
 }
 
+namespace
+{
+struct CFindModal
+{
+    HWND mainWindow;
+    HWND found;
+};
+
+// Of all windows of this thread only the topmost modal dialog is visible AND enabled: a modal dialog disables its owner.
+BOOL CALLBACK FindEnabledDialogProc(HWND window, LPARAM param)
+{
+    CFindModal* find = reinterpret_cast<CFindModal*>(param);
+    if (window != find->mainWindow && IsWindowVisible(window) && IsWindowEnabled(window))
+    {
+        find->found = window;
+        return FALSE;
+    }
+    return TRUE;
+}
+} // namespace
+
+// Ends the modal dialog or message box on top (not the window itself). Its owner code returns, decrements modalDepth_ and
+// calls FinishModal, which ends the next one, until the window can be destroyed. False when none was found.
+bool COperationWindow::CloseTopmostModal()
+{
+    CFindModal find = {HWindow, NULL};
+    EnumThreadWindows(GetCurrentThreadId(), FindEnabledDialogProc, reinterpret_cast<LPARAM>(&find));
+    if (find.found == NULL)
+        return false;
+    EndDialog(find.found, IDCANCEL); // works for message boxes and for our dialogs; we are on the thread that owns them
+    return true;
+}
+
 void COperationWindow::FinishModal()
 {
-    if (closeRequested_ && modalDepth_ == 0 && HWindow != NULL)
+    if (!closeRequested_ || HWindow == NULL)
+        return;
+    if (modalDepth_ == 0)
         DestroyWindow(HWindow);
+    else
+        CloseTopmostModal(); // a dialog below the one that just ended
 }
 
 // ---- questions from the workers ---------------------------------------------------------------------------------
@@ -775,17 +816,6 @@ void COperationWindow::AnswerInteraction(const CInteraction& in)
         }
     }
 
-    if (decision == HostKeyDecision::AcceptAndSave && options_.saveHostKey)
-    {
-        try
-        {
-            options_.saveHostKey(in);
-        }
-        catch (...)
-        {
-            TRACE_E("COperationWindow: saving the host key failed.");
-        }
-    }
     if (HWindow != NULL)
         RefreshNow();
 }
@@ -961,9 +991,19 @@ void COperationWindowHost::WindowThreadMain()
     {
         TRACE_E("COperationWindowHost: the window thread ended with an exception.");
     }
-    std::lock_guard<std::mutex> lock(mutex_);
-    hwnd_ = NULL;
-    running_ = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        hwnd_ = NULL;
+        running_ = false;
+    }
+    // A worker may have asked while this thread started, and a window that could not be created never answers it.
+    try
+    {
+        RejectPendingInteraction();
+    }
+    catch (...)
+    {
+    }
 }
 
 bool COperationWindowHost::OnWindowCreated(HWND window, bool& wantVisible)

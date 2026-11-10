@@ -413,6 +413,22 @@ TEST_F(OpsTest, ReadLinkAndRealPath)
     EXPECT_EQ(real, "/home/test/fixtures/small");
 }
 
+TEST_F(OpsTest, SymlinkCreatesALinkThatReadLinkAndStatSee)
+{
+    ASSERT_TRUE(session_->Mkdir(dir_ + "/real"));
+    ASSERT_TRUE(session_->Symlink("real", dir_ + "/link")) << session_->LastError().message;
+    std::string target;
+    ASSERT_TRUE(session_->ReadLink(dir_ + "/link", target));
+    EXPECT_EQ(target, "real");
+    CSftpEntry entry;
+    ASSERT_TRUE(session_->LStat(dir_ + "/link", entry));
+    EXPECT_TRUE(entry.isLink);
+    ASSERT_TRUE(session_->Stat(dir_ + "/link", entry));
+    EXPECT_TRUE(entry.isDir);
+    EXPECT_FALSE(session_->Symlink("real", dir_ + "/link")); // exists already
+    ASSERT_TRUE(session_->Remove(dir_ + "/link"));
+}
+
 TEST_F(OpsTest, OperationsAfterDisconnectFailCleanly)
 {
     session_->Disconnect();

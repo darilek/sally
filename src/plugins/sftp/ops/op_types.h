@@ -18,6 +18,7 @@ enum class Problem
     None,
     TargetExists,     // the target exists and the policy is Ask
     InvalidLocalName, // the remote name cannot be a Windows file name
+    InvalidRemoteName, // the local name cannot be written in the site's name encoding
     TransferFailed,   // read/write error in the middle of a file
     ConnectionLost,   // the worker could not reconnect
     PermissionDenied,

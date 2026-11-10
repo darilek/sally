@@ -18,6 +18,7 @@
 // In the lock order (operations list -> operation -> queue -> worker) the queue lock is a leaf for this class.
 #pragma once
 
+#include <condition_variable>
 #include <cstdint>
 #include <map>
 #include <mutex>
@@ -84,6 +85,7 @@ struct CQueueItem
     SolveAction forceAction = SolveAction::Retry; // the user's answer; Retry = none, the policy decides
     std::wstring forceNewName;                    // for forceAction == Rename
     uint64_t bytesDone = 0;          // kept when the item goes back to Waiting, so a resume knows the offset
+    int depth = 0;                   // explore items: how deep below the root (0 = root); the workers set it for children
 };
 
 // How many direct children of one directory (or of the operation) are in which state.
@@ -166,6 +168,13 @@ public:
     OperationState GetOperationState() const;
     CQueueSummary Summary() const;
 
+    // For idle workers (like Monitor.Wait in .NET): returns when an item is Waiting, the operation is not Running any
+    // more, WakeAll() was called, or after timeoutMs - whichever comes first. The caller must look again (TakeNextWaiting,
+    // GetOperationState): a return does not promise that there is work.
+    void WaitForWork(int timeoutMs);
+    // Wakes every thread inside WaitForWork (used by cancel).
+    void WakeAll();
+
     // Copies of the items in uid order; errorsOnly: only the items in an error state (Skipped and later).
     std::vector<CQueueItem> Items(bool errorsOnly) const;
     // A copy of one item. False when it does not exist.
@@ -191,6 +200,8 @@ private:
     OperationState ComputeOperationState() const;
 
     mutable std::mutex mutex_;
+    std::condition_variable wake_; // signalled when an item is added or changes state, and by WakeAll
+    uint64_t wakeGeneration_ = 0;  // WakeAll increments it
     std::map<uint64_t, Node> items_; // by uid, so iteration is in creation order
     CQueueCounters rootKids_;        // counters of the root items (parentUid 0)
     int stateCount_[kStateCount] = {};

@@ -1,5 +1,6 @@
 #include "op_queue.h"
 
+#include <chrono>
 #include <utility>
 
 namespace
@@ -70,6 +71,7 @@ uint64_t CQueue::Insert(CQueueItem item, uint64_t parentUid)
     Node node;
     node.item = std::move(item);
     items_.emplace(uid, std::move(node));
+    wake_.notify_all();
     return uid;
 }
 
@@ -93,6 +95,7 @@ void CQueue::SetState(Node& node, ItemState state)
         waiting.insert(node.item.uid);
 
     node.item.state = state;
+    wake_.notify_all(); // a waiting item to take, or the operation may be over
 }
 
 ItemState CQueue::StateForDelayedDirectory(const CQueueCounters& kids)
@@ -331,6 +334,27 @@ CQueueSummary CQueue::Summary() const
             ++summary.totals.filesDone;
     }
     return summary;
+}
+
+void CQueue::WaitForWork(int timeoutMs)
+{
+    std::unique_lock<std::mutex> lock(mutex_);
+    const uint64_t generation = wakeGeneration_;
+    wake_.wait_for(lock, std::chrono::milliseconds(timeoutMs),
+                   [&]
+                   {
+                       return !waitingExplore_.empty() || !waitingOther_.empty() || wakeGeneration_ != generation ||
+                              ComputeOperationState() != OperationState::Running;
+                   });
+}
+
+void CQueue::WakeAll()
+{
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        ++wakeGeneration_;
+    }
+    wake_.notify_all();
 }
 
 std::vector<CQueueItem> CQueue::Items(bool errorsOnly) const

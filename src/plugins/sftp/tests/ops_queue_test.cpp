@@ -3,6 +3,8 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <chrono>
+#include <functional>
 #include <set>
 #include <thread>
 #include <vector>
@@ -478,4 +480,68 @@ TEST(OpQueue, ConcurrentTakeNeverHandsOutAnItemTwice)
     EXPECT_EQ(unique.size(), static_cast<size_t>(kItems));
     EXPECT_EQ(queue.GetOperationState(), OperationState::Finished);
     EXPECT_EQ(queue.Summary().totals.filesDone, kItems - kItems / 10);
+}
+
+TEST(QueueWait, ReturnsAtOnceWhenSomethingIsWaiting)
+{
+    CQueue queue;
+    queue.AddRootItems({Make(ItemType::Download, "a", 1)});
+    const auto start = std::chrono::steady_clock::now();
+    queue.WaitForWork(5000);
+    EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::milliseconds(1000));
+}
+
+TEST(QueueWait, TimesOutWhenOnlyProcessingItemsRemain)
+{
+    CQueue queue;
+    queue.AddRootItems({Make(ItemType::Download, "a", 1)});
+    Take(queue); // Running, nothing waiting
+    const auto start = std::chrono::steady_clock::now();
+    queue.WaitForWork(100);
+    EXPECT_GE(std::chrono::steady_clock::now() - start, std::chrono::milliseconds(80));
+}
+
+TEST(QueueWait, WakesWhenAnItemIsReturnedToWaitingOrWakeAllIsCalled)
+{
+    CQueue queue;
+    const uint64_t uid = queue.AddRootItems({Make(ItemType::Download, "a", 1)})[0];
+    Take(queue);
+
+    auto waitedMs = [&queue](const std::function<void()>& poke)
+    {
+        const auto start = std::chrono::steady_clock::now();
+        std::thread poker(
+            [&poke]
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                poke();
+            });
+        queue.WaitForWork(10000);
+        poker.join();
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
+    };
+    EXPECT_LT(waitedMs([&] { queue.ReturnToWaiting(uid); }), 5000);
+    Take(queue);
+    EXPECT_LT(waitedMs([&] { queue.WakeAll(); }), 5000);
+    // nothing waiting now: only the finish of the item ends the wait
+    EXPECT_TRUE(queue.GetOperationState() == OperationState::Running);
+    EXPECT_LT(waitedMs([&] { queue.Finish(uid, ItemState::Done); }), 5000);
+    EXPECT_EQ(queue.GetOperationState(), OperationState::Finished);
+}
+
+TEST(QueueDepth, IsKeptByTheQueue)
+{
+    CQueue queue;
+    CQueueItem root = Make(ItemType::ExploreRemote, "r");
+    root.depth = 3;
+    const uint64_t uid = queue.AddRootItems({root})[0];
+    CQueueItem e = Take(queue);
+    EXPECT_EQ(e.depth, 3);
+    CQueueItem child = Make(ItemType::ExploreRemote, "r/c");
+    child.depth = e.depth + 1;
+    queue.ReplaceWithChildren(uid, {child});
+    bool found = false;
+    for (const CQueueItem& item : queue.Items(false))
+        found |= item.remotePath == "r/c" && item.depth == 4;
+    EXPECT_TRUE(found);
 }

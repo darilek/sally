@@ -70,3 +70,20 @@
 #define IDE_SITE_REMOTEPATH       1340
 #define IDE_SITE_LOCALPATH        1341
 #define IDE_SITE_UPLOADMODE       1342
+
+// Operation window (IDD_OPERATION)
+#define IDD_OPERATION             1009
+#define IDC_OP_SOURCE             1400
+#define IDC_OP_TARGET             1401
+#define IDC_OP_FILE               1402
+#define IDC_OP_PROGRESS           1403
+#define IDC_OP_STATS              1404
+#define IDC_OP_STATUS             1405
+#define IDX_OP_ERRORS_ONLY        1406
+#define IDC_OP_LIST               1407
+#define IDB_OP_PAUSE              1408
+#define IDB_OP_CANCEL             1409
+#define IDB_OP_SOLVE              1410
+#define IDB_OP_RETRY              1411
+#define IDB_OP_HIDE               1412
+#define IDX_OP_CLOSE_WHEN_DONE    1413

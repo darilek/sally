@@ -102,6 +102,10 @@ void CQueue::SetState(Node& node, ItemState state)
         waiting.erase(node.item.uid);
     if (state == ItemState::Waiting)
         waiting.insert(node.item.uid);
+    if (old == ItemState::Processing)
+        processing_.erase(node.item.uid);
+    if (state == ItemState::Processing)
+        processing_.insert(node.item.uid);
 
     node.item.state = state;
     NoteRunState();
@@ -425,6 +429,21 @@ std::vector<CQueueItem> CQueue::Items(bool errorsOnly) const
     {
         if (!errorsOnly || IsErrorState(entry.second.item.state))
             result.push_back(entry.second.item);
+    }
+    return result;
+}
+
+std::vector<CQueueItem> CQueue::ProcessingItems(size_t maxCount) const
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<CQueueItem> result;
+    for (uint64_t uid : processing_)
+    {
+        if (result.size() >= maxCount)
+            break;
+        auto it = items_.find(uid);
+        if (it != items_.end())
+            result.push_back(it->second.item);
     }
     return result;
 }

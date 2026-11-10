@@ -545,3 +545,22 @@ TEST(QueueDepth, IsKeptByTheQueue)
         found |= item.remotePath == "r/c" && item.depth == 4;
     EXPECT_TRUE(found);
 }
+
+TEST(OpQueue, ProcessingItemsListsWhatWorkersHold)
+{
+    CQueue queue;
+    queue.AddRootItems({Make(ItemType::Download, "a", 1), Make(ItemType::Download, "b", 2), Make(ItemType::Download, "c", 3)});
+    EXPECT_TRUE(queue.ProcessingItems(10).empty());
+
+    const CQueueItem a = Take(queue);
+    const CQueueItem b = Take(queue);
+    std::vector<CQueueItem> processing = queue.ProcessingItems(10);
+    ASSERT_EQ(processing.size(), 2u);
+    EXPECT_EQ(processing[0].uid, a.uid);
+    EXPECT_EQ(processing[1].uid, b.uid);
+    EXPECT_EQ(queue.ProcessingItems(1).size(), 1u); // capped
+
+    queue.Finish(a.uid, ItemState::Done);
+    queue.ReturnToWaiting(b.uid);
+    EXPECT_TRUE(queue.ProcessingItems(10).empty());
+}

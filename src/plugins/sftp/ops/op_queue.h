@@ -200,6 +200,8 @@ public:
 
     // Copies of the items in uid order; errorsOnly: only the items in an error state (Skipped and later).
     std::vector<CQueueItem> Items(bool errorsOnly) const;
+    // Copies of the items a worker has right now (at most maxCount, in uid order): "what is being transferred".
+    std::vector<CQueueItem> ProcessingItems(size_t maxCount) const;
     // A copy of one item. False when it does not exist.
     bool GetItem(uint64_t uid, CQueueItem& item) const;
 
@@ -231,6 +233,7 @@ private:
     int stateCount_[kStateCount] = {};
     std::set<uint64_t> waitingExplore_; // uids of Waiting explore items
     std::set<uint64_t> waitingOther_;   // uids of the other Waiting items
+    std::set<uint64_t> processing_;     // uids of the Processing items
     uint64_t nextUid_ = 1;
     uint64_t runId_ = 0;
     bool wasRunning_ = false;

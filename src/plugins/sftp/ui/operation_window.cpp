@@ -1040,6 +1040,17 @@ void COperationWindowHost::OnFinished()
 {
     NoteStateForElapsedTime();
     Post(pendingState_, WM_APP_STATE);
+    if (options_.finished)
+    {
+        try
+        {
+            options_.finished();
+        }
+        catch (...)
+        {
+            // the owner's callback must not break the worker
+        }
+    }
 }
 
 void COperationWindowHost::OnInteractionPending()

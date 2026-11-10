@@ -14,6 +14,32 @@ CSftpPath MustParse(const std::wstring& text)
 }
 } // namespace
 
+TEST(SitePath, SplitFsPath)
+{
+    std::wstring userPart;
+    EXPECT_TRUE(SplitFsPath(L"sftp:user@host/dir", L"sftp", userPart));
+    EXPECT_EQ(L"user@host/dir", userPart);
+    EXPECT_TRUE(SplitFsPath(L"SFTP:@Site/a", L"sftp", userPart)); // the name is not case sensitive
+    EXPECT_EQ(L"@Site/a", userPart);
+    EXPECT_FALSE(SplitFsPath(L"sftp:", L"sftp", userPart)); // nothing after the colon
+    EXPECT_FALSE(SplitFsPath(L"c:\\dir", L"sftp", userPart));
+    EXPECT_FALSE(SplitFsPath(L"sftpx:user@host/", L"sftp", userPart));
+    EXPECT_FALSE(SplitFsPath(L"sftp", L"sftp", userPart));
+    EXPECT_FALSE(SplitFsPath(L"sftp:a", L"", userPart));
+}
+
+TEST(SitePath, IsPathWithin)
+{
+    EXPECT_TRUE(IsPathWithin(L"/a/b", L"/a/b", false));
+    EXPECT_FALSE(IsPathWithin(L"/a/b/c", L"/a/b", false));
+    EXPECT_TRUE(IsPathWithin(L"/a/b/c", L"/a/b", true));
+    EXPECT_FALSE(IsPathWithin(L"/a/bc", L"/a/b", true)); // a longer name is not a subdirectory
+    EXPECT_FALSE(IsPathWithin(L"/a", L"/a/b", true));    // a parent is not within
+    EXPECT_TRUE(IsPathWithin(L"/anything/deep", L"/", true));
+    EXPECT_FALSE(IsPathWithin(L"/anything", L"/", false));
+    EXPECT_TRUE(IsPathWithin(L"/", L"/", false));
+}
+
 TEST(SitePath, UserHostDefaults)
 {
     CSftpPath p = MustParse(L"bob@example.com");

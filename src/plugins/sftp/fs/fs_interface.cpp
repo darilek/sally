@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "fs_object.h"
+#include "operations_registry.h"
 #include "site_config.h"
 #include "../ui/site_list_dialog.h"
 
@@ -299,6 +300,10 @@ CPluginInterfaceForMenuExt::ExecuteMenuItem(CSalamanderForOperationsAbstract* sa
                 object->SetDisconnectRequested(false);
             break;
         }
+
+        case SftpCmdOperations:
+            OperationsRegistry.ShowDialog(parent);
+            break;
 
         default:
             TRACE_E("Unknown menu command, ID=" << id);

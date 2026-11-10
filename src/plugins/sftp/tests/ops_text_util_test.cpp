@@ -69,3 +69,23 @@ TEST(TextUtil, FormatHostPort)
     EXPECT_EQ(FormatHostPort("::1", 22), "[::1]:22");
     EXPECT_EQ(FormatHostPort("[::1]", 22), "[::1]:22");
 }
+
+TEST(TextUtil, SplitPathAndMask)
+{
+    std::wstring path, mask;
+    SplitPathAndMask(std::wstring(L"c:\\dir\\") + L'\0' + L"*.txt", path, mask);
+    EXPECT_EQ(L"c:\\dir\\", path);
+    EXPECT_EQ(L"*.txt", mask);
+
+    SplitPathAndMask(L"c:\\dir", path, mask);
+    EXPECT_EQ(L"c:\\dir", path);
+    EXPECT_EQ(L"", mask);
+
+    SplitPathAndMask(std::wstring(L"c:\\dir") + L'\0', path, mask); // an empty mask after the NUL
+    EXPECT_EQ(L"c:\\dir", path);
+    EXPECT_EQ(L"", mask);
+
+    SplitPathAndMask(L"", path, mask);
+    EXPECT_EQ(L"", path);
+    EXPECT_EQ(L"", mask);
+}

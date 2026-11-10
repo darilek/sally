@@ -54,6 +54,15 @@ TEST(ListingFormat, UnixTimeToFileTime)
     EXPECT_EQ(116444736000000000ULL - 864000000000ULL, oldTicks);
 }
 
+TEST(ListingFormat, FileTimeToUnixTime)
+{
+    EXPECT_EQ(0, FileTimeToUnixTime(UnixTimeToFileTime(0)));
+    EXPECT_EQ(1700000000, FileTimeToUnixTime(UnixTimeToFileTime(1700000000)));
+    EXPECT_EQ(-86400, FileTimeToUnixTime(UnixTimeToFileTime(-86400)));
+    const FILETIME year1601 = {0, 0};
+    EXPECT_EQ(-11644473600LL, FileTimeToUnixTime(year1601));
+}
+
 TEST(ListingFormat, ExtensionOffset)
 {
     EXPECT_EQ(2u, ExtensionOffset(L"a.txt"));

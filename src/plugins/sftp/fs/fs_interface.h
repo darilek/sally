@@ -50,7 +50,7 @@ private:
 // dialog while the connect fails, so the user keeps what was typed; ends on success or Close.
 void ConnectFromSiteList(HWND parent, int panel);
 
-// The plugin menu: Connect..., Disconnect.
+// The plugin menu: Connect..., Disconnect, Operations...
 class CPluginInterfaceForMenuExt : public CPluginInterfaceForMenuExtAbstract
 {
 public:
@@ -64,3 +64,4 @@ public:
 // IDs of the plugin menu items
 const int SftpCmdConnect = 1;
 const int SftpCmdDisconnect = 2;
+const int SftpCmdOperations = 3;

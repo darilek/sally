@@ -9,6 +9,7 @@
 #include "SallyUrls.h"
 #include "../core/ssh_init.h"
 #include "fs_data.h"
+#include "operations_registry.h"
 #include "site_config.h"
 
 #define SFTP_WIDEN_IMPL(value) L##value
@@ -245,6 +246,17 @@ BOOL WINAPI
 CPluginInterface::Release(HWND parent, BOOL force)
 {
     CALL_STACK_MESSAGE2("CPluginInterface::Release(, %d)", force);
+    // Running transfers: ask first (nothing is changed when the user says No), then cancel them and join their threads.
+    try
+    {
+        if (!OperationsRegistry.ConfirmRelease(parent, force))
+            return FALSE;
+        OperationsRegistry.Shutdown();
+    }
+    catch (...)
+    {
+        TRACE_E("Release: unexpected exception while stopping the operations.");
+    }
     // Every session thread must be gone before libssh2 is shut down and the DLL can be unloaded.
     try
     {
@@ -281,6 +293,8 @@ CPluginInterface::Connect(HWND parent, CSalamanderConnectAbstract* salamander)
                                 MENU_EVENT_TRUE, MENU_SKILLLEVEL_ALL);
         salamander->AddMenuItem(-1, LangStr(IDS_MENU_DISCONNECT).c_str(), 0, SftpCmdDisconnect, FALSE,
                                 MENU_EVENT_THIS_PLUGIN_FS, MENU_EVENT_TRUE, MENU_SKILLLEVEL_ALL);
+        salamander->AddMenuItem(-1, LangStr(IDS_MENU_OPERATIONS).c_str(), 0, SftpCmdOperations, FALSE,
+                                MENU_EVENT_TRUE, MENU_EVENT_TRUE, MENU_SKILLLEVEL_ALL);
     }
     catch (...)
     {

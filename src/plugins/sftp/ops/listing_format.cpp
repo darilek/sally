@@ -98,6 +98,12 @@ FILETIME UnixTimeToFileTime(int64_t unixSeconds)
     return ft;
 }
 
+int64_t FileTimeToUnixTime(const FILETIME& fileTime)
+{
+    const uint64_t ticks = (static_cast<uint64_t>(fileTime.dwHighDateTime) << 32) | fileTime.dwLowDateTime;
+    return static_cast<int64_t>(ticks / 10000000ULL) - 11644473600LL;
+}
+
 size_t ExtensionOffset(const std::wstring& name)
 {
     const size_t dot = name.rfind(L'.');

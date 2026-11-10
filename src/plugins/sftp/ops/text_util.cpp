@@ -79,3 +79,10 @@ std::string FormatHostPort(const std::string& host, int port)
     const bool bracket = host.find(':') != std::string::npos && (host.empty() || host.front() != '[');
     return (bracket ? "[" + host + "]" : host) + ":" + std::to_string(port);
 }
+
+void SplitPathAndMask(const std::wstring& payload, std::wstring& path, std::wstring& mask)
+{
+    const size_t separator = payload.find(L'\0');
+    path = payload.substr(0, separator);
+    mask = separator == std::wstring::npos ? std::wstring() : payload.substr(separator + 1);
+}

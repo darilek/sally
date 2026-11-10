@@ -130,3 +130,23 @@ bool SameServer(const CSftpPath& a, const CSftpPath& b)
         return EqualNoCase(a.siteName, b.siteName);
     return a.user == b.user && a.port == b.port && EqualNoCase(a.host, b.host);
 }
+
+bool SplitFsPath(const std::wstring& text, const std::wstring& fsName, std::wstring& userPart)
+{
+    if (fsName.empty() || text.size() <= fsName.size() + 1 || text[fsName.size()] != L':' ||
+        !EqualNoCase(text.substr(0, fsName.size()), fsName))
+        return false;
+    userPart = text.substr(fsName.size() + 1);
+    return true;
+}
+
+bool IsPathWithin(const std::wstring& path, const std::wstring& base, bool includingSubdirs)
+{
+    if (path == base)
+        return true;
+    if (!includingSubdirs)
+        return false;
+    if (base == L"/")
+        return !path.empty() && path[0] == L'/';
+    return path.size() > base.size() && path.compare(0, base.size(), base) == 0 && path[base.size()] == L'/';
+}

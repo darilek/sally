@@ -20,6 +20,9 @@ std::wstring FormatPermissions(uint32_t mode, bool isDir, bool isLink);
 // Unix seconds -> FILETIME (UTC). Values before 1601 clamp to 0.
 FILETIME UnixTimeToFileTime(int64_t unixSeconds);
 
+// FILETIME (UTC) -> Unix seconds (rounded down). Values before 1970 are negative.
+int64_t FileTimeToUnixTime(const FILETIME& fileTime);
+
 // Index of the first character of the extension (after the last '.'), or name.size() when there is none.
 // A leading dot counts ("." + "bashrc" -> extension "bashrc"), like Sally does on Windows.
 size_t ExtensionOffset(const std::wstring& name);

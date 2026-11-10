@@ -30,3 +30,11 @@ CSftpPath RootOf(const CSftpPath& p);
 // Same connection: for saved sites the names (case-insensitive), otherwise user (exact) + host (case-insensitive)
 // + port. A site reference never equals an explicit user@host.
 bool SameServer(const CSftpPath& a, const CSftpPath& b);
+
+// A full file system path "fsName:userPart" (what Sally passes as a target): true when the text starts with fsName and a
+// colon (the name is compared without case); userPart is the rest. A Windows path like "c:\dir" is not matched by "sftp".
+bool SplitFsPath(const std::wstring& text, const std::wstring& fsName, std::wstring& userPart);
+
+// True when 'path' is 'base' itself, or (with includingSubdirs) somewhere below it. Both are normalized absolute paths
+// without a trailing slash, compared exactly (names are case sensitive on a server).
+bool IsPathWithin(const std::wstring& path, const std::wstring& base, bool includingSubdirs);

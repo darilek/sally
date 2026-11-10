@@ -107,3 +107,10 @@
 #define IDC_OPS_LIST              1440
 #define IDB_OPS_SHOW              1441
 #define IDB_OPS_CANCEL            1442
+
+// Copy/Move dialog (IDD_COPYMOVE): target path (history combo), file exists policy, preserve time
+#define IDD_COPYMOVE              1012
+#define IDC_COPYMOVE_SUBJECT      1450
+#define IDC_COPYMOVE_TARGET       1451
+#define IDC_COPYMOVE_POLICY       1452
+#define IDX_COPYMOVE_PRESERVETIME 1453

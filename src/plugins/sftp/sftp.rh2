@@ -140,5 +140,24 @@
 #define IDS_OPS_COL_STATE                  226
 #define IDS_OPS_COL_DESCRIPTION            227
 #define IDS_OPS_DESCRIPTION                228
+// copy/move dialog, FS services (fs/fs_transfer.cpp, ui/copy_move_dialog.cpp), operations menu and unload
+#define IDS_COPYMOVE_TITLE_COPY            229
+#define IDS_COPYMOVE_TITLE_MOVE            230
+#define IDS_COPYMOVE_SUBJECT_COPY          231
+#define IDS_COPYMOVE_SUBJECT_MOVE          232
+#define IDS_POLICY_ASK                     233
+#define IDS_POLICY_OVERWRITE               234
+#define IDS_POLICY_RESUME                  235
+#define IDS_POLICY_SKIP                    236
+#define IDS_POLICY_OVERWRITE_OLDER         237
+#define IDS_POLICY_RENAME                  238
+#define IDS_ERR_SFTP_TARGET_UNSUPPORTED    239
+#define IDS_ERR_DROP_TARGET                240
+#define IDS_ERR_MOVE_ITEM                  241
+#define IDS_ERR_OP_START                   242
+#define IDS_OPS_RELEASE_PROMPT             243
+#define IDS_MENU_OPERATIONS                244
+#define IDS_WAIT_MOVING                    245
+#define IDS_ERR_NOT_CONNECTED              246
 
 #endif // __SFTP_RH2

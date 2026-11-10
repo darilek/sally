@@ -171,4 +171,25 @@ STRINGTABLE
  IDS_OPS_COL_DESCRIPTION, "From -> To"
  // arguments: source, target
  IDS_OPS_DESCRIPTION, "%ls -> %ls"
+ IDS_COPYMOVE_TITLE_COPY, "Copy"
+ IDS_COPYMOVE_TITLE_MOVE, "Move"
+ // argument: what is copied (e.g. "3 files")
+ IDS_COPYMOVE_SUBJECT_COPY, "Copy %ls from the SFTP server to:"
+ IDS_COPYMOVE_SUBJECT_MOVE, "Move %ls from the SFTP server to:"
+ // the "If the file exists" choices
+ IDS_POLICY_ASK, "Ask"
+ IDS_POLICY_OVERWRITE, "Overwrite"
+ IDS_POLICY_RESUME, "Resume (continue the existing file)"
+ IDS_POLICY_SKIP, "Skip"
+ IDS_POLICY_OVERWRITE_OLDER, "Overwrite if older"
+ IDS_POLICY_RENAME, "Rename the new file automatically"
+ IDS_ERR_SFTP_TARGET_UNSUPPORTED, "Only Move to a folder on the same SFTP server is supported for an sftp: target (it is done as a rename on the server). To copy between servers, copy to a local folder first."
+ IDS_ERR_DROP_TARGET, "Files can be dropped from an SFTP panel only onto an existing Windows folder."
+ // arguments: item name, target folder, error text
+ IDS_ERR_MOVE_ITEM, "The item ""%ls"" could not be moved to ""%ls"": %ls"
+ IDS_ERR_OP_START, "The transfer could not be started."
+ IDS_OPS_RELEASE_PROMPT, "SFTP transfers are still running. Cancel them and unload the plugin?"
+ IDS_MENU_OPERATIONS, "&Operations..."
+ IDS_WAIT_MOVING, "Moving on the server..."
+ IDS_ERR_NOT_CONNECTED, "The connection to the server is not available."
 }

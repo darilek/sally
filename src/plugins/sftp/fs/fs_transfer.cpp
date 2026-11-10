@@ -1,0 +1,501 @@
+// SPDX-FileCopyrightText: 2026 Sally Authors
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+// F5/F6 and drag & drop: the copy/move services of the SFTP file system. Downloads and uploads are handed to the
+// operations registry (workers with their own connections), so these functions return as soon as the operation runs.
+
+#include "precomp.h"
+
+#include "fs_object.h"
+
+#include "fs_data.h"
+#include "listing_format.h"
+#include "operation.h"
+#include "operations_registry.h"
+#include "../ui/copy_move_dialog.h"
+#include "site_config.h"
+#include "text_util.h"
+#include "wait_for_request.h"
+
+namespace
+{
+bool WriteBuffer(CSalamanderStringBuffer* buffer, const std::wstring& text)
+{
+    return buffer != NULL && sally::plugin_abi::WriteStringBuffer(*buffer, text);
+}
+
+std::wstring DescribeError(const CSshError& error)
+{
+    const CSshErrorLabels labels = {LangStr(IDS_ERR_UNKNOWN), LangStr(IDS_ERR_CODE), LangStr(IDS_ERR_SFTP_STATUS)};
+    return DescribeSshError(error, labels);
+}
+
+// "host:port" as the operation window names the server.
+std::wstring HostTextOf(const CSite& site)
+{
+    const CNameCodec utf8 = CNameCodec::Utf8();
+    return utf8.Decode(FormatHostPort(utf8.Encode(site.host), site.port));
+}
+
+void ShowMessage(const std::wstring& text)
+{
+    SalamanderGeneral->SalMessageBox(SalamanderGeneral->GetMsgBoxParent(), text.c_str(),
+                                     LangStr(IDS_PLUGINNAME).c_str(), MB_OK | MB_ICONEXCLAMATION);
+}
+
+// A Windows path (drive or UNC): the only kind of target Sally lets a download use.
+bool LooksLikeWindowsPath(const std::wstring& path)
+{
+    return path.size() >= 2 && (path[1] == L':' || (path[0] == L'\\' && path[1] == L'\\'));
+}
+} // namespace
+
+// ---------------------------------------------------------------------------------------------------------------
+// Helpers
+
+std::wstring CPluginFSInterface::FullFsPath(const std::string& rawPath) const
+{
+    return AssignedFSName + L":" + UserPartOf(rawPath);
+}
+
+// The selected items of the panel (or the focused one when nothing is selected), with the raw names kept in the
+// listing data. The up-dir item is never included.
+bool CPluginFSInterface::CollectSelection(int panel, int selectedFiles, int selectedDirs,
+                                          std::vector<CSelectedItem>& items) const
+{
+    const bool focused = selectedFiles == 0 && selectedDirs == 0;
+    int index = 0;
+    for (;;)
+    {
+        BOOL isDir = FALSE;
+        const CFileData* file = focused ? SalamanderGeneral->GetPanelFocusedItem(panel, &isDir)
+                                        : SalamanderGeneral->GetPanelSelectedItem(panel, &index, &isDir);
+        if (file == NULL)
+            break;
+        const CSftpFileData* data = reinterpret_cast<const CSftpFileData*>(file->PluginData);
+        if (data != NULL || wcscmp(file->Name, L"..") != 0) // the up-dir has no plugin data
+        {
+            CSelectedItem item;
+            item.rawName = data != NULL ? data->rawName : codec_.Encode(file->Name);
+            item.isDir = isDir != FALSE;
+            item.size = file->Size.Value;
+            item.mtime = FileTimeToUnixTime(file->LastWrite);
+            items.push_back(std::move(item));
+        }
+        if (focused)
+            break;
+    }
+    return !items.empty();
+}
+
+// What a worker needs to log in: the panel connection's site, secrets and accepted host key when this FS is connected to
+// that server (D35); otherwise (a temporary FS from OpenFS, or a panel connection that is gone) the site from the
+// configuration with its remembered secrets, asking for a password when needed. Without a pinned host key the worker
+// asks through the operation window.
+bool CPluginFSInterface::MakeWorkerParams(const CSftpPath& server, CPanelConnectParams& params)
+{
+    if (connected_ && session_ && SameServer(identity_, server))
+    {
+        params = session_->CopyConnectParams();
+        if (params.valid)
+            return true;
+    }
+    CSite site;
+    CSecret password;
+    CSecret passphrase;
+    if (!ResolveSite(server, site, password, passphrase))
+        return false;
+    params = CPanelConnectParams();
+    params.valid = true;
+    params.site = site;
+    params.password = std::move(password);
+    params.passphrase = std::move(passphrase);
+    return true;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Download (F5/F6 from the panel to a Windows folder)
+
+BOOL WINAPI
+CPluginFSInterface::CopyOrMoveFromFS(BOOL copy, int mode, const wchar_t* fsName, HWND parent, int panel,
+                                     int selectedFiles, int selectedDirs, CSalamanderStringBuffer* targetPath,
+                                     BOOL& operationMask, BOOL& cancelOrHandlePath, HWND dropTarget)
+{
+    CALL_STACK_MESSAGE6("CPluginFSInterface::CopyOrMoveFromFS(%d, %d, , , %d, %d, %d, , , ,)", copy, mode, panel,
+                        selectedFiles, selectedDirs);
+    CBusyGuard busy(this); // declared first: destroyed last, and may delete 'this' (see ChangePath)
+    try
+    {
+        std::wstring payload;
+        if (targetPath == NULL || !sally::plugin_abi::ReadStringBuffer(*targetPath, payload) || closeRequested_)
+        {
+            cancelOrHandlePath = TRUE;
+            return TRUE; // cancel
+        }
+        std::wstring path;
+        std::wstring mask; // never used: operationMask stays FALSE, so Sally rejects masks itself
+        SplitPathAndMask(payload, path, mask);
+        const BOOL result = DoCopyOrMoveFromFS(copy, mode, fsName, parent, panel, selectedFiles, selectedDirs, path,
+                                               operationMask, cancelOrHandlePath);
+        if (!WriteBuffer(targetPath, path))
+        {
+            cancelOrHandlePath = TRUE;
+            return TRUE;
+        }
+        return result;
+    }
+    catch (...)
+    {
+        TRACE_E("CopyOrMoveFromFS: unexpected exception.");
+        cancelOrHandlePath = TRUE;
+        return TRUE;
+    }
+}
+
+BOOL CPluginFSInterface::DoCopyOrMoveFromFS(BOOL copy, int mode, const wchar_t* fsName, HWND parent, int panel,
+                                            int selectedFiles, int selectedDirs, std::wstring& path,
+                                            BOOL& operationMask, BOOL& cancelOrHandlePath)
+{
+    if (!connected_)
+    {
+        ShowMessage(LangStr(IDS_ERR_NOT_CONNECTED));
+        cancelOrHandlePath = TRUE;
+        return TRUE;
+    }
+    if (mode == 5)
+        return DropToWindowsFolder(copy, parent, panel, selectedFiles, selectedDirs, path, cancelOrHandlePath);
+
+    if (mode != 3) // 1: first call, 2 and 4: Sally wants the target again (it never asks for 2 here), the path was wrong
+        return AskDownloadTarget(copy, fsName, parent, panel, selectedFiles, selectedDirs, mode, path, operationMask,
+                                 cancelOrHandlePath);
+
+    // Mode 3: Sally has checked the Windows folder and created what was missing. The dialog's choices wait in
+    // downloadOptions_ (defaults when the dialog did not run).
+    const CDownloadOptions options = downloadOptions_;
+    downloadOptions_ = CDownloadOptions();
+    const ConflictPolicy policy = options.valid ? options.policy : ConflictPolicy::Ask;
+    const bool preserveTime = options.valid ? options.preserveTime : site_.preserveTime;
+    const bool started = StartDownload(copy, panel, selectedFiles, selectedDirs, path, policy, preserveTime);
+    cancelOrHandlePath = started ? FALSE : TRUE;
+    path.clear(); // no item to focus
+    return TRUE;
+}
+
+// Modes 1, 2 and 4: the Copy/Move dialog. A Windows target is handed back to Sally (it checks the folder and calls again
+// with mode 3). An sftp: target never reaches Sally (it can only handle Windows paths): a Move on the same server is
+// done here as a rename, anything else is refused and the dialog comes back.
+BOOL CPluginFSInterface::AskDownloadTarget(BOOL copy, const wchar_t* fsName, HWND parent, int panel, int selectedFiles,
+                                           int selectedDirs, int mode, std::wstring& path, BOOL& operationMask,
+                                           BOOL& cancelOrHandlePath)
+{
+    std::wstring sourceText;
+    SPLGetCommonFSOperSourceDescrOwned(SalamanderGeneral, panel, selectedFiles, selectedDirs, NULL, FALSE, FALSE,
+                                       sourceText);
+    const std::wstring subject = SPLFormatStringOwned(
+        LangStr(copy ? IDS_COPYMOVE_SUBJECT_COPY : IDS_COPYMOVE_SUBJECT_MOVE).c_str(), sourceText.c_str());
+    if (mode == 1 && !path.empty())
+        SalamanderGeneral->SetUserWorkedOnPanelPath(PANEL_TARGET); // the default action works with the target panel path
+
+    const std::wstring ownName = fsName != NULL ? fsName : AssignedFSName;
+    CCopyMoveChoice choice;
+    choice.target = path;
+    choice.preserveTime = site_.preserveTime;
+    for (;;)
+    {
+        CCopyMoveDialog dialog(parent, copy != FALSE, subject);
+        const bool accepted = dialog.Run(choice);
+        UpdateWindow(SalamanderGeneral->GetMainWindowHWND()); // do not leave the dialog's remains on screen
+        if (!accepted)
+        {
+            cancelOrHandlePath = TRUE;
+            return TRUE; // cancel
+        }
+
+        std::wstring userPart;
+        if (!SplitFsPath(choice.target, ownName, userPart))
+            break; // not an sftp: path: a Windows path (or something Sally reports itself)
+
+        CSftpPath target;
+        if (!ParseSftpPath(userPart, target))
+            ShowMessage(SPLFormatStringOwned(LangStr(IDS_ERR_BAD_PATH).c_str(), choice.target.c_str()));
+        else if (copy || !SameServer(identity_, target))
+            ShowMessage(LangStr(IDS_ERR_SFTP_TARGET_UNSUPPORTED));
+        else
+        {
+            const bool moved = MoveOnServer(parent, panel, selectedFiles, selectedDirs, target);
+            cancelOrHandlePath = moved ? FALSE : TRUE;
+            path.clear(); // no item to focus
+            return TRUE;
+        }
+        if (closeRequested_)
+        {
+            cancelOrHandlePath = TRUE;
+            return TRUE;
+        }
+    }
+
+    downloadOptions_.policy = choice.policy;
+    downloadOptions_.preserveTime = choice.preserveTime;
+    downloadOptions_.valid = true;
+    path = choice.target;
+    operationMask = FALSE; // masks are not supported (yet): Sally reports a path with a mask
+    cancelOrHandlePath = TRUE; // "process this path": Sally parses it and calls again with mode 3 (or 4)
+    return FALSE;
+}
+
+// Mode 5: files were dropped from the panel on 'path'. Only an existing Windows folder is a possible target.
+BOOL CPluginFSInterface::DropToWindowsFolder(BOOL copy, HWND parent, int panel, int selectedFiles, int selectedDirs,
+                                             std::wstring& path, BOOL& cancelOrHandlePath)
+{
+    cancelOrHandlePath = TRUE;
+    if (LooksLikeWindowsPath(path))
+        SPLSalPathAddBackslashOwned(path); // mode 5 always gives a folder
+
+    const std::wstring title = LangStr(IDS_PLUGINNAME);
+    std::wstring parsed = path;
+    int type = 0;
+    BOOL isDir = FALSE;
+    size_t secondPartOffset = std::wstring::npos;
+    if (!SPLSalParsePathOwned(SalamanderGeneral, parent, parsed, type, isDir, secondPartOffset, title.c_str(), FALSE,
+                              NULL, NULL))
+        return TRUE; // a syntax error: the parser has reported it
+    if (type != PATH_TYPE_WINDOWS || secondPartOffset != parsed.size()) // an FS, an archive, or a missing folder
+    {
+        ShowMessage(LangStr(IDS_ERR_DROP_TARGET));
+        return TRUE;
+    }
+    const bool started = StartDownload(copy, panel, selectedFiles, selectedDirs, parsed, ConflictPolicy::Ask,
+                                       site_.preserveTime);
+    cancelOrHandlePath = started ? FALSE : TRUE;
+    return TRUE;
+}
+
+// Builds the queue from the selection and starts the operation (its window opens). The operation copies what it needs
+// from this FS (D35) and never touches it again.
+bool CPluginFSInterface::StartDownload(BOOL copy, int panel, int selectedFiles, int selectedDirs,
+                                       const std::wstring& localDir, ConflictPolicy policy, bool preserveTime)
+{
+    std::vector<CSelectedItem> items;
+    if (!CollectSelection(panel, selectedFiles, selectedDirs, items))
+        return false;
+    CPanelConnectParams params;
+    if (!MakeWorkerParams(identity_, params))
+        return false;
+
+    COperationSettings settings = SettingsFromSite(params.site, TransferDirection::Download, copy == FALSE);
+    settings.policy = policy;
+    settings.preserveTime = preserveTime;
+    settings.localRoot = localDir;
+    settings.remoteRoot = curRaw_;
+
+    std::vector<CRemoteSource> sources;
+    for (const CSelectedItem& item : items)
+    {
+        CRemoteSource source;
+        source.path = JoinRemotePath(curRaw_, item.rawName);
+        source.isDir = item.isDir;
+        source.size = item.size;
+        source.mtime = item.mtime;
+        sources.push_back(std::move(source));
+    }
+
+    COperationLaunch launch;
+    launch.source = FullFsPath(curRaw_);
+    launch.target = localDir;
+    launch.hostName = HostTextOf(params.site);
+    launch.changedPaths.push_back(localDir);
+    if (!copy)
+        launch.changedPaths.push_back(launch.source); // the moved items are gone from here
+    std::vector<CQueueItem> roots = COperation::BuildDownloadRoots(sources, settings, codec_);
+    return OperationsRegistry.Launch(std::move(settings), std::move(params), std::move(roots), launch);
+}
+
+// F6 to a folder on the same server: one rename request per item on the panel session, no operation. Stops at the first
+// problem (items already moved stay moved). True: everything was moved.
+bool CPluginFSInterface::MoveOnServer(HWND parent, int panel, int selectedFiles, int selectedDirs,
+                                      const CSftpPath& target)
+{
+    if (IsWaiting())
+    {
+        TRACE_E("MoveOnServer called while another wait is running.");
+        return false;
+    }
+    std::vector<CSelectedItem> items;
+    if (!CollectSelection(panel, selectedFiles, selectedDirs, items))
+        return false;
+
+    // the exact bytes of the current directory when the target is it (names that are not valid in the encoding)
+    const std::string targetRaw = target.path == DisplayPath(curRaw_) ? curRaw_
+                                                                      : NormalizeRemotePath(codec_.Encode(target.path));
+    const std::wstring targetText = DisplayPath(targetRaw);
+    for (const CSelectedItem& item : items)
+    {
+        const std::string from = JoinRemotePath(curRaw_, item.rawName);
+        const std::string to = JoinRemotePath(targetRaw, item.rawName);
+        if (from == to)
+            continue;
+        std::shared_ptr<CPanelRequest> request = session_->Rename(from, to, false);
+        const WaitResult waited = WaitForRequest(parent, *session_, request, LangStr(IDS_WAIT_MOVING));
+        if (waited == WaitResult::Cancelled || request->Cancelled() || !request->IsDone() || closeRequested_)
+            return false;
+        if (!request->Ok())
+        {
+            ShowMessage(SPLFormatStringOwned(LangStr(IDS_ERR_MOVE_ITEM).c_str(), codec_.Decode(item.rawName).c_str(),
+                                             targetText.c_str(), DescribeError(request->Error()).c_str()));
+            return false;
+        }
+    }
+    // this panel and the one showing the target folder (this FS refreshes itself through AcceptChangeOnPathNotification)
+    SalamanderGeneral->PostChangeOnPathNotification(FullFsPath(curRaw_).c_str(), FALSE);
+    SalamanderGeneral->PostChangeOnPathNotification(FullFsPath(targetRaw).c_str(), FALSE);
+    return true;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Upload (F5/F6 or drag & drop from a Windows panel to sftp:)
+
+BOOL WINAPI
+CPluginFSInterface::CopyOrMoveFromDiskToFS(BOOL copy, int mode, const wchar_t* fsName, HWND parent,
+                                           const wchar_t* sourcePath, SalEnumSelection2 next, void* nextParam,
+                                           int sourceFiles, int sourceDirs, CSalamanderStringBuffer* targetPath,
+                                           BOOL* invalidPathOrCancel)
+{
+    CALL_STACK_MESSAGE4("CPluginFSInterface::CopyOrMoveFromDiskToFS(%d, %d, , , , , , %d, , ,)", copy, mode,
+                        sourceFiles);
+    try
+    {
+        std::wstring path;
+        if (targetPath == NULL || !sally::plugin_abi::ReadStringBuffer(*targetPath, path))
+        {
+            if (invalidPathOrCancel != NULL)
+                *invalidPathOrCancel = TRUE;
+            return FALSE;
+        }
+        const BOOL result = DoCopyOrMoveFromDiskToFS(copy, mode, fsName, parent, sourcePath, next, nextParam, path,
+                                                     invalidPathOrCancel);
+        return WriteBuffer(targetPath, path) ? result : FALSE;
+    }
+    catch (...)
+    {
+        TRACE_E("CopyOrMoveFromDiskToFS: unexpected exception.");
+        if (invalidPathOrCancel != NULL)
+            *invalidPathOrCancel = TRUE;
+        return FALSE;
+    }
+}
+
+BOOL CPluginFSInterface::DoCopyOrMoveFromDiskToFS(BOOL copy, int mode, const wchar_t* fsName, HWND parent,
+                                                  const wchar_t* sourcePath, SalEnumSelection2 next, void* nextParam,
+                                                  std::wstring& targetPath, BOOL* invalidPathOrCancel)
+{
+    if (invalidPathOrCancel != NULL)
+        *invalidPathOrCancel = TRUE;
+    if (mode == 1)
+        return TRUE; // Sally passes the current path of this FS: it is the proposed target as it is
+    if (mode != 2 && mode != 3 || sourcePath == NULL || next == NULL)
+        return FALSE;
+
+    std::wstring userPart;
+    CSftpPath wanted;
+    if (!SplitFsPath(targetPath, fsName != NULL ? fsName : AssignedFSName, userPart) ||
+        !ParseSftpPath(userPart, wanted))
+    {
+        ShowMessage(SPLFormatStringOwned(LangStr(IDS_ERR_BAD_PATH).c_str(), targetPath.c_str()));
+        return FALSE; // the user corrects the path
+    }
+    if (connected_ && !SameServer(identity_, wanted))
+    {
+        if (invalidPathOrCancel != NULL)
+            *invalidPathOrCancel = FALSE;
+        return FALSE; // another FS (or a new one) must take this
+    }
+
+    // the selection: the roots only, the workers walk the directories
+    std::vector<CLocalSource> sources;
+    std::wstring base = sourcePath;
+    SPLSalPathAddBackslashOwned(base);
+    const wchar_t* name = NULL;
+    const wchar_t* dosName = NULL;
+    BOOL isDir = FALSE;
+    CQuadWord size(0, 0);
+    DWORD attributes = 0;
+    FILETIME lastWrite = {0, 0};
+    int enumError = SALENUM_SUCCESS;
+    while ((name = next(parent, 0, &dosName, &isDir, &size, &attributes, &lastWrite, nextParam, &enumError)) != NULL)
+    {
+        CLocalSource source;
+        source.path = base + name;
+        source.isDir = isDir != FALSE;
+        source.size = isDir ? 0 : size.Value;
+        source.mtime = FileTimeToUnixTime(lastWrite);
+        sources.push_back(std::move(source));
+    }
+    if (enumError == SALENUM_CANCEL || sources.empty())
+        return TRUE; // cancelled (invalidPathOrCancel stays TRUE: nothing is deselected)
+
+    CPanelConnectParams params;
+    if (!MakeWorkerParams(wanted, params))
+        return TRUE; // cancelled or failed, the message was shown
+
+    const CNameCodec codec = params.site.MakeCodec();
+    COperationSettings settings = SettingsFromSite(params.site, TransferDirection::Upload, copy == FALSE);
+    // policy stays Ask (D37): Sally's own Copy dialog has no "file exists" choice
+    settings.localRoot = sourcePath;
+    settings.remoteRoot = (connected_ && wanted.path == DisplayPath(curRaw_)) ? curRaw_
+                                                                              : NormalizeRemotePath(codec.Encode(wanted.path));
+
+    COperationLaunch launch;
+    launch.source = sourcePath;
+    launch.target = AssignedFSName + L":" + FormatSftpPath(wanted);
+    launch.hostName = HostTextOf(params.site);
+    launch.changedPaths.push_back(launch.target);
+    if (!copy)
+        launch.changedPaths.push_back(sourcePath); // the moved items are gone from here
+    std::vector<CQueueItem> roots = COperation::BuildUploadRoots(sources, settings, codec);
+    if (OperationsRegistry.Launch(std::move(settings), std::move(params), std::move(roots), launch) &&
+        invalidPathOrCancel != NULL)
+        *invalidPathOrCancel = FALSE; // started: Sally deselects the source
+    return TRUE;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Drag & drop and change notifications
+
+// Dropping from a panel on an sftp: path is not supported (a same-server move is done with F6 and the typed path).
+void WINAPI
+CPluginFSInterface::GetDropEffect(const wchar_t* srcFSPath, const wchar_t* tgtFSPath, DWORD allowedEffects,
+                                  DWORD keyState, DWORD* dropEffect)
+{
+    if (dropEffect != NULL)
+        *dropEffect = DROPEFFECT_NONE;
+}
+
+// While dragging over any file system of this process ('tgtFSPath' is set): this FS cannot copy or move to it.
+void WINAPI
+CPluginFSInterface::GetAllowedDropEffects(int mode, const wchar_t* tgtFSPath, DWORD* allowedEffects)
+{
+    if (mode == 1 && tgtFSPath != NULL && allowedEffects != NULL)
+        *allowedEffects = DROPEFFECT_NONE;
+}
+
+// Something changed on 'path' (an FS path with the FS name): refresh the panel when it shows that folder, or (with
+// includingSubdirs) a folder below it. Called on the main thread for the panel FS and for detached ones.
+void WINAPI
+CPluginFSInterface::AcceptChangeOnPathNotification(const wchar_t* fsName, const wchar_t* path, BOOL includingSubdirs)
+{
+    CALL_STACK_MESSAGE2("CPluginFSInterface::AcceptChangeOnPathNotification(, , %d)", includingSubdirs);
+    try
+    {
+        std::wstring userPart;
+        CSftpPath changed;
+        if (!connected_ || closeRequested_ || path == NULL ||
+            !SplitFsPath(path, fsName != NULL ? fsName : AssignedFSName, userPart) || !ParseSftpPath(userPart, changed))
+            return;
+        if (SameServer(identity_, changed) && IsPathWithin(DisplayPath(curRaw_), changed.path, includingSubdirs != FALSE))
+            SalamanderGeneral->PostRefreshPanelFS(this);
+    }
+    catch (...)
+    {
+        TRACE_E("AcceptChangeOnPathNotification: unexpected exception.");
+    }
+}

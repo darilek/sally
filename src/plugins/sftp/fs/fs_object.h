@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "known_hosts.h"
+#include "op_types.h"
 #include "panel_session.h"
 #include "site.h"
 #include "site_path.h"
@@ -54,9 +55,22 @@ public:
     virtual HICON WINAPI GetFSIcon(BOOL& destroyIcon);
     virtual BOOL WINAPI GetPathForMainWindowTitle(const wchar_t* fsName, int mode, CSalamanderStringBuffer* buf);
 
-    // ---- not available yet (the services are not advertised; Salamander does not call these)
+    // ---- copy and move (fs/fs_transfer.cpp). Downloads and uploads run as operations (see operations_registry.h);
+    // an sftp: target of F6 on the same server is a rename on the server.
+    virtual BOOL WINAPI CopyOrMoveFromFS(BOOL copy, int mode, const wchar_t* fsName, HWND parent, int panel,
+                                         int selectedFiles, int selectedDirs, CSalamanderStringBuffer* targetPath,
+                                         BOOL& operationMask, BOOL& cancelOrHandlePath, HWND dropTarget);
+    virtual BOOL WINAPI CopyOrMoveFromDiskToFS(BOOL copy, int mode, const wchar_t* fsName, HWND parent,
+                                               const wchar_t* sourcePath, SalEnumSelection2 next, void* nextParam,
+                                               int sourceFiles, int sourceDirs, CSalamanderStringBuffer* targetPath,
+                                               BOOL* invalidPathOrCancel);
     virtual void WINAPI GetDropEffect(const wchar_t* srcFSPath, const wchar_t* tgtFSPath, DWORD allowedEffects,
-                                      DWORD keyState, DWORD* dropEffect) {}
+                                      DWORD keyState, DWORD* dropEffect);
+    virtual void WINAPI GetAllowedDropEffects(int mode, const wchar_t* tgtFSPath, DWORD* allowedEffects);
+    virtual void WINAPI AcceptChangeOnPathNotification(const wchar_t* fsName, const wchar_t* path,
+                                                       BOOL includingSubdirs);
+
+    // ---- not available yet (the services are not advertised; Salamander does not call these)
     virtual void WINAPI GetFSFreeSpace(CQuadWord* retValue);
     virtual BOOL WINAPI GetNextDirectoryLineHotPath(const wchar_t* text, int pathLen, int& offset) { return FALSE; }
     virtual BOOL WINAPI CompleteDirectoryLineHotPath(CSalamanderStringBuffer* path) { return FALSE; }
@@ -71,8 +85,6 @@ public:
         cancel = TRUE;
         return FALSE;
     }
-    virtual void WINAPI AcceptChangeOnPathNotification(const wchar_t* fsName, const wchar_t* path,
-                                                       BOOL includingSubdirs) {}
     virtual BOOL WINAPI CreateDir(const wchar_t* fsName, int mode, HWND parent, CSalamanderStringBuffer* newName,
                                   BOOL& cancel)
     {
@@ -87,22 +99,6 @@ public:
         cancelOrError = TRUE;
         return FALSE;
     }
-    virtual BOOL WINAPI CopyOrMoveFromFS(BOOL copy, int mode, const wchar_t* fsName, HWND parent, int panel,
-                                         int selectedFiles, int selectedDirs, CSalamanderStringBuffer* targetPath,
-                                         BOOL& operationMask, BOOL& cancelOrHandlePath, HWND dropTarget)
-    {
-        cancelOrHandlePath = TRUE;
-        return FALSE;
-    }
-    virtual BOOL WINAPI CopyOrMoveFromDiskToFS(BOOL copy, int mode, const wchar_t* fsName, HWND parent,
-                                               const wchar_t* sourcePath, SalEnumSelection2 next, void* nextParam,
-                                               int sourceFiles, int sourceDirs, CSalamanderStringBuffer* targetPath,
-                                               BOOL* invalidPathOrCancel)
-    {
-        if (invalidPathOrCancel != NULL)
-            *invalidPathOrCancel = TRUE;
-        return FALSE;
-    }
     virtual BOOL WINAPI ChangeAttributes(const wchar_t* fsName, HWND parent, int panel, int selectedFiles,
                                          int selectedDirs)
     {
@@ -115,11 +111,6 @@ public:
     virtual BOOL WINAPI HandleMenuMsg(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT* plResult) { return FALSE; }
     virtual BOOL WINAPI OpenFindDialog(const wchar_t* fsName, int panel) { return FALSE; }
     virtual void WINAPI OpenActiveFolder(const wchar_t* fsName, HWND parent) {}
-    virtual void WINAPI GetAllowedDropEffects(int mode, const wchar_t* tgtFSPath, DWORD* allowedEffects)
-    {
-        if (allowedEffects != NULL)
-            *allowedEffects = 0;
-    }
     virtual BOOL WINAPI GetNoItemsInPanelText(CSalamanderStringBuffer* textBuf) { return FALSE; }
     virtual void WINAPI ShowSecurityInfo(HWND parent) {}
 
@@ -197,6 +188,40 @@ private:
     bool AddListing(CSalamanderDirectoryAbstract* dir, CPluginDataInterfaceAbstract* data,
                     const std::vector<CSftpEntry>& entries);
 
+    bool ResolveSite(const CSftpPath& wanted, CSite& site, CSecret& password, CSecret& passphrase);
+
+    // ---- fs/fs_transfer.cpp
+    struct CSelectedItem // one selected (or focused) panel item
+    {
+        std::string rawName;
+        bool isDir = false;
+        uint64_t size = 0;
+        int64_t mtime = 0; // Unix seconds
+    };
+    struct CDownloadOptions // what the Copy/Move dialog chose, kept for the CopyOrMoveFromFS call with mode 3
+    {
+        ConflictPolicy policy = ConflictPolicy::Ask;
+        bool preserveTime = true;
+        bool valid = false;
+    };
+
+    BOOL DoCopyOrMoveFromFS(BOOL copy, int mode, const wchar_t* fsName, HWND parent, int panel, int selectedFiles,
+                            int selectedDirs, std::wstring& path, BOOL& operationMask, BOOL& cancelOrHandlePath);
+    BOOL AskDownloadTarget(BOOL copy, const wchar_t* fsName, HWND parent, int panel, int selectedFiles,
+                           int selectedDirs, int mode, std::wstring& path, BOOL& operationMask,
+                           BOOL& cancelOrHandlePath);
+    BOOL DropToWindowsFolder(BOOL copy, HWND parent, int panel, int selectedFiles, int selectedDirs,
+                             std::wstring& path, BOOL& cancelOrHandlePath);
+    BOOL DoCopyOrMoveFromDiskToFS(BOOL copy, int mode, const wchar_t* fsName, HWND parent, const wchar_t* sourcePath,
+                                  SalEnumSelection2 next, void* nextParam, std::wstring& targetPath,
+                                  BOOL* invalidPathOrCancel);
+    bool CollectSelection(int panel, int selectedFiles, int selectedDirs, std::vector<CSelectedItem>& items) const;
+    bool MakeWorkerParams(const CSftpPath& server, CPanelConnectParams& params);
+    bool StartDownload(BOOL copy, int panel, int selectedFiles, int selectedDirs, const std::wstring& localDir,
+                       ConflictPolicy policy, bool preserveTime);
+    bool MoveOnServer(HWND parent, int panel, int selectedFiles, int selectedDirs, const CSftpPath& target);
+    std::wstring FullFsPath(const std::string& rawPath) const; // "sftp:user@host/path"
+
     std::wstring DisplayPath(const std::string& rawPath) const;
     std::wstring UserPartOf(const std::string& rawPath) const; // "user@host:port/path" or "@Site/path"
     std::wstring ConnectionText() const;                       // "user@host" (or the site name) for messages
@@ -232,6 +257,8 @@ private:
     // Set by BuildNavigation, used by the next ChangePath for the same user part.
     std::wstring hintUserPart_;
     std::string hintRawPath_;
+
+    CDownloadOptions downloadOptions_; // set by the Copy/Move dialog, used (once) by mode 3
 
     int busy_ = 0;                   // main thread only: calls that wait and are on the stack
     bool closeRequested_ = false;    // CloseFS/ReleaseObject came during a wait: no new wait, delete when unwound

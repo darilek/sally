@@ -32,3 +32,7 @@ std::wstring KnownHostsUserPath();
 
 // "host:port" for display (host key dialog): an IPv6 literal (contains ':') gets brackets, "[::1]:22".
 std::string FormatHostPort(const std::string& host, int port);
+
+// The target path Sally hands to CopyOrMoveFromFS is "path", optionally followed by a NUL and an operation mask.
+// Splits at the first NUL ('mask' is empty when there is none).
+void SplitPathAndMask(const std::wstring& payload, std::wstring& path, std::wstring& mask);

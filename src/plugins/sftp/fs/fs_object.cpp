@@ -222,13 +222,12 @@ CPluginFSInterface::IsOurPath(int currentFSNameIndex, int fsNameIndex, const wch
 // ---------------------------------------------------------------------------------------------------------------
 // Connecting and listing (every wait goes through WaitForRequest)
 
-// Resolves the site, gets the secrets, asks for the password when nothing else can log in, connects.
-// Shows its own messages. False: failed or cancelled (silent when the user cancelled).
-bool CPluginFSInterface::OpenConnection(const CSftpPath& wanted)
+// The site the path names (a saved site, or user@host[:port] with defaults), its remembered secrets, and a password typed
+// by the user when nothing else can log in. Shows its own messages. False: failed or cancelled (silent when cancelled).
+bool CPluginFSInterface::ResolveSite(const CSftpPath& wanted, CSite& site, CSecret& password, CSecret& passphrase)
 {
     HWND parent = SalamanderGeneral->GetMsgBoxParent();
 
-    CSite site;
     if (wanted.isSite)
     {
         const CSite* saved = SiteConfig.Sites().Find(wanted.siteName);
@@ -241,13 +240,12 @@ bool CPluginFSInterface::OpenConnection(const CSftpPath& wanted)
     }
     else // quick connect: user@host[:port], everything else at its default
     {
+        site = CSite();
         site.user = wanted.user;
         site.host = wanted.host;
         site.port = wanted.port;
     }
 
-    CSecret password;
-    CSecret passphrase;
     if (wanted.isSite && site.rememberPassword)
     {
         // main thread: the password manager may ask for the master password
@@ -268,6 +266,20 @@ bool CPluginFSInterface::OpenConnection(const CSftpPath& wanted)
             return false; // cancelled
         password = std::move(answers[0]);
     }
+    return true;
+}
+
+// Resolves the site, gets the secrets, asks for the password when nothing else can log in, connects.
+// Shows its own messages. False: failed or cancelled (silent when the user cancelled).
+bool CPluginFSInterface::OpenConnection(const CSftpPath& wanted)
+{
+    HWND parent = SalamanderGeneral->GetMsgBoxParent();
+
+    CSite site;
+    CSecret password;
+    CSecret passphrase;
+    if (!ResolveSite(wanted, site, password, passphrase))
+        return false;
 
     site_ = site;
     codec_ = site.MakeCodec();
@@ -806,7 +818,9 @@ CPluginFSInterface::ReleaseObject(HWND parent)
 DWORD WINAPI
 CPluginFSInterface::GetSupportedServices()
 {
-    return FS_SERVICE_GETCHANGEDRIVEORDISCONNECTITEM | FS_SERVICE_GETFSICON | FS_SERVICE_GETPATHFORMAINWNDTITLE;
+    return FS_SERVICE_GETCHANGEDRIVEORDISCONNECTITEM | FS_SERVICE_GETFSICON | FS_SERVICE_GETPATHFORMAINWNDTITLE |
+           FS_SERVICE_COPYFROMFS | FS_SERVICE_MOVEFROMFS | FS_SERVICE_COPYFROMDISKTOFS |
+           FS_SERVICE_MOVEFROMDISKTOFS | FS_SERVICE_ACCEPTSCHANGENOTIF;
 }
 
 // Item of this connection in the Change Drive menu and the Disconnect dialog: "\t" + "sftp:user@host/path"

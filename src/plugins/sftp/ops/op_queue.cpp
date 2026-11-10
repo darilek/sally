@@ -71,8 +71,17 @@ uint64_t CQueue::Insert(CQueueItem item, uint64_t parentUid)
     Node node;
     node.item = std::move(item);
     items_.emplace(uid, std::move(node));
+    NoteRunState();
     wake_.notify_all();
     return uid;
+}
+
+void CQueue::NoteRunState()
+{
+    const bool running = ComputeOperationState() == OperationState::Running;
+    if (running && !wasRunning_)
+        ++runId_;
+    wasRunning_ = running;
 }
 
 // The only place where a state changes: keeps the parent's counters, the operation's counts and the waiting sets in step.
@@ -95,6 +104,7 @@ void CQueue::SetState(Node& node, ItemState state)
         waiting.insert(node.item.uid);
 
     node.item.state = state;
+    NoteRunState();
     wake_.notify_all(); // a waiting item to take, or the operation may be over
 }
 
@@ -251,6 +261,42 @@ bool CQueue::ReturnToWaiting(uint64_t uid)
     return true;
 }
 
+bool CQueue::SetOwnsPartial(uint64_t uid)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    Node* node = Find(uid);
+    if (node == nullptr)
+        return false;
+    node->item.ownsPartial = true;
+    return true;
+}
+
+bool CQueue::Retarget(uint64_t uid, const std::wstring& localPath, const std::string& remotePath)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    Node* node = Find(uid);
+    if (node == nullptr)
+        return false;
+    if (!localPath.empty())
+        node->item.localPath = localPath;
+    if (!remotePath.empty())
+        node->item.remotePath = remotePath;
+    node->item.forceAction = SolveAction::Retry;
+    node->item.forceNewName.clear();
+    return true;
+}
+
+bool CQueue::SetTargetInfo(uint64_t uid, uint64_t size, int64_t mtime)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    Node* node = Find(uid);
+    if (node == nullptr)
+        return false;
+    node->item.targetSize = size;
+    node->item.targetMtime = mtime;
+    return true;
+}
+
 int CQueue::Solve(uint64_t uid, SolveAction action, const std::wstring& newName, bool applyToAll)
 {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -334,6 +380,20 @@ CQueueSummary CQueue::Summary() const
             ++summary.totals.filesDone;
     }
     return summary;
+}
+
+uint64_t CQueue::RunId() const
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return runId_;
+}
+
+void CQueue::WaitForWaitingItem(int timeoutMs)
+{
+    std::unique_lock<std::mutex> lock(mutex_);
+    const uint64_t generation = wakeGeneration_;
+    wake_.wait_for(lock, std::chrono::milliseconds(timeoutMs),
+                   [&] { return !waitingExplore_.empty() || !waitingOther_.empty() || wakeGeneration_ != generation; });
 }
 
 void CQueue::WaitForWork(int timeoutMs)

@@ -86,6 +86,13 @@ struct CQueueItem
     std::wstring forceNewName;                    // for forceAction == Rename
     uint64_t bytesDone = 0;          // kept when the item goes back to Waiting, so a resume knows the offset
     int depth = 0;                   // explore items: how deep below the root (0 = root); the workers set it for children
+
+    // Set by the workers while they transfer
+    std::wstring parentLocal;  // downloads: the folder the target goes into (a Rename solve builds the new path from it)
+    std::string parentRemote;  // uploads: the same on the server (raw bytes)
+    bool ownsPartial = false;  // this operation has written (part of) the target: a retry resumes it whatever the policy
+    uint64_t targetSize = 0;   // what the last conflict check saw at the target (for the solve dialog)
+    int64_t targetMtime = 0;
 };
 
 // How many direct children of one directory (or of the operation) are in which state.
@@ -152,6 +159,15 @@ public:
     // Pause or lost connection: a Processing item goes back to Waiting. bytesDone is kept.
     bool ReturnToWaiting(uint64_t uid);
 
+    // Worker bookkeeping for a transfer item (all return false for an unknown uid):
+    // - SetOwnsPartial: the operation is about to write the target (see CQueueItem::ownsPartial).
+    // - Retarget: the item now goes to another name (a rename was decided). Empty paths are left alone. The user's
+    //   forced action and new name are used up, so a later retry does not decide again.
+    // - SetTargetInfo: size and time of the existing target, kept for the solve dialog.
+    bool SetOwnsPartial(uint64_t uid);
+    bool Retarget(uint64_t uid, const std::wstring& localPath, const std::string& remotePath);
+    bool SetTargetInfo(uint64_t uid, uint64_t size, int64_t mtime);
+
     // The user's answer for a Failed or UserInputNeeded item. Skip marks it Skipped; Retry/Overwrite/Resume/Rename put
     // it back to Waiting (Overwrite/Resume/Rename are remembered in forceAction; Rename with 'newName').
     // 'applyToAll': the same answer for every Failed/UserInputNeeded item with the same Problem as 'uid'
@@ -168,11 +184,18 @@ public:
     OperationState GetOperationState() const;
     CQueueSummary Summary() const;
 
+    // Counts the "runs": it grows every time the operation state changes from "not Running" to Running (the first
+    // items are added, or the user solved something after the work had run out). COperation fires OnFinished once per run.
+    uint64_t RunId() const;
+
     // For idle workers (like Monitor.Wait in .NET): returns when an item is Waiting, the operation is not Running any
     // more, WakeAll() was called, or after timeoutMs - whichever comes first. The caller must look again (TakeNextWaiting,
     // GetOperationState): a return does not promise that there is work.
     void WaitForWork(int timeoutMs);
-    // Wakes every thread inside WaitForWork (used by cancel).
+    // For workers of an operation that has nothing to do (not Running): returns when an item is Waiting, WakeAll() was
+    // called, or after timeoutMs. Unlike WaitForWork it does not return just because the state is "not Running".
+    void WaitForWaitingItem(int timeoutMs);
+    // Wakes every thread inside WaitForWork/WaitForWaitingItem (used by cancel and resume).
     void WakeAll();
 
     // Copies of the items in uid order; errorsOnly: only the items in an error state (Skipped and later).
@@ -198,6 +221,7 @@ private:
     static void Count(CQueueCounters& counters, ItemState state, int delta);
     static ItemState StateForDelayedDirectory(const CQueueCounters& kids);
     OperationState ComputeOperationState() const;
+    void NoteRunState();
 
     mutable std::mutex mutex_;
     std::condition_variable wake_; // signalled when an item is added or changes state, and by WakeAll
@@ -208,4 +232,6 @@ private:
     std::set<uint64_t> waitingExplore_; // uids of Waiting explore items
     std::set<uint64_t> waitingOther_;   // uids of the other Waiting items
     uint64_t nextUid_ = 1;
+    uint64_t runId_ = 0;
+    bool wasRunning_ = false;
 };

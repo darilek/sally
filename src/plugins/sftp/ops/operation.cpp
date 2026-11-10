@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <thread>
 #include <utility>
 
 namespace
@@ -132,27 +133,91 @@ bool COperation::Start()
     return !failed;
 }
 
-void COperation::RequestCancel()
+// Tells every worker's session to stop its running step (workers are only added by Start, so the list is stable).
+void COperation::InterruptWorkers()
 {
-    if (cancelRequested_.exchange(true))
-        return;
     std::vector<CWorker*> workers;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         for (const std::unique_ptr<CWorker>& worker : workers_)
             workers.push_back(worker.get());
     }
-    queue_.WakeAll();
     for (CWorker* worker : workers)
         worker->Cancel();
-    try
+}
+
+void COperation::RequestCancel()
+{
+    if (cancelRequested_.exchange(true))
+        return;
+    InterruptWorkers();
+    // Everything that waits looks at the flag under its own mutex: taking the mutex once makes sure it cannot miss the
+    // notification (like Monitor.Pulse in .NET, the waiter must not be between "check" and "wait").
+    { std::lock_guard<std::mutex> lock(waitMutex_); }
+    waitCv_.notify_all();
+    { std::lock_guard<std::mutex> lock(interMutex_); }
+    interCv_.notify_all();
+    queue_.WakeAll();
+    NotifyObserverState();
+}
+
+void COperation::Pause()
+{
+    if (cancelRequested_.load())
+        return;
     {
-        if (observer_ != nullptr)
-            observer_->OnStateChanged();
+        std::lock_guard<std::mutex> lock(waitMutex_);
+        if (paused_.exchange(true))
+            return;
     }
-    catch (...)
+    waitCv_.notify_all();
+    InterruptWorkers(); // a transfer in a stalled network wait must not wait for its idle timeout
+    NotifyObserverState();
+}
+
+void COperation::Resume()
+{
     {
+        std::lock_guard<std::mutex> lock(waitMutex_);
+        if (!paused_.exchange(false))
+            return;
     }
+    waitCv_.notify_all();
+    queue_.WakeAll();
+    NotifyObserverState();
+}
+
+void COperation::WaitWhilePaused()
+{
+    std::unique_lock<std::mutex> lock(waitMutex_);
+    waitCv_.wait(lock, [this] { return !paused_.load() || cancelRequested_.load(); });
+}
+
+bool COperation::SleepUnlessInterrupted(unsigned ms)
+{
+    std::unique_lock<std::mutex> lock(waitMutex_);
+    const bool interrupted = waitCv_.wait_for(lock, std::chrono::milliseconds(ms),
+                                              [this] { return paused_.load() || cancelRequested_.load(); });
+    return !interrupted;
+}
+
+int COperation::Solve(uint64_t uid, SolveAction action, const std::wstring& newName, bool applyToAll)
+{
+    const int changed = queue_.Solve(uid, action, newName, applyToAll);
+    if (changed > 0)
+    {
+        NotifyStateIfChanged();
+        FinishRun(false); // a Skip can be the last open item
+    }
+    return changed;
+}
+
+int COperation::RetryAllFailed()
+{
+    const int changed = queue_.RetryAllFailed();
+    if (changed > 0)
+        NotifyStateIfChanged();
+    return changed;
 }
 
 bool COperation::WaitFinished(DWORD timeoutMs)
@@ -160,19 +225,27 @@ bool COperation::WaitFinished(DWORD timeoutMs)
     std::unique_lock<std::mutex> lock(mutex_);
     if (timeoutMs == INFINITE)
     {
-        finishedCv_.wait(lock, [this] { return finished_; });
+        finishedCv_.wait(lock, [this] { return IsFinishedLocked(); });
         return true;
     }
-    return finishedCv_.wait_for(lock, std::chrono::milliseconds(timeoutMs), [this] { return finished_; });
+    return finishedCv_.wait_for(lock, std::chrono::milliseconds(timeoutMs), [this] { return IsFinishedLocked(); });
 }
 
 bool COperation::IsFinished() const
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    return finished_;
+    return IsFinishedLocked();
 }
 
-// Called by every worker thread as its last act, and once by Start. The last one finishes the operation.
+// mutex_ held. The queue is called under it (queue is a leaf below the operation in the lock order).
+bool COperation::IsFinishedLocked() const
+{
+    if (workersGone_)
+        return true;
+    return queue_.GetOperationState() != OperationState::Running && notifiedRun_ == queue_.RunId();
+}
+
+// Called by every worker thread as its last act, and once by Start. The last one ends the operation.
 void COperation::ReleaseActive()
 {
     bool last = false;
@@ -183,19 +256,41 @@ void COperation::ReleaseActive()
     if (!last)
         return;
     NotifyStateIfChanged();
-    try
-    {
-        if (observer_ != nullptr)
-            observer_->OnFinished();
-    }
-    catch (...)
-    {
-    }
+    FinishRun(true);
+}
+
+// Fires OnFinished once per run when the work has run out (or the workers are gone), then wakes the waiters.
+void COperation::FinishRun(bool workersGone)
+{
+    bool fire = false;
+    uint64_t run = 0;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        finished_ = true; // after OnFinished: whoever waits sees an operation whose observer was told
+        if (workersGone)
+            workersGone_ = true;
+        run = queue_.RunId();
+        const bool over = workersGone || queue_.GetOperationState() != OperationState::Running;
+        if (over && claimedRun_ != run)
+        {
+            claimedRun_ = run;
+            fire = true;
+        }
     }
-    finishedCv_.notify_all();
+    if (fire)
+    {
+        try
+        {
+            if (observer_ != nullptr)
+                observer_->OnFinished();
+        }
+        catch (...)
+        {
+        }
+        std::lock_guard<std::mutex> lock(mutex_);
+        notifiedRun_ = run; // after OnFinished: whoever waits sees an operation whose observer was told
+    }
+    if (fire || workersGone)
+        finishedCv_.notify_all();
 }
 
 // ---- IWorkerHost ----------------------------------------------------------------------------------------------
@@ -216,13 +311,11 @@ void COperation::ItemChanged(uint64_t uid)
     {
     }
     NotifyStateIfChanged();
+    FinishRun(false);
 }
 
-void COperation::NotifyStateIfChanged()
+void COperation::NotifyObserverState()
 {
-    const int now = static_cast<int>(queue_.GetOperationState());
-    if (reportedState_.exchange(now) == now)
-        return;
     try
     {
         if (observer_ != nullptr)
@@ -231,6 +324,157 @@ void COperation::NotifyStateIfChanged()
     catch (...)
     {
     }
+}
+
+void COperation::NotifyStateIfChanged()
+{
+    const int now = static_cast<int>(queue_.GetOperationState());
+    if (reportedState_.exchange(now) == now)
+        return;
+    NotifyObserverState();
+}
+
+// ---- interactions ---------------------------------------------------------------------------------------------
+
+void COperation::NotifyInteraction()
+{
+    try
+    {
+        if (observer_ != nullptr)
+            observer_->OnInteractionPending();
+    }
+    catch (...)
+    {
+    }
+}
+
+// interMutex_ held (the wait releases it). Takes the slot for one interaction; false after a cancel.
+bool COperation::BeginInteraction(std::unique_lock<std::mutex>& lock)
+{
+    interCv_.wait(lock, [this] { return !interBusy_ || cancelRequested_.load(); });
+    if (cancelRequested_.load())
+        return false;
+    interBusy_ = true;
+    interHandedOut_ = false;
+    interAnswered_ = false;
+    return true;
+}
+
+// interMutex_ held
+void COperation::EndInteraction()
+{
+    interBusy_ = false;
+    inter_ = CInteraction();
+    interWorker_ = -1;
+    interCv_.notify_all();
+}
+
+HostKeyDecision COperation::AskHostKey(int workerIndex, const std::string& host, int port, const std::string& keyType,
+                                       const std::string& fingerprint, bool changed)
+{
+    if (!settings_.interactive || observer_ == nullptr)
+        return HostKeyDecision::Reject;
+
+    std::unique_lock<std::mutex> lock(interMutex_);
+    if (!BeginInteraction(lock))
+        return HostKeyDecision::Reject;
+    if (trustedKeys_.count(fingerprint) != 0) // another worker was asked about this key meanwhile
+    {
+        EndInteraction();
+        return HostKeyDecision::AcceptOnce;
+    }
+
+    inter_ = CInteraction();
+    inter_.kind = CInteraction::Kind::HostKey;
+    inter_.host = host;
+    inter_.port = port;
+    inter_.keyType = keyType;
+    inter_.fingerprint = fingerprint;
+    inter_.changed = changed;
+    inter_.threadId = std::this_thread::get_id();
+    interWorker_ = workerIndex;
+    lock.unlock();
+    NotifyInteraction();
+    lock.lock();
+
+    interCv_.wait(lock, [this] { return interAnswered_ || cancelRequested_.load(); });
+    const HostKeyDecision decision = interAnswered_ ? hostDecision_ : HostKeyDecision::Reject;
+    if (decision != HostKeyDecision::Reject)
+        trustedKeys_.insert(fingerprint);
+    EndInteraction();
+    return decision == HostKeyDecision::AcceptAndSave ? HostKeyDecision::AcceptOnce : decision;
+}
+
+bool COperation::AskPrompt(int workerIndex, PromptKind kind, const std::string& name, const std::string& instruction,
+                           const std::string& promptText, bool echo, CSecret& answer)
+{
+    if (!settings_.interactive || observer_ == nullptr)
+        return false;
+
+    std::unique_lock<std::mutex> lock(interMutex_);
+    if (!BeginInteraction(lock))
+        return false;
+
+    inter_ = CInteraction();
+    inter_.kind = CInteraction::Kind::Prompt;
+    inter_.promptKind = kind;
+    inter_.name = name;
+    inter_.instruction = instruction;
+    inter_.promptText = promptText;
+    inter_.echo = echo;
+    inter_.threadId = std::this_thread::get_id();
+    interWorker_ = workerIndex;
+    promptOk_ = false;
+    lock.unlock();
+    NotifyInteraction();
+    lock.lock();
+
+    interCv_.wait(lock, [this] { return interAnswered_ || cancelRequested_.load(); });
+    const bool ok = interAnswered_ && promptOk_;
+    if (ok)
+        answer = std::move(promptAnswer_);
+    promptAnswer_ = CSecret();
+    EndInteraction();
+    return ok;
+}
+
+bool COperation::TryGetInteraction(CInteraction& out, int* workerIndex)
+{
+    std::lock_guard<std::mutex> lock(interMutex_);
+    if (!interBusy_ || inter_.kind == CInteraction::Kind::None || interHandedOut_ || interAnswered_)
+        return false;
+    out = inter_;
+    if (workerIndex != nullptr)
+        *workerIndex = interWorker_;
+    interHandedOut_ = true;
+    return true;
+}
+
+bool COperation::AnswerHostKey(HostKeyDecision decision)
+{
+    {
+        std::lock_guard<std::mutex> lock(interMutex_);
+        if (!interBusy_ || inter_.kind != CInteraction::Kind::HostKey || interAnswered_)
+            return false;
+        hostDecision_ = decision;
+        interAnswered_ = true;
+    }
+    interCv_.notify_all();
+    return true;
+}
+
+bool COperation::AnswerPrompt(bool ok, CSecret answer)
+{
+    {
+        std::lock_guard<std::mutex> lock(interMutex_);
+        if (!interBusy_ || inter_.kind != CInteraction::Kind::Prompt || interAnswered_)
+            return false;
+        promptOk_ = ok;
+        promptAnswer_ = std::move(answer);
+        interAnswered_ = true;
+    }
+    interCv_.notify_all();
+    return true;
 }
 
 void COperation::AddTransferred(uint64_t bytes)

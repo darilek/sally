@@ -121,6 +121,11 @@ public:
 
     int Port() const { return port_; }
     void Stall(bool on) { stalled_ = on; }
+    // Stalls on its own once this many bytes (both directions, all connections) went through; 0 = no limit. A limit
+    // that was reached stays reached: Stall(false) lets the traffic go again, and the counter keeps counting.
+    void StallAfter(uint64_t totalBytes) { limit_ = totalBytes; }
+    uint64_t Forwarded() const { return forwarded_; }
+    bool IsStalled() const { return stalled_; }
 
 private:
     struct Pair
@@ -148,12 +153,15 @@ private:
         pairs_.push_back({c, s});
     }
 
-    static bool Forward(SOCKET from, SOCKET to)
+    bool Forward(SOCKET from, SOCKET to)
     {
         char buf[16384];
         int n = recv(from, buf, sizeof(buf), 0);
         if (n <= 0)
             return false;
+        forwarded_ += static_cast<uint64_t>(n);
+        if (limit_ != 0 && forwarded_ >= limit_)
+            stalled_ = true; // this chunk still goes through; the next round stops
         for (int sent = 0; sent < n;)
         {
             int m = send(to, buf + sent, n - sent, 0);
@@ -209,6 +217,8 @@ private:
     SOCKET listen_ = INVALID_SOCKET;
     std::atomic<bool> stop_{false};
     std::atomic<bool> stalled_{false};
+    std::atomic<uint64_t> limit_{0};
+    std::atomic<uint64_t> forwarded_{0};
     std::vector<Pair> pairs_;
     std::thread thread_;
 };

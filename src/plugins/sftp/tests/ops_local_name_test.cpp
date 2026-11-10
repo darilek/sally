@@ -110,3 +110,16 @@ TEST(DecodeRemoteName, AutoFallsBackToCodePageWithoutLoss)
     EXPECT_FALSE(lossy);
     DecodeRemoteNameToLocal(CNameCodec::Utf8(), "x", nullptr); // null `lossy` is allowed
 }
+
+TEST(ExtendedLocalPath, PrefixesOnlyLongAbsolutePaths)
+{
+    EXPECT_EQ(ExtendedLocalPath(L"C:\\short\\file.txt"), L"C:\\short\\file.txt");
+    const std::wstring longDrive = L"C:\\" + std::wstring(300, L'a');
+    EXPECT_EQ(ExtendedLocalPath(longDrive), L"\\\\?\\" + longDrive);
+    const std::wstring longUnc = L"\\\\server\\share\\" + std::wstring(300, L'a');
+    EXPECT_EQ(ExtendedLocalPath(longUnc), L"\\\\?\\UNC\\" + longUnc.substr(2));
+    const std::wstring already = L"\\\\?\\C:\\" + std::wstring(300, L'a');
+    EXPECT_EQ(ExtendedLocalPath(already), already);
+    const std::wstring relative(300, L'a');
+    EXPECT_EQ(ExtendedLocalPath(relative), relative); // the prefix needs an absolute path
+}

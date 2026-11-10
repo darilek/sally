@@ -1,267 +1,5 @@
 // Tests for ops/COperation and CWorker against the Docker test server: whole copy/move runs with real worker threads.
-#include "test_support.h"
-
-#include <windows.h>
-
-#include <atomic>
-#include <chrono>
-#include <filesystem>
-#include <fstream>
-#include <iterator>
-#include <memory>
-#include <thread>
-
-#include "listing_format.h"
-#include "operation.h"
-#include "ssh_session.h"
-
-namespace
-{
-namespace fs = std::filesystem;
-
-// Accepts any host key once; remembers the fingerprint so the test can hand it to the workers.
-class CAcceptAll : public ISshCallbacks
-{
-public:
-    HostKeyDecision VerifyHostKey(const std::string&, int, const std::string&, const std::string&, bool) override
-    {
-        return HostKeyDecision::AcceptOnce;
-    }
-    bool Prompt(PromptKind, const std::string&, const std::string&, const std::string&, bool, CSecret&) override
-    {
-        return false;
-    }
-    bool Progress(uint64_t, uint64_t) override { return true; }
-};
-
-CSite TestSite()
-{
-    CSite site;
-    site.name = L"test";
-    site.host = L"127.0.0.1";
-    site.port = sftptest::kPort;
-    site.user = L"test";
-    site.timeoutSeconds = 20;
-    return site;
-}
-
-// Counts what the operation tells (all calls come from worker threads).
-class CTestObserver : public IOperationObserver
-{
-public:
-    std::atomic<int> items{0};
-    std::atomic<int> progress{0};
-    std::atomic<int> states{0};
-    std::atomic<int> finished{0};
-    void OnItemChanged(uint64_t) override { ++items; }
-    void OnProgress() override { ++progress; }
-    void OnStateChanged() override { ++states; }
-    void OnFinished() override { ++finished; }
-};
-
-DWORD HandleCount()
-{
-    DWORD n = 0;
-    GetProcessHandleCount(GetCurrentProcess(), &n);
-    return n;
-}
-
-int64_t UnixMtimeOfLocal(const fs::path& path)
-{
-    WIN32_FILE_ATTRIBUTE_DATA data;
-    if (!GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &data))
-        return -1;
-    ULARGE_INTEGER t;
-    t.LowPart = data.ftLastWriteTime.dwLowDateTime;
-    t.HighPart = data.ftLastWriteTime.dwHighDateTime;
-    return (static_cast<int64_t>(t.QuadPart) - 116444736000000000LL) / 10000000;
-}
-
-std::string ReadAll(const fs::path& path)
-{
-    std::ifstream in(path, std::ios::binary);
-    return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
-}
-
-void WriteAll(const fs::path& path, const std::string& content)
-{
-    fs::create_directories(path.parent_path());
-    std::ofstream out(path, std::ios::binary);
-    out << content;
-}
-
-std::string RandomBytes(size_t size, unsigned seed)
-{
-    std::string bytes(size, '\0');
-    unsigned state = seed * 2654435761u + 1;
-    for (char& c : bytes)
-    {
-        state = state * 1664525u + 1013904223u;
-        c = static_cast<char>(state >> 24);
-    }
-    return bytes;
-}
-
-class OperationTest : public ::testing::Test
-{
-protected:
-    void SetUp() override
-    {
-        REQUIRE_SERVER();
-        static std::atomic<int> counter{0};
-        const std::string unique = std::to_string(GetCurrentProcessId()) + "_" + std::to_string(counter++);
-        remoteDir_ = "upload/op_" + unique;
-        local_ = fs::temp_directory_path() / ("sally_op_" + unique);
-        fs::remove_all(local_);
-        fs::create_directories(local_);
-        ASSERT_TRUE(admin_.Connect(Admin())) << admin_.LastError().message;
-        ASSERT_TRUE(admin_.Mkdir(remoteDir_)) << admin_.LastError().message;
-    }
-
-    void TearDown() override
-    {
-        if (admin_.IsConnected())
-            RemoveRemoteTree(remoteDir_);
-        std::error_code ignored;
-        fs::remove_all(local_, ignored);
-    }
-
-    CSshSite Admin() const
-    {
-        return ToSshSite(TestSite(), CSecret(sftptest::kPassword), CSecret());
-    }
-
-    // The connect parameters a panel session would hand over.
-    CPanelConnectParams Params()
-    {
-        CPanelConnectParams params;
-        params.site = TestSite();
-        params.password = CSecret(sftptest::kPassword);
-        params.hostKeyFingerprint = admin_.HostKeyFingerprint();
-        params.hostKeyType = admin_.HostKeyType();
-        params.valid = true;
-        return params;
-    }
-
-    COperationSettings Settings(TransferDirection direction, bool move = false, int workers = 2)
-    {
-        COperationSettings settings = SettingsFromSite(TestSite(), direction, move);
-        settings.workers = workers;
-        settings.localRoot = local_.wstring();
-        settings.remoteRoot = remoteDir_;
-        return settings;
-    }
-
-    static CRemoteSource RemoteSrc(const std::string& path, bool isDir, uint64_t size = 0, int64_t mtime = 0)
-    {
-        CRemoteSource s;
-        s.path = path;
-        s.isDir = isDir;
-        s.size = size;
-        s.mtime = mtime;
-        return s;
-    }
-
-    static CLocalSource LocalSrc(const fs::path& path, bool isDir)
-    {
-        CLocalSource s;
-        s.path = path.wstring();
-        s.isDir = isDir;
-        return s;
-    }
-
-    std::unique_ptr<COperation> MakeDownload(const std::vector<CRemoteSource>& sources, bool move = false, int workers = 2)
-    {
-        const COperationSettings settings = Settings(TransferDirection::Download, move, workers);
-        return std::make_unique<COperation>(
-            settings, Params(), COperation::BuildDownloadRoots(sources, settings, CNameCodec::Auto()));
-    }
-
-    std::unique_ptr<COperation> MakeUpload(const std::vector<CLocalSource>& sources, const std::string& remoteRoot,
-                                           bool move = false, int workers = 2)
-    {
-        COperationSettings settings = Settings(TransferDirection::Upload, move, workers);
-        settings.remoteRoot = remoteRoot;
-        return std::make_unique<COperation>(
-            settings, Params(), COperation::BuildUploadRoots(sources, settings, CNameCodec::Auto()));
-    }
-
-    // Starts the operation and waits for the end. False on a timeout (the operation is cancelled then).
-    static bool Run(COperation& op, CTestObserver& observer, DWORD timeoutMs = 120000)
-    {
-        op.SetObserver(&observer);
-        EXPECT_TRUE(op.Start());
-        if (op.WaitFinished(timeoutMs))
-            return true;
-        op.RequestCancel();
-        op.WaitFinished(20000);
-        return false;
-    }
-
-    void PutRemoteFile(const std::string& remotePath, const std::string& content)
-    {
-        const fs::path temp = local_ / "put.tmp";
-        WriteAll(temp, content);
-        HANDLE h = CreateFileW(temp.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
-        ASSERT_NE(h, INVALID_HANDLE_VALUE);
-        uint64_t n = 0;
-        EXPECT_TRUE(admin_.Upload(h, remotePath, 0, false, &n)) << admin_.LastError().message;
-        CloseHandle(h);
-        fs::remove(temp);
-    }
-
-    // Reads a remote file through a separate session (the reference for the compare).
-    std::string GetRemoteFile(const std::string& remotePath)
-    {
-        const fs::path temp = local_ / "get.tmp";
-        HANDLE h = CreateFileW(temp.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
-        EXPECT_NE(h, INVALID_HANDLE_VALUE);
-        uint64_t n = 0;
-        EXPECT_TRUE(admin_.Download(remotePath, h, 0, &n, nullptr)) << admin_.LastError().message;
-        CloseHandle(h);
-        const std::string content = ReadAll(temp);
-        fs::remove(temp);
-        return content;
-    }
-
-    bool RemoteExists(const std::string& path)
-    {
-        CSftpEntry e;
-        return admin_.LStat(path, e);
-    }
-
-    void RemoveRemoteTree(const std::string& path)
-    {
-        CSftpEntry e;
-        if (!admin_.LStat(path, e))
-            return;
-        if (e.isLink || !e.isDir)
-        {
-            admin_.Remove(path);
-            return;
-        }
-        std::vector<CSftpEntry> entries;
-        if (admin_.ListDir(path, entries))
-            for (const CSftpEntry& child : entries)
-                RemoveRemoteTree(AppendRemoteName(path, child.rawName));
-        admin_.Rmdir(path);
-    }
-
-    static std::vector<CQueueItem> ItemsWithProblem(COperation& op, Problem problem)
-    {
-        std::vector<CQueueItem> result;
-        for (const CQueueItem& item : op.Queue().Items(true))
-            if (item.problem == problem)
-                result.push_back(item);
-        return result;
-    }
-
-    CAcceptAll acceptAll_;
-    CSshSession admin_{&acceptAll_, nullptr};
-    std::string remoteDir_;
-    fs::path local_;
-};
-} // namespace
+#include "operation_test_support.h"
 
 TEST_F(OperationTest, DownloadsANestedTreeWithContentAndTime)
 {
@@ -328,7 +66,7 @@ TEST_F(OperationTest, UploadsANestedTreeIntoAMissingFolder)
     auto op = MakeUpload({LocalSrc(src, true)}, target);
     CTestObserver observer;
     ASSERT_TRUE(Run(*op, observer));
-    EXPECT_EQ(op->State(), OperationState::Finished) << op->Queue().Items(true).size() << " items need a look";
+    EXPECT_EQ(op->State(), OperationState::Finished) << Describe(*op);
     EXPECT_EQ(observer.finished.load(), 1);
 
     EXPECT_EQ(GetRemoteFile(target + "/tree/a.txt"), "alpha\n");
@@ -369,7 +107,7 @@ TEST_F(OperationTest, MoveDownRemovesTheRemoteSources)
     auto op = MakeDownload({RemoteSrc(remoteDir_ + "/tree", true)}, true);
     CTestObserver observer;
     ASSERT_TRUE(Run(*op, observer));
-    EXPECT_EQ(op->State(), OperationState::Finished) << op->Queue().Items(true).size() << " items need a look";
+    EXPECT_EQ(op->State(), OperationState::Finished) << Describe(*op);
 
     EXPECT_EQ(ReadAll(local_ / "tree" / "one.txt"), "one\n");
     EXPECT_EQ(ReadAll(local_ / "tree" / "sub" / "two.txt"), "two\n");
@@ -392,7 +130,7 @@ TEST_F(OperationTest, MoveUpRemovesTheLocalSources)
     auto op = MakeUpload({LocalSrc(src, true)}, remoteDir_, true);
     CTestObserver observer;
     ASSERT_TRUE(Run(*op, observer));
-    EXPECT_EQ(op->State(), OperationState::Finished) << op->Queue().Items(true).size() << " items need a look";
+    EXPECT_EQ(op->State(), OperationState::Finished) << Describe(*op);
 
     EXPECT_EQ(GetRemoteFile(remoteDir_ + "/tree/one.txt"), "one\n");
     EXPECT_EQ(GetRemoteFile(remoteDir_ + "/tree/sub/two.txt"), "two\n");
@@ -453,6 +191,7 @@ TEST_F(OperationTest, CancelReturnsPromptlyAndJoinsTheThreads)
 
 TEST_F(OperationTest, DoesNotLeakHandles)
 {
+    policy_ = ConflictPolicy::Overwrite; // the same folder is filled four times
     auto runOnce = [this]
     {
         auto op = MakeDownload({RemoteSrc("fixtures/small", true)});
@@ -557,7 +296,8 @@ TEST_F(OperationTest, ARejectedHostKeyFailsTheItemsWithConnectionLost)
 {
     CPanelConnectParams params = Params();
     params.hostKeyFingerprint = "SHA256:not-the-key";
-    const COperationSettings settings = Settings(TransferDirection::Download, false, 1);
+    COperationSettings settings = Settings(TransferDirection::Download, false, 1);
+    settings.interactive = false; // nobody answers: the key is rejected
     COperation op(settings, std::move(params),
                   COperation::BuildDownloadRoots({RemoteSrc("fixtures/small/hello.txt", false, 6)}, settings,
                                                  CNameCodec::Auto()));

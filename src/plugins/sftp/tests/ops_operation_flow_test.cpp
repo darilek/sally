@@ -1,0 +1,543 @@
+// Tests for the life of a COperation: cancel and resume, pause, reconnect with backoff, host key and prompt
+// interactions, and COperationsList. Docker test server; a CStallProxy plays the server that goes silent.
+#include "operation_test_support.h"
+
+#include "operations_list.h"
+
+namespace
+{
+// A "server" that closes every connection at once: the SSH handshake fails with ConnectFailed, immediately (a closed
+// port would take Windows about two seconds per attempt to refuse). Counts the attempts.
+class CClosingServer
+{
+public:
+    CClosingServer()
+    {
+        sftptest::EnsureWinsock();
+        listen_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        sockaddr_in addr = {};
+        addr.sin_family = AF_INET;
+        inet_pton(AF_INET, sftptest::kHost, &addr.sin_addr);
+        bind(listen_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+        listen(listen_, 8);
+        int len = sizeof(addr);
+        getsockname(listen_, reinterpret_cast<sockaddr*>(&addr), &len);
+        port_ = ntohs(addr.sin_port);
+        thread_ = std::thread([this] { Loop(); });
+    }
+    ~CClosingServer()
+    {
+        stop_ = true;
+        thread_.join();
+        closesocket(listen_);
+    }
+    CClosingServer(const CClosingServer&) = delete;
+    CClosingServer& operator=(const CClosingServer&) = delete;
+
+    int Port() const { return port_; }
+    int Attempts() const { return attempts_.load(); }
+
+private:
+    void Loop()
+    {
+        while (!stop_)
+        {
+            fd_set readSet;
+            FD_ZERO(&readSet);
+            FD_SET(listen_, &readSet);
+            timeval slice = {0, 20 * 1000};
+            if (select(0, &readSet, nullptr, nullptr, &slice) <= 0)
+                continue;
+            SOCKET c = accept(listen_, nullptr, nullptr);
+            if (c == INVALID_SOCKET)
+                continue;
+            ++attempts_;
+            closesocket(c);
+        }
+    }
+
+    SOCKET listen_ = INVALID_SOCKET;
+    int port_ = 0;
+    std::atomic<bool> stop_{false};
+    std::atomic<int> attempts_{0};
+    std::thread thread_;
+};
+
+class OperationFlowTest : public OperationTest
+{
+protected:
+
+    // Makes the first byte of a local file wrong: a later resume keeps it, a restart does not.
+    static void CorruptFirstByte(const fs::path& path)
+    {
+        std::fstream file(path, std::ios::in | std::ios::out | std::ios::binary);
+        ASSERT_TRUE(file.is_open());
+        file.put('Z');
+    }
+
+    // A 24 MiB remote file "big.bin" in the test folder; returns its content.
+    std::string PutBigRemoteFile(unsigned seed)
+    {
+        const std::string content = PatternBytes(24 << 20, seed);
+        PutRemoteFile(remoteDir_ + "/big.bin", content);
+        return content;
+    }
+
+    std::unique_ptr<COperation> MakeBigDownload()
+    {
+        return MakeDownload({RemoteSrc(remoteDir_ + "/big.bin", false, 24 << 20)}, false, 1);
+    }
+
+    // Starts the operation and waits until the proxy went silent after the limit; the transfer is then in the middle.
+    static bool StartAndWaitForStall(COperation& op, CTestObserver& observer, sftptest::CStallProxy& proxy)
+    {
+        op.SetObserver(&observer);
+        if (!op.Start())
+            return false;
+        if (!WaitUntil([&] { return proxy.IsStalled(); }, 60000))
+            return false;
+        Sleep(300); // what was in flight arrives
+        return true;
+    }
+
+    static ItemState StateOfFirstItem(COperation& op)
+    {
+        const std::vector<CQueueItem> items = op.Queue().Items(false);
+        return items.empty() ? ItemState::Done : items[0].state;
+    }
+};
+} // namespace
+
+// ---- cancel and resume ---------------------------------------------------------------------------------------------
+
+TEST_F(OperationFlowTest, CancelMidFileThenANewOperationResumesTheLocalFile)
+{
+    const std::string content = PutBigRemoteFile(11);
+    sftptest::CStallProxy proxy(sftptest::kPort);
+    proxy.StallAfter(8 << 20);
+    port_ = proxy.Port();
+
+    {
+        auto op = MakeBigDownload();
+        CTestObserver observer;
+        ASSERT_TRUE(StartAndWaitForStall(*op, observer, proxy));
+        op->RequestCancel();
+        ASSERT_TRUE(op->WaitFinished(30000));
+        const std::vector<CQueueItem> items = op->Queue().Items(false);
+        ASSERT_EQ(items.size(), 1u);
+        EXPECT_EQ(items[0].state, ItemState::Waiting);
+        EXPECT_GT(items[0].bytesDone, 0u);
+        EXPECT_TRUE(items[0].ownsPartial);
+    }
+    const uint64_t partial = fs::file_size(local_ / "big.bin");
+    EXPECT_GT(partial, 0u);
+    EXPECT_LT(partial, content.size());
+
+    CorruptFirstByte(local_ / "big.bin");
+    port_ = sftptest::kPort;
+    policy_ = ConflictPolicy::Resume;
+    auto again = MakeBigDownload();
+    CTestObserver observer;
+    ASSERT_TRUE(Run(*again, observer));
+    EXPECT_EQ(again->State(), OperationState::Finished) << Describe(*again);
+    EXPECT_TRUE(ReadAll(local_ / "big.bin") == "Z" + content.substr(1)); // continued after the partial size
+}
+
+// ---- pause ---------------------------------------------------------------------------------------------------------
+
+TEST_F(OperationFlowTest, PauseStopsTheTransferAndResumeContinuesItsOwnPartialFile)
+{
+    const std::string content = PutBigRemoteFile(12);
+    sftptest::CStallProxy proxy(sftptest::kPort);
+    proxy.StallAfter(8 << 20);
+    port_ = proxy.Port();
+    // policy Ask: the half-written file is the operation's own, so it is not asked about
+
+    auto op = MakeBigDownload();
+    CTestObserver observer;
+    ASSERT_TRUE(StartAndWaitForStall(*op, observer, proxy));
+    op->Pause(); // the network is silent: the pause must not wait for the idle timeout
+    ASSERT_TRUE(WaitUntil([&] { return StateOfFirstItem(*op) == ItemState::Waiting; }, 20000));
+    EXPECT_TRUE(op->IsPaused());
+    EXPECT_EQ(op->State(), OperationState::Running);
+
+    // the server could answer again, but the paused operation does nothing
+    proxy.StallAfter(0);
+    proxy.Stall(false);
+    const uint64_t done = op->Statistics().bytesDone;
+    const int progress = observer.progress.load();
+    EXPECT_GT(done, 0u);
+    Sleep(500);
+    EXPECT_EQ(op->Statistics().bytesDone, done);
+    EXPECT_EQ(observer.progress.load(), progress);
+    EXPECT_EQ(StateOfFirstItem(*op), ItemState::Waiting);
+    EXPECT_FALSE(op->IsFinished());
+
+    CorruptFirstByte(local_ / "big.bin");
+    op->Resume();
+    EXPECT_FALSE(op->IsPaused());
+    ASSERT_TRUE(op->WaitFinished(60000));
+    EXPECT_EQ(op->State(), OperationState::Finished) << Describe(*op);
+    EXPECT_TRUE(ReadAll(local_ / "big.bin") == "Z" + content.substr(1)); // not restarted, not asked
+}
+
+TEST_F(OperationFlowTest, PausedUploadContinuesItsOwnFilepartWhateverThePolicy)
+{
+    const std::string source = PatternBytes(24 << 20, 13);
+    WriteAll(local_ / "src" / "up.bin", source);
+    sftptest::CStallProxy proxy(sftptest::kPort);
+    proxy.StallAfter(8 << 20);
+    port_ = proxy.Port();
+
+    auto op = MakeUpload({LocalSrc(local_ / "src" / "up.bin", false)}, remoteDir_, false, 1);
+    CTestObserver observer;
+    ASSERT_TRUE(StartAndWaitForStall(*op, observer, proxy));
+    op->Pause();
+    ASSERT_TRUE(WaitUntil([&] { return StateOfFirstItem(*op) == ItemState::Waiting; }, 20000));
+    EXPECT_FALSE(RemoteExists(remoteDir_ + "/up.bin")); // not there before the rename
+
+    CSftpEntry part;
+    ASSERT_TRUE(admin_.Stat(remoteDir_ + "/up.bin.filepart", part));
+    ASSERT_GT(part.size, 0u);
+    ASSERT_LT(part.size, source.size());
+    // the same bytes with a wrong first one: only a real continuation keeps it
+    PutRemoteFile(remoteDir_ + "/up.bin.filepart", "Z" + source.substr(1, part.size - 1));
+
+    proxy.StallAfter(0);
+    proxy.Stall(false);
+    op->Resume();
+    ASSERT_TRUE(op->WaitFinished(60000));
+    EXPECT_EQ(op->State(), OperationState::Finished) << Describe(*op);
+    EXPECT_TRUE(GetRemoteFile(remoteDir_ + "/up.bin") == "Z" + source.substr(1));
+    EXPECT_FALSE(RemoteExists(remoteDir_ + "/up.bin.filepart"));
+}
+
+TEST_F(OperationFlowTest, AnOperationPausedBeforeItsWorkersStartedTakesNothingUntilResume)
+{
+    const DWORD handlesBefore = HandleCount();
+    {
+        auto op = MakeDownload({RemoteSrc("fixtures/small", true)});
+        CTestObserver observer;
+        op->SetObserver(&observer);
+        op->Pause();
+        ASSERT_TRUE(op->Start());
+        Sleep(500);
+        EXPECT_FALSE(fs::exists(local_ / "small"));
+        EXPECT_FALSE(op->IsFinished());
+        for (const CQueueItem& item : op->Queue().Items(false)) // the folder and its explore item, untouched
+            EXPECT_EQ(item.state, ItemState::Waiting);
+
+        op->Resume();
+        ASSERT_TRUE(op->WaitFinished(30000));
+        EXPECT_EQ(op->State(), OperationState::Finished);
+        EXPECT_EQ(ReadAll(local_ / "small" / "hello.txt"), "hello\n");
+
+        // pause again while nothing is left, then cancel while paused: everything wakes up and ends
+        op->Pause();
+        op->RequestCancel();
+        EXPECT_TRUE(op->WaitFinished(10000));
+    }
+    EXPECT_LE(HandleCount(), handlesBefore + 2);
+}
+
+TEST_F(OperationFlowTest, CancelWhilePausedEndsTheOperation)
+{
+    auto op = MakeDownload({RemoteSrc("fixtures/many", true)}, false, 3);
+    CTestObserver observer;
+    op->SetObserver(&observer);
+    op->Pause();
+    ASSERT_TRUE(op->Start());
+    Sleep(200);
+    const auto start = std::chrono::steady_clock::now();
+    op->RequestCancel();
+    EXPECT_TRUE(op->WaitFinished(10000));
+    EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::seconds(3));
+    EXPECT_EQ(observer.finished.load(), 1);
+}
+
+// ---- connection loss -----------------------------------------------------------------------------------------------
+
+TEST_F(OperationFlowTest, ReconnectsAfterTheServerWentSilentAndContinuesTheFile)
+{
+    const std::string content = PutBigRemoteFile(14);
+    sftptest::CStallProxy proxy(sftptest::kPort);
+    proxy.StallAfter(8 << 20);
+    port_ = proxy.Port();
+    timeoutSeconds_ = 1;              // the stall is noticed after one second
+    delays_ = {1500, 10, 10};         // and the first reconnect waits 1.5 s
+
+    auto op = MakeBigDownload();
+    CTestObserver observer;
+    op->SetObserver(&observer);
+    ASSERT_TRUE(op->Start());
+    ASSERT_TRUE(WaitUntil([&] { return proxy.IsStalled(); }, 60000));
+    Sleep(1300); // idle timeout hit, worker is in the backoff wait: the item stays Processing
+    EXPECT_EQ(StateOfFirstItem(*op), ItemState::Processing);
+    proxy.StallAfter(0);
+    proxy.Stall(false);
+
+    ASSERT_TRUE(op->WaitFinished(60000));
+    EXPECT_EQ(op->State(), OperationState::Finished) << Describe(*op);
+    EXPECT_EQ(observer.finished.load(), 1);
+    EXPECT_TRUE(ReadAll(local_ / "big.bin") == content);
+}
+
+TEST_F(OperationFlowTest, ParksAnItemAfterThreeReconnectAttemptsAndLetsTheOthersFailFast)
+{
+    CClosingServer server; // every connect attempt ends at once
+    port_ = server.Port();
+    delays_ = {150, 150, 150};
+    auto op = MakeDownload({RemoteSrc("fixtures/small/hello.txt", false, 6), RemoteSrc("fixtures/small/random1k.bin", false, 1024)},
+                           false, 1);
+    CTestObserver observer;
+    op->SetObserver(&observer);
+    const auto start = std::chrono::steady_clock::now();
+    ASSERT_TRUE(op->Start());
+
+    ASSERT_TRUE(WaitUntil([&] { return server.Attempts() >= 1; }, 5000));
+    Sleep(100);
+    EXPECT_EQ(StateOfFirstItem(*op), ItemState::Processing); // waiting for its next attempt, not parked
+
+    ASSERT_TRUE(op->WaitFinished(30000));
+    EXPECT_GE(std::chrono::steady_clock::now() - start, std::chrono::milliseconds(440)); // three waits of 150 ms
+    EXPECT_EQ(op->State(), OperationState::FinishedWithErrors);
+    // the first item: one attempt and three reconnects; the second one only a single try (the server is known to be away)
+    EXPECT_EQ(server.Attempts(), 5);
+    const std::vector<CQueueItem> failed = ItemsWithProblem(*op, Problem::ConnectionLost);
+    ASSERT_EQ(failed.size(), 2u);
+    for (const CQueueItem& item : failed)
+        EXPECT_EQ(item.state, ItemState::Failed); // Failed: RetryAllFailed brings them back
+
+    // the server is still away: retrying fails again (one attempt each)
+    EXPECT_EQ(op->RetryAllFailed(), 2);
+    ASSERT_TRUE(WaitUntil([&] { return observer.finished.load() == 2; }, 30000));
+    EXPECT_EQ(op->State(), OperationState::FinishedWithErrors);
+    EXPECT_EQ(server.Attempts(), 7);
+}
+
+TEST_F(OperationFlowTest, ACancelInTheBackoffWaitEndsTheOperationAtOnce)
+{
+    CClosingServer server;
+    port_ = server.Port();
+    delays_ = {60000, 60000, 60000}; // a minute: only the cancel can end this in time
+    auto op = MakeDownload({RemoteSrc("fixtures/small/hello.txt", false, 6)}, false, 1);
+    CTestObserver observer;
+    op->SetObserver(&observer);
+    ASSERT_TRUE(op->Start());
+    ASSERT_TRUE(WaitUntil([&] { return server.Attempts() >= 1; }, 5000));
+    Sleep(200);
+    EXPECT_EQ(StateOfFirstItem(*op), ItemState::Processing);
+    op->RequestCancel();
+    EXPECT_TRUE(op->WaitFinished(5000));
+    EXPECT_EQ(StateOfFirstItem(*op), ItemState::Waiting); // given back, not failed
+}
+
+// ---- interactions --------------------------------------------------------------------------------------------------
+
+TEST_F(OperationFlowTest, AnUnknownHostKeyIsPublishedAndAcceptOnceTrustsItForAllWorkers)
+{
+    CPanelConnectParams params = Params();
+    params.hostKeyFingerprint = "SHA256:not-the-key"; // the panel saw another key
+    const COperationSettings settings = Settings(TransferDirection::Download, false, 2);
+    COperation op(settings, std::move(params),
+                  COperation::BuildDownloadRoots({RemoteSrc("fixtures/small", true), RemoteSrc("fixtures/nested", true)},
+                                                 settings, CNameCodec::Auto()));
+    CTestObserver observer;
+    op.SetObserver(&observer);
+    ASSERT_TRUE(op.Start());
+    ASSERT_TRUE(WaitUntil([&] { return observer.interactions.load() > 0; }, 20000));
+
+    CInteraction ask;
+    int worker = -1;
+    ASSERT_TRUE(op.TryGetInteraction(ask, &worker));
+    EXPECT_EQ(ask.kind, CInteraction::Kind::HostKey);
+    EXPECT_EQ(ask.fingerprint, admin_.HostKeyFingerprint());
+    EXPECT_EQ(ask.host, "127.0.0.1");
+    EXPECT_EQ(ask.port, sftptest::kPort);
+    EXPECT_FALSE(ask.changed);
+    EXPECT_GE(worker, 0);
+    EXPECT_NE(ask.threadId, std::this_thread::get_id()); // asked on a worker thread
+    CInteraction again;
+    EXPECT_FALSE(op.TryGetInteraction(again)); // handed out once
+    EXPECT_FALSE(op.AnswerPrompt(true, CSecret("x"))); // wrong kind
+
+    EXPECT_TRUE(op.AnswerHostKey(HostKeyDecision::AcceptAndSave));
+    EXPECT_FALSE(op.AnswerHostKey(HostKeyDecision::AcceptOnce)); // answered already
+
+    ASSERT_TRUE(op.WaitFinished(60000));
+    EXPECT_EQ(op.State(), OperationState::Finished) << Describe(op);
+    EXPECT_EQ(observer.interactions.load(), 1); // the second worker did not ask again
+    EXPECT_EQ(ReadAll(local_ / "small" / "hello.txt"), "hello\n");
+    EXPECT_EQ(ReadAll(local_ / "nested" / "a" / "b" / "c" / "deep.txt"), "deep\n");
+}
+
+TEST_F(OperationFlowTest, RejectingTheHostKeyFailsTheItemWithConnectionLost)
+{
+    CPanelConnectParams params = Params();
+    params.hostKeyFingerprint = "SHA256:not-the-key";
+    const COperationSettings settings = Settings(TransferDirection::Download, false, 1);
+    COperation op(settings, std::move(params),
+                  COperation::BuildDownloadRoots({RemoteSrc("fixtures/small/hello.txt", false, 6)}, settings,
+                                                 CNameCodec::Auto()));
+    CTestObserver observer;
+    op.SetObserver(&observer);
+    ASSERT_TRUE(op.Start());
+    ASSERT_TRUE(WaitUntil([&] { return observer.interactions.load() > 0; }, 20000));
+    CInteraction ask;
+    ASSERT_TRUE(op.TryGetInteraction(ask));
+    EXPECT_TRUE(op.AnswerHostKey(HostKeyDecision::Reject));
+    ASSERT_TRUE(op.WaitFinished(30000));
+    EXPECT_EQ(op.State(), OperationState::FinishedWithErrors);
+    EXPECT_EQ(ItemsWithProblem(op, Problem::ConnectionLost).size(), 1u);
+    EXPECT_FALSE(fs::exists(local_ / "hello.txt"));
+}
+
+TEST_F(OperationFlowTest, DestroyingTheOperationWhileAWorkerWaitsForTheUserDoesNotHang)
+{
+    const DWORD handlesBefore = HandleCount();
+    {
+        CPanelConnectParams params = Params();
+        params.hostKeyFingerprint = "SHA256:not-the-key";
+        const COperationSettings settings = Settings(TransferDirection::Download, false, 3);
+        auto op = std::make_unique<COperation>(
+            settings, std::move(params),
+            COperation::BuildDownloadRoots({RemoteSrc("fixtures/small", true)}, settings, CNameCodec::Auto()));
+        CTestObserver observer;
+        op->SetObserver(&observer);
+        ASSERT_TRUE(op->Start());
+        ASSERT_TRUE(WaitUntil([&] { return observer.interactions.load() > 0; }, 20000));
+        const auto start = std::chrono::steady_clock::now();
+        op.reset(); // nobody answers
+        EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::seconds(5));
+    }
+    EXPECT_LE(HandleCount(), handlesBefore + 2);
+}
+
+TEST_F(OperationFlowTest, APromptOfTheServerIsPublishedAndAnswered)
+{
+    if (!sftptest::ServerReachable(sftptest::kPortKbdInt))
+        GTEST_SKIP() << "port 2224 not reachable";
+    CPanelConnectParams params = Params();
+    params.hostKeyFingerprint.clear(); // no pinned key: asked first
+    params.password = CSecret();       // no stored password: the server asks for it
+    port_ = sftptest::kPortKbdInt;
+    params.site = TestSite(sftptest::kPortKbdInt);
+    const COperationSettings settings = Settings(TransferDirection::Download, false, 1);
+    COperation op(settings, std::move(params),
+                  COperation::BuildDownloadRoots({RemoteSrc("fixtures/small/hello.txt", false, 6)}, settings,
+                                                 CNameCodec::Auto()));
+    CTestObserver observer;
+    op.SetObserver(&observer);
+    ASSERT_TRUE(op.Start());
+
+    bool sawPrompt = false;
+    for (int i = 0; i < 4000 && !op.WaitFinished(5); ++i)
+    {
+        CInteraction ask;
+        if (!op.TryGetInteraction(ask))
+            continue;
+        if (ask.kind == CInteraction::Kind::HostKey)
+        {
+            EXPECT_TRUE(op.AnswerHostKey(HostKeyDecision::AcceptOnce));
+        }
+        else
+        {
+            sawPrompt = true;
+            EXPECT_NE(ask.promptText.find("assword"), std::string::npos) << ask.promptText;
+            EXPECT_FALSE(ask.echo);
+            EXPECT_TRUE(op.AnswerPrompt(true, CSecret(sftptest::kPassword)));
+        }
+    }
+    ASSERT_TRUE(op.WaitFinished(30000));
+    EXPECT_TRUE(sawPrompt);
+    EXPECT_EQ(op.State(), OperationState::Finished) << Describe(op);
+    EXPECT_EQ(ReadAll(local_ / "hello.txt"), "hello\n");
+}
+
+TEST_F(OperationFlowTest, NothingIsAskedWhenTheOperationIsNotInteractive)
+{
+    CPanelConnectParams params = Params();
+    params.hostKeyFingerprint = "SHA256:not-the-key";
+    COperationSettings settings = Settings(TransferDirection::Download, false, 1);
+    settings.interactive = false;
+    COperation op(settings, std::move(params),
+                  COperation::BuildDownloadRoots({RemoteSrc("fixtures/small/hello.txt", false, 6)}, settings,
+                                                 CNameCodec::Auto()));
+    CTestObserver observer;
+    ASSERT_TRUE(Run(op, observer));
+    EXPECT_EQ(observer.interactions.load(), 0);
+    EXPECT_EQ(ItemsWithProblem(op, Problem::ConnectionLost).size(), 1u);
+}
+
+// ---- COperationsList -----------------------------------------------------------------------------------------------
+
+TEST_F(OperationFlowTest, OperationsListAddsGetsRemovesAndCancelsEverything)
+{
+    const DWORD handlesBefore = HandleCount();
+    {
+        CTestObserver observer1; // declared first: destroyed last, after the list has ended the operations
+        CTestObserver observer2;
+        COperationsList list;
+        std::shared_ptr<COperation> quick(MakeDownload({RemoteSrc("fixtures/small", true)}, false, 1).release());
+        std::shared_ptr<COperation> huge(
+            MakeDownload({RemoteSrc("fixtures/sparse5g.bin", false, 5ull << 30)}, false, 1).release());
+        const uint64_t quickUid = list.Add(quick);
+        const uint64_t hugeUid = list.Add(huge);
+        EXPECT_NE(quickUid, hugeUid);
+        EXPECT_EQ(list.Get(quickUid), quick);
+        EXPECT_EQ(list.Get(hugeUid), huge);
+        EXPECT_EQ(list.Get(9999), nullptr);
+        EXPECT_TRUE(list.HasRunning()); // not started: not finished
+
+        quick->SetObserver(&observer1);
+        huge->SetObserver(&observer2);
+        ASSERT_TRUE(quick->Start());
+        ASSERT_TRUE(huge->Start());
+        ASSERT_TRUE(quick->WaitFinished(30000));
+        ASSERT_TRUE(WaitUntil([&] { return observer2.progress.load() > 0; }, 30000));
+
+        const std::vector<COperationInfo> info = list.Snapshot();
+        ASSERT_EQ(info.size(), 2u);
+        EXPECT_EQ(info[0].uid, quickUid);
+        EXPECT_TRUE(info[0].finished);
+        EXPECT_EQ(info[0].state, OperationState::Finished);
+        EXPECT_FALSE(info[1].finished);
+        EXPECT_FALSE(info[1].cancelled);
+        EXPECT_TRUE(list.HasRunning());
+        EXPECT_FALSE(list.WaitAllFinished(100)); // the big one is still going
+
+        list.CancelAll();
+        EXPECT_TRUE(list.WaitAllFinished(15000));
+        EXPECT_FALSE(list.HasRunning());
+        EXPECT_TRUE(huge->WasCancelled());
+
+        EXPECT_TRUE(list.Remove(quickUid));
+        EXPECT_FALSE(list.Remove(quickUid));
+        EXPECT_EQ(list.Get(quickUid), nullptr);
+        EXPECT_EQ(list.Snapshot().size(), 1u);
+    }
+    EXPECT_LE(HandleCount(), handlesBefore + 2);
+}
+
+TEST_F(OperationFlowTest, ClearCancelsAndJoinsRunningOperations)
+{
+    const DWORD handlesBefore = HandleCount();
+    {
+        CTestObserver observer;
+        COperationsList list;
+        for (int i = 0; i < 3; ++i)
+        {
+            std::shared_ptr<COperation> op(MakeDownload({RemoteSrc("fixtures/many", true)}, false, 2).release());
+            op->SetObserver(&observer);
+            list.Add(op);
+            ASSERT_TRUE(op->Start());
+        }
+        Sleep(150);
+        const auto start = std::chrono::steady_clock::now();
+        list.Clear(); // what Release does
+        EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::seconds(10));
+        EXPECT_TRUE(list.Snapshot().empty());
+        EXPECT_FALSE(list.HasRunning());
+    }
+    EXPECT_LE(HandleCount(), handlesBefore + 2);
+}

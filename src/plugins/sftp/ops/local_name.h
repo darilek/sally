@@ -16,6 +16,9 @@ bool IsValidLocalName(const std::wstring& name);
 // (In .NET terms: the prefix is what lets Win32 file APIs accept paths longer than 260 characters.)
 std::wstring MakeLocalPath(const std::wstring& dir, const std::wstring& name);
 
+// The same prefix rule for a complete path (a path the user picked, which MakeLocalPath never saw).
+std::wstring ExtendedLocalPath(const std::wstring& path);
+
 // Decodes a raw remote name (bytes) to a local file name. `lossy` (optional) is set to true when the decoding lost
 // data (the result contains U+FFFD that the raw bytes did not contain), so the caller can park the item with
 // Problem::InvalidLocalName instead of silently writing a mangled name. The raw bytes stay with the caller.

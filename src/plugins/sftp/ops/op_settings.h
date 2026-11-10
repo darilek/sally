@@ -2,6 +2,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "op_types.h"
 #include "site.h"
@@ -16,15 +17,22 @@ struct COperationSettings
 {
     TransferDirection direction = TransferDirection::Download;
     bool move = false;                           // delete the source after a successful transfer
-    ConflictPolicy policy = ConflictPolicy::Ask; // used from step 4b on
+    ConflictPolicy policy = ConflictPolicy::Ask; // what to do when the target exists
     bool preserveTime = true;                    // the target gets the source modification time
-    bool safeUpload = true;                      // used from step 4b on
+    bool safeUpload = true;                      // upload to "<name>.filepart", rename when complete
     bool setUploadPermissions = false;           // chmod uploaded files to uploadPermissions
     unsigned uploadPermissions = 0644;
     int workers = 2;                             // parallel connections, 1..8
     std::wstring localRoot;                      // where a download puts the selection / where an upload reads from
     std::string remoteRoot;                      // raw bytes: where an upload puts the selection
     // (the source paths themselves are the root items of the queue)
+
+    // A worker that lost its connection waits these many milliseconds before each new attempt (so the list length is the
+    // number of reconnect attempts), then parks the item. Tests use short delays.
+    std::vector<unsigned> reconnectDelaysMs = {1000, 3000, 10000};
+    // true: a host key or prompt the worker cannot answer itself is published to the observer (the window asks the
+    // user). false (or no observer): such a login is rejected.
+    bool interactive = true;
 };
 
 // The transfer options of a site (workers, safe upload, preserve time, upload permissions) copied into new settings.

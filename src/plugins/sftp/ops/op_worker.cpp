@@ -125,6 +125,54 @@ bool DeleteLocalFileForce(const std::wstring& path, DWORD& error)
     return false;
 }
 
+// Closes a handle when the function that owns it returns (like a using block in C#).
+class CHandleGuard
+{
+public:
+    explicit CHandleGuard(HANDLE handle) : handle_(handle) {}
+    ~CHandleGuard() { Close(); }
+    void Close() // early, e.g. before the file is deleted
+    {
+        if (handle_ != INVALID_HANDLE_VALUE)
+            CloseHandle(handle_);
+        handle_ = INVALID_HANDLE_VALUE;
+    }
+    CHandleGuard(const CHandleGuard&) = delete;
+    CHandleGuard& operator=(const CHandleGuard&) = delete;
+
+private:
+    HANDLE handle_;
+};
+
+// What is at a local path now (missing and "cannot tell" both count as missing: a real problem shows when it is opened).
+CTransferSide StatLocalSide(const std::wstring& path)
+{
+    CTransferSide side;
+    WIN32_FILE_ATTRIBUTE_DATA data;
+    if (!GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &data))
+        return side;
+    side.exists = true;
+    side.isDir = (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+    side.size = SizeOf(data.nFileSizeHigh, data.nFileSizeLow);
+    side.mtime = UnixTimeOf(data.ftLastWriteTime);
+    return side;
+}
+
+std::wstring LastLocalComponent(const std::wstring& path)
+{
+    const size_t slash = path.find_last_of(L"\\/");
+    return slash == std::wstring::npos ? path : path.substr(slash + 1);
+}
+
+// "name.ext" -> "name (2).ext" in the same folder; empty when no free name was found.
+std::wstring FreeLocalPath(const std::wstring& target)
+{
+    const std::wstring dir = ParentOfLocal(target);
+    const std::wstring free = AutoRenameLocal(LastLocalComponent(target), [&](const std::wstring& candidate)
+                                              { return StatLocalSide(MakeLocalPath(dir, candidate)).exists; });
+    return free.empty() ? std::wstring() : MakeLocalPath(dir, free);
+}
+
 // A symbolic link or junction: take size, time and "is a directory" from what it points to.
 void FollowReparsePoint(const std::wstring& path, DWORD& attributes, uint64_t& size, FILETIME& writeTime)
 {
@@ -171,6 +219,7 @@ void AddDownloadItems(std::vector<CQueueItem>& out, const std::string& remotePat
     CQueueItem item;
     item.remotePath = remotePath;
     item.localPath = valid ? MakeLocalPath(localDir, name) : std::wstring(); // empty: the worker parks the item
+    item.parentLocal = localDir;
     item.depth = depth;
     if (isDir)
     {
@@ -199,6 +248,7 @@ void AddUploadItems(std::vector<CQueueItem>& out, const std::wstring& localPath,
     CQueueItem item;
     item.localPath = localPath;
     item.remotePath = unrepresentable ? std::string() : AppendRemoteName(remoteDir, rawName);
+    item.parentRemote = remoteDir;
     item.depth = depth;
     if (isDir)
     {
@@ -229,11 +279,19 @@ CWorker::CItemResult CWorker::Failure(Problem problem, std::wstring text)
     return r;
 }
 
-CWorker::CItemResult CWorker::Parked(Problem problem)
+CWorker::CItemResult CWorker::Parked(Problem problem, std::wstring text)
 {
     CItemResult r;
     r.kind = CItemResult::Kind::Parked;
     r.problem = problem;
+    r.text = std::move(text);
+    return r;
+}
+
+CWorker::CItemResult CWorker::Skipped()
+{
+    CItemResult r;
+    r.kind = CItemResult::Kind::Skipped;
     return r;
 }
 
@@ -311,17 +369,37 @@ void CWorker::Run()
     codec_ = host_.ConnectParams().site.MakeCodec();
     CQueue& queue = host_.Queue();
     CQueueItem item;
+    // A worker lives until the operation is cancelled: when the work has run out it idles, so a solved or retried item
+    // (which becomes Waiting again) is picked up at once, without starting new threads.
     while (!host_.IsCancelRequested())
     {
+        if (host_.IsPaused())
+        {
+            session_.Disconnect(); // a paused worker holds no connection; the next item reconnects
+            host_.WaitWhilePaused();
+            continue;
+        }
         if (queue.TakeNextWaiting(item))
         {
             ProcessItem(item);
             continue;
         }
-        if (queue.GetOperationState() != OperationState::Running)
-            break; // nothing left that this worker could ever do
-        queue.WaitForWork(kIdleWaitMs);
+        WaitForNextChance();
     }
+}
+
+void CWorker::WaitForNextChance()
+{
+    CQueue& queue = host_.Queue();
+    if (queue.GetOperationState() == OperationState::Running)
+    {
+        queue.WaitForWork(kIdleWaitMs); // other workers are busy and may produce items (explore)
+        return;
+    }
+    if (session_.IsConnected() || session_.HasSftp())
+        session_.Disconnect(); // nothing to do until the user solves something: do not hold the connection
+    host_.CheckRunOver();
+    queue.WaitForWaitingItem(kIdleWaitMs);
 }
 
 void CWorker::ProcessItem(const CQueueItem& item)
@@ -365,6 +443,9 @@ void CWorker::Report(const CQueueItem& item, const CItemResult& result)
     case CItemResult::Kind::Parked:
         queue.Finish(item.uid, ItemState::UserInputNeeded, result.problem, result.text);
         break;
+    case CItemResult::Kind::Skipped:
+        queue.Finish(item.uid, ItemState::Skipped);
+        break;
     case CItemResult::Kind::ReturnToWaiting:
         queue.ReturnToWaiting(item.uid);
         break;
@@ -390,27 +471,44 @@ bool CWorker::NeedsConnection(ItemType type)
     }
 }
 
-// An item that fails because the connection broke is tried once more on a fresh connection; the second failure stays.
-CWorker::CItemResult CWorker::RunItem(const CQueueItem& item)
+// An item that fails because the connection broke (or cannot be made) is tried again on a fresh connection after the
+// backoff delays of the settings (default 1 s, 3 s, 10 s); the item stays Processing meanwhile. When the last attempt
+// fails the item is Failed with Problem::ConnectionLost (RetryAllFailed brings it back). A cancel or a pause during the
+// wait gives the item back to the queue.
+CWorker::CItemResult CWorker::RunItem(const CQueueItem& taken)
 {
-    if (host_.IsCancelRequested())
-        return Returned();
-    if (!NeedsConnection(item.type))
-        return ExecuteOnce(item);
-
+    CQueue& queue = host_.Queue();
+    const std::vector<unsigned>& delays = host_.Settings().reconnectDelaysMs;
     CItemResult result;
-    for (int attempt = 0; attempt < 2; ++attempt)
+    for (size_t attempt = 0;; ++attempt)
     {
-        if (!EnsureConnected(result))
-            return result;
-        result = ExecuteOnce(item);
+        if (host_.IsCancelRequested() || host_.IsPaused())
+            return Returned();
+        CQueueItem item; // fresh: an earlier attempt may have changed it (partial file owned, new target name)
+        if (!queue.GetItem(taken.uid, item))
+            item = taken;
+        if (!NeedsConnection(item.type))
+            return ExecuteOnce(item);
+
+        if (EnsureConnected(result))
+        {
+            unreachable_ = false;
+            result = ExecuteOnce(item);
+        }
         if (!result.connectionLost)
             return result;
+
         session_.Disconnect();
-        if (host_.IsCancelRequested())
+        // after a worker gave up on one item the others fail at once: the server will not be back within seconds
+        const size_t allowed = unreachable_ ? 0 : delays.size();
+        if (attempt >= allowed)
+        {
+            unreachable_ = true;
+            return result; // Failed, Problem::ConnectionLost
+        }
+        if (!host_.SleepUnlessInterrupted(delays[attempt]))
             return Returned();
     }
-    return result; // Failed, Problem::ConnectionLost
 }
 
 CWorker::CItemResult CWorker::ExecuteOnce(const CQueueItem& item)
@@ -443,23 +541,26 @@ CWorker::CItemResult CWorker::ExecuteOnce(const CQueueItem& item)
 
 // ---- connection -----------------------------------------------------------------------------------------------
 
-HostKeyDecision CWorker::VerifyHostKey(const std::string&, int, const std::string&, const std::string& fingerprintSha256,
-                                       bool)
+// Exactly the key the panel accepted is trusted without asking; any other key, and every prompt, goes to the operation
+// (which asks the user through its observer, or rejects).
+HostKeyDecision CWorker::VerifyHostKey(const std::string& host, int port, const std::string& keyType,
+                                       const std::string& fingerprintSha256, bool changed)
 {
-    // Step 4a: trust exactly the key the panel accepted, ask about nothing else (4b publishes an interaction).
-    return fingerprintSha256 == host_.ConnectParams().hostKeyFingerprint ? HostKeyDecision::AcceptOnce
-                                                                         : HostKeyDecision::Reject;
+    if (fingerprintSha256 == host_.ConnectParams().hostKeyFingerprint)
+        return HostKeyDecision::AcceptOnce;
+    return host_.AskHostKey(index_, host, port, keyType, fingerprintSha256, changed);
 }
 
-bool CWorker::Prompt(PromptKind, const std::string&, const std::string&, const std::string&, bool, CSecret&)
+bool CWorker::Prompt(PromptKind kind, const std::string& name, const std::string& instruction,
+                     const std::string& promptText, bool echo, CSecret& answer)
 {
-    return false; // step 4a: a prompt fails the login (the connection error says so); 4b asks the user
+    return host_.AskPrompt(index_, kind, name, instruction, promptText, echo, answer);
 }
 
 bool CWorker::Progress(uint64_t done, uint64_t)
 {
-    if (host_.IsCancelRequested())
-        return false;
+    if (host_.IsCancelRequested() || host_.IsPaused())
+        return false; // pause stops the transfer like a cancel; the item goes back to Waiting with its partial size
     if (done > reported_)
     {
         host_.AddTransferred(done - reported_);
@@ -474,6 +575,7 @@ void CWorker::BeginTransfer(uint64_t uid, uint64_t startOffset)
     transferUid_ = uid;
     transferStart_ = startOffset;
     reported_ = startOffset;
+    host_.Queue().SetProgress(uid, startOffset);
 }
 
 // The progress callback is throttled, so the last bytes (and every byte of a small file) are added here.
@@ -498,8 +600,14 @@ bool CWorker::EnsureConnected(CItemResult& failure)
     {
         const CSshError error = session_.LastError();
         session_.Disconnect();
-        failure = error.kind == SshErrorKind::Cancelled ? Returned()
-                                                        : Failure(Problem::ConnectionLost, ToWide(error.message));
+        if (error.kind == SshErrorKind::Cancelled)
+        {
+            failure = Returned();
+            return false;
+        }
+        failure = Failure(Problem::ConnectionLost, ToWide(error.message));
+        // network trouble may pass; a refused host key, a failed login or a bad key file will not
+        failure.connectionLost = error.kind == SshErrorKind::ConnectFailed || error.kind == SshErrorKind::Timeout;
         return false;
     }
     return true;
@@ -545,12 +653,26 @@ CWorker::CItemResult CWorker::ExploreRemote(const CQueueItem& item)
 {
     if (item.depth > kMaxExploreDepth)
         return Failure(Problem::SymlinkLoop, std::wstring());
-    if (item.localPath.empty())
-        return Parked(Problem::InvalidLocalName);
+    std::wstring localDir;
+    bool renamed = false;
+    CItemResult stop;
+    if (!ResolveLocalTarget(item, localDir, renamed, stop))
+        return stop;
+    if (renamed && !EnsureDirectory(localDir)) // no MakeDirLocal item exists for a directory that had an invalid name
+        return Failure(Problem::DirCreateFailed, WindowsErrorText(GetLastError()));
+
+    // Loop guard: a link back to a directory that was explored already resolves to the same real path.
+    std::string realPath;
+    if (!session_.RealPath(item.remotePath, realPath))
+        return FromSessionError(Problem::Other);
+    if (host_.ExploredDirs().Contains(realPath))
+        return Failure(Problem::SymlinkLoop, ToWide(realPath));
 
     std::vector<CSftpEntry> entries;
     if (!session_.ListDir(item.remotePath, entries))
         return FromSessionError(Problem::Other);
+    if (!host_.ExploredDirs().Insert(realPath)) // another worker was faster
+        return Failure(Problem::SymlinkLoop, ToWide(realPath));
 
     std::vector<CQueueItem> children;
     for (const CSftpEntry& entry : entries)
@@ -575,7 +697,7 @@ CWorker::CItemResult CWorker::ExploreRemote(const CQueueItem& item)
                 return FromSessionError(Problem::Other);
             }
         }
-        AddDownloadItems(children, remote, entry.rawName, isDir, size, mtime, item.localPath, codec_, item.depth + 1);
+        AddDownloadItems(children, remote, entry.rawName, isDir, size, mtime, localDir, codec_, item.depth + 1);
     }
     return ReplaceWithChildren(item, std::move(children), ItemType::DeleteRemoteDir);
 }
@@ -584,8 +706,11 @@ CWorker::CItemResult CWorker::ExploreLocal(const CQueueItem& item)
 {
     if (item.depth > kMaxExploreDepth)
         return Failure(Problem::SymlinkLoop, std::wstring());
-    if (item.remotePath.empty())
-        return Failure(Problem::InvalidRemoteName, std::wstring());
+    std::string remoteDir;
+    bool renamed = false;
+    CItemResult stop;
+    if (!ResolveRemoteTarget(item, remoteDir, renamed, stop))
+        return stop;
 
     WIN32_FIND_DATAW data;
     HANDLE find = FindFirstFileW(MakeLocalPath(item.localPath, L"*").c_str(), &data);
@@ -596,6 +721,17 @@ CWorker::CItemResult CWorker::ExploreLocal(const CQueueItem& item)
     }
 
     std::vector<CQueueItem> children;
+    if (renamed)
+    {
+        // no MakeDirRemote item exists for a directory that could not be named: the first child creates it
+        CQueueItem makeDir;
+        makeDir.type = ItemType::MakeDirRemote;
+        makeDir.localPath = item.localPath;
+        makeDir.remotePath = remoteDir;
+        makeDir.parentRemote = item.parentRemote;
+        makeDir.depth = item.depth;
+        children.push_back(std::move(makeDir));
+    }
     for (bool more = true; more; more = FindNextFileW(find, &data) != FALSE)
     {
         const std::wstring name = data.cFileName;
@@ -608,7 +744,7 @@ CWorker::CItemResult CWorker::ExploreLocal(const CQueueItem& item)
         if ((attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
             FollowReparsePoint(path, attributes, size, writeTime);
         AddUploadItems(children, path, name, (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0, size, UnixTimeOf(writeTime),
-                       item.remotePath, codec_, item.depth + 1);
+                       remoteDir, codec_, item.depth + 1);
     }
     const DWORD error = GetLastError(); // of the failed FindNextFileW: ERROR_NO_MORE_FILES at the normal end
     FindClose(find);
@@ -637,20 +773,185 @@ HANDLE CWorker::OpenLocalTarget(const std::wstring& path, bool truncate, DWORD& 
     return INVALID_HANDLE_VALUE;
 }
 
+// ---- conflicts ------------------------------------------------------------------------------------------------
+
+// Where a download goes. Normally the item's local path; a Rename solve with a name of the user builds a new path in the
+// same folder (this also rescues an item whose remote name is no Windows name). A name that is not valid parks again.
+bool CWorker::ResolveLocalTarget(const CQueueItem& item, std::wstring& target, bool& userNamed, CItemResult& stop)
+{
+    userNamed = false;
+    if (item.forceAction == SolveAction::Rename && !item.forceNewName.empty())
+    {
+        if (!IsValidLocalName(item.forceNewName))
+        {
+            stop = Parked(Problem::InvalidLocalName, item.forceNewName);
+            return false;
+        }
+        const std::wstring dir = item.parentLocal.empty() ? ParentOfLocal(item.localPath) : item.parentLocal;
+        target = MakeLocalPath(dir, item.forceNewName);
+        userNamed = true;
+        return true;
+    }
+    if (item.localPath.empty())
+    {
+        stop = Parked(Problem::InvalidLocalName);
+        return false;
+    }
+    target = item.localPath;
+    return true;
+}
+
+// The same for an upload; the new name is encoded with the site's encoding.
+bool CWorker::ResolveRemoteTarget(const CQueueItem& item, std::string& target, bool& userNamed, CItemResult& stop)
+{
+    userNamed = false;
+    if (item.forceAction == SolveAction::Rename && !item.forceNewName.empty())
+    {
+        bool unrepresentable = false;
+        const std::string raw = codec_.Encode(item.forceNewName, &unrepresentable);
+        if (unrepresentable || !IsValidRemoteEntryName(raw))
+        {
+            stop = Failure(Problem::InvalidRemoteName, item.forceNewName);
+            return false;
+        }
+        target = AppendRemoteName(item.parentRemote, raw);
+        userNamed = true;
+        return true;
+    }
+    if (item.remotePath.empty())
+    {
+        stop = Failure(Problem::InvalidRemoteName, std::wstring());
+        return false;
+    }
+    target = item.remotePath;
+    return true;
+}
+
+// The user's own name for the target is never overwritten without asking; our own half-written target is continued
+// (when the target can hold a partial: always for downloads, for uploads only without safe upload); everything else
+// is up to the policy and the user's solve action.
+CConflictDecision CWorker::Decide(const CQueueItem& item, const CTransferSide& source, const CTransferSide& target,
+                                  bool userNamed, bool resumeOwnTarget) const
+{
+    if (userNamed)
+        return DecideConflict(ConflictPolicy::Ask, SolveAction::Retry, source, target);
+    if (resumeOwnTarget && item.ownsPartial && item.forceAction == SolveAction::Retry && target.exists && !target.isDir)
+    {
+        CConflictDecision own;
+        own.action = ConflictAction::Transfer;
+        own.resumeOffset = target.size <= source.size ? target.size : 0; // longer than the source: start again
+        return own;
+    }
+    return DecideConflict(host_.Settings().policy, item.forceAction, source, target);
+}
+
+CWorker::CItemResult CWorker::ParkConflict(const CQueueItem& item, const CConflictDecision& decision,
+                                           const CTransferSide& target, const std::wstring& shownPath)
+{
+    host_.Queue().SetTargetInfo(item.uid, target.size, target.mtime);
+    return Parked(decision.problem, shownPath); // the window words the problem; the text is the target
+}
+
+// The size and time of what is at a remote path (links followed). A missing path is not an error.
+bool CWorker::StatRemoteSide(const std::string& path, CTransferSide& side, CItemResult& failure)
+{
+    side = CTransferSide();
+    CSftpEntry entry;
+    if (session_.Stat(path, entry))
+    {
+        side.exists = true;
+        side.isDir = entry.isDir;
+        side.size = entry.size;
+        side.mtime = entry.mtime;
+        return true;
+    }
+    if (session_.LastError().kind == SshErrorKind::NotFound)
+        return true;
+    failure = FromSessionError(Problem::Other);
+    return false;
+}
+
+// A free " (n)" name next to 'target'; empty when none was found or the server could not answer (statFailed).
+std::string CWorker::FreeRemotePath(const std::string& target, bool& statFailed)
+{
+    const std::string dir = ParentOfRemote(target);
+    statFailed = false;
+    const std::string free = AutoRenameRemote(LastRemoteName(target), [&](const std::string& candidate)
+    {
+        CSftpEntry entry;
+        if (session_.Stat(AppendRemoteName(dir, candidate), entry))
+            return true;
+        if (session_.LastError().kind != SshErrorKind::NotFound)
+            statFailed = true; // stop the search: every further Stat would fail the same way
+        return false;
+    });
+    return free.empty() || statFailed ? std::string() : AppendRemoteName(dir, free);
+}
+
+// The size of the safe-upload partial file to continue, 0 when there is none or this attempt cannot trust it. A partial
+// the operation wrote itself, or one the user asked to resume, is continued when it is not longer than the source.
+bool CWorker::PartialToResume(const std::string& partialPath, uint64_t sourceSize, bool trusted, uint64_t& size,
+                              CItemResult& failure)
+{
+    size = 0;
+    if (!trusted)
+        return true;
+    CTransferSide side;
+    if (!StatRemoteSide(partialPath, side, failure))
+        return false;
+    if (side.exists && !side.isDir && side.size > 0 && side.size <= sourceSize)
+        size = side.size;
+    return true;
+}
+
+// ---- transfers ------------------------------------------------------------------------------------------------
+
 CWorker::CItemResult CWorker::Download(const CQueueItem& item)
 {
-    if (item.localPath.empty())
-        return Parked(Problem::InvalidLocalName);
+    std::wstring target;
+    bool userNamed = false;
+    CItemResult stop;
+    if (!ResolveLocalTarget(item, target, userNamed, stop))
+        return stop;
     const COperationSettings& settings = host_.Settings();
+    CQueue& queue = host_.Queue();
 
-    // Step 4b: DecideConflict(policy, item.forceAction, source, Stat of the target) goes here and decides between
-    // "transfer from offset", skip, park and rename. For now an existing target is overwritten.
-    const uint64_t offset = 0;
+    uint64_t offset = 0;
+    const CTransferSide existing = StatLocalSide(target);
+    if (existing.exists)
+    {
+        CTransferSide source; // the size and time the server reports now (the listing may be old, or the root of a selection)
+        CItemResult failure;
+        if (!StatRemoteSide(item.remotePath, source, failure))
+            return failure;
+        if (!source.exists)
+            return Failure(Problem::NotFound, ToWide(item.remotePath));
+
+        const CConflictDecision decision = Decide(item, source, existing, userNamed, true);
+        if (decision.action == ConflictAction::Skip)
+            return Skipped();
+        if (decision.action == ConflictAction::Park)
+            return ParkConflict(item, decision, existing, target);
+        if (decision.action == ConflictAction::Rename)
+        {
+            target = FreeLocalPath(target);
+            if (target.empty())
+                return Failure(Problem::TargetExists, std::wstring());
+        }
+        else
+        {
+            offset = decision.resumeOffset;
+        }
+    }
+    if (target != item.localPath)
+        queue.Retarget(item.uid, target, std::string()); // a retry (pause, lost connection) continues this very file
 
     DWORD error = 0;
-    HANDLE file = OpenLocalTarget(item.localPath, offset == 0, error);
+    HANDLE file = OpenLocalTarget(target, offset == 0, error);
     if (file == INVALID_HANDLE_VALUE)
         return Failure(ProblemFromWin32(error, Problem::LocalIoError), WindowsErrorText(error));
+    CHandleGuard guard(file);
+    queue.SetOwnsPartial(item.uid);
 
     BeginTransfer(item.uid, offset);
     uint64_t transferred = 0;
@@ -661,52 +962,127 @@ CWorker::CItemResult CWorker::Download(const CQueueItem& item)
         const FILETIME time = UnixTimeToFileTime(item.mtime);
         SetFileTime(file, nullptr, nullptr, &time); // best effort: a file with the wrong time is still a good copy
     }
-    CloseHandle(file); // a failed or cancelled download keeps the partial file (4b resumes it)
     if (!ok)
-        return FromSessionError(Problem::TransferFailed);
+        return FromSessionError(Problem::TransferFailed); // the partial file stays: the next attempt continues it
 
     if (settings.move && !RemoveRemote(item.remotePath, false))
         return FromSessionError(Problem::DeleteFailed);
     return Done();
 }
 
+bool CWorker::WantsResume(const CQueueItem& item) const
+{
+    return item.forceAction == SolveAction::Resume ||
+           (item.forceAction == SolveAction::Retry && host_.Settings().policy == ConflictPolicy::Resume);
+}
+
+// Safe upload: the data goes to "<name>.filepart" and the final name appears with one rename after the last byte, so
+// the existing target stays untouched until then. A partial left by an earlier attempt is continued when that attempt
+// was ours (a pause, a lost connection) or the user asked to resume; else it is written again from the start.
 CWorker::CItemResult CWorker::Upload(const CQueueItem& item)
 {
-    if (item.remotePath.empty())
-        return Failure(Problem::InvalidRemoteName, std::wstring());
+    std::string target;
+    bool userNamed = false;
+    CItemResult stop;
+    if (!ResolveRemoteTarget(item, target, userNamed, stop))
+        return stop;
     const COperationSettings& settings = host_.Settings();
+    CQueue& queue = host_.Queue();
 
-    // Step 4b: the conflict decision (Stat of the remote target) and the safe-upload name go here.
-    HANDLE file = CreateFileW(item.localPath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
-                              OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+    HANDLE file = CreateFileW(ExtendedLocalPath(item.localPath).c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                              nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
     if (file == INVALID_HANDLE_VALUE)
     {
         const DWORD error = GetLastError();
         return Failure(ProblemFromWin32(error, Problem::LocalIoError), WindowsErrorText(error));
     }
+    CHandleGuard guard(file);
 
-    BeginTransfer(item.uid, 0);
+    CTransferSide source; // read from the file itself: the size of a selection root is not known to the queue
+    BY_HANDLE_FILE_INFORMATION info;
+    if (!GetFileInformationByHandle(file, &info))
+        return Failure(Problem::LocalIoError, WindowsErrorText(GetLastError()));
+    source.exists = true;
+    source.size = SizeOf(info.nFileSizeHigh, info.nFileSizeLow);
+    source.mtime = UnixTimeOf(info.ftLastWriteTime);
+
+    CTransferSide existing;
+    CItemResult failure;
+    if (!StatRemoteSide(target, existing, failure))
+        return failure;
+
+    uint64_t resumeOffset = 0; // from the conflict decision: the target itself is a partial copy
+    if (existing.exists)
+    {
+        const CConflictDecision decision = Decide(item, source, existing, userNamed, !settings.safeUpload);
+        if (decision.action == ConflictAction::Skip)
+            return Skipped();
+        if (decision.action == ConflictAction::Park)
+            return ParkConflict(item, decision, existing, codec_.Decode(target));
+        if (decision.action == ConflictAction::Rename)
+        {
+            bool statFailed = false;
+            target = FreeRemotePath(target, statFailed);
+            if (statFailed)
+                return FromSessionError(Problem::Other);
+            if (target.empty())
+                return Failure(Problem::TargetExists, std::wstring());
+            existing = CTransferSide();
+        }
+        else
+        {
+            resumeOffset = decision.resumeOffset;
+        }
+    }
+    if (target != item.remotePath)
+        queue.Retarget(item.uid, std::wstring(), target);
+
+    // Where the bytes go and where they start.
+    std::string writeTo = target;
+    uint64_t startAt = resumeOffset;
+    bool viaPartial = false;
+    if (settings.safeUpload)
+    {
+        const std::string partialPath = SafeUploadName(target);
+        uint64_t partialSize = 0;
+        if (!PartialToResume(partialPath, source.size, item.ownsPartial || WantsResume(item), partialSize, failure))
+            return failure;
+        if (partialSize > 0 || resumeOffset == 0)
+        {
+            writeTo = partialPath; // an existing partial (partialSize) or a new one
+            startAt = partialSize;
+            viaPartial = true;
+        }
+    }
+
+    queue.SetOwnsPartial(item.uid);
+    BeginTransfer(item.uid, startAt);
     uint64_t transferred = 0;
-    bool ok = session_.Upload(file, item.remotePath, 0, false, &transferred);
-    if (!ok && session_.LastError().kind == SshErrorKind::NotFound && EnsureRemoteDir(ParentOfRemote(item.remotePath), 0))
+    bool ok = session_.Upload(file, writeTo, startAt, startAt > 0, &transferred);
+    if (!ok && startAt == 0 && session_.LastError().kind == SshErrorKind::NotFound &&
+        EnsureRemoteDir(ParentOfRemote(writeTo), 0))
     {
         // the MakeDirRemote item of the parent may not have run yet
-        ok = session_.Upload(file, item.remotePath, 0, false, &transferred);
+        ok = session_.Upload(file, writeTo, 0, false, &transferred);
     }
     EndTransfer(transferred);
-    CloseHandle(file);
     if (!ok)
+        return FromSessionError(Problem::TransferFailed); // the partial stays: the next attempt can continue it
+
+    // Without overwrite the rename refuses a target that appeared meanwhile (kind Exists) instead of replacing it.
+    if (viaPartial && !session_.Rename(writeTo, target, existing.exists))
         return FromSessionError(Problem::TransferFailed);
 
-    if (settings.preserveTime && item.mtime > 0)
-        session_.SetTimes(item.remotePath, item.mtime, item.mtime); // best effort, like the local side
-    if (settings.setUploadPermissions && !session_.Chmod(item.remotePath, settings.uploadPermissions))
+    if (settings.preserveTime && source.mtime > 0)
+        session_.SetTimes(target, source.mtime, source.mtime); // best effort, like the local side
+    if (settings.setUploadPermissions && !session_.Chmod(target, settings.uploadPermissions))
         return FromSessionError(Problem::Other);
 
     if (settings.move)
     {
+        guard.Close(); // the open source file blocks its own deletion
         DWORD error = 0;
-        if (!DeleteLocalFileForce(item.localPath, error))
+        if (!DeleteLocalFileForce(ExtendedLocalPath(item.localPath), error))
             return Failure(Problem::DeleteFailed, WindowsErrorText(error));
     }
     return Done();
@@ -787,15 +1163,16 @@ CWorker::CItemResult CWorker::DeleteLocal(const CQueueItem& item, bool isDir)
 {
     DWORD error = 0;
     bool ok = false;
+    const std::wstring path = ExtendedLocalPath(item.localPath);
     if (isDir)
     {
-        ok = RemoveDirectoryW(item.localPath.c_str()) != FALSE;
+        ok = RemoveDirectoryW(path.c_str()) != FALSE;
         if (!ok)
             error = GetLastError();
     }
     else
     {
-        ok = DeleteLocalFileForce(item.localPath, error);
+        ok = DeleteLocalFileForce(path, error);
     }
     if (ok || error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND)
         return Done();

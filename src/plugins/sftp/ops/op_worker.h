@@ -18,6 +18,8 @@
 #include <thread>
 #include <vector>
 
+#include "conflict.h"
+#include "explored_dirs.h"
 #include "op_queue.h"
 #include "op_settings.h"
 #include "panel_session.h"
@@ -37,6 +39,21 @@ public:
     virtual void ItemChanged(uint64_t uid) = 0;      // an item changed state
     virtual void AddTransferred(uint64_t bytes) = 0; // statistics, throttled notification of the observer
     virtual void WorkerExited() = 0;                 // last call of a worker thread
+
+    // Pause: transfers stop (the progress callback says "cancel"), items go back to Waiting, workers take nothing new.
+    virtual bool IsPaused() const = 0;
+    virtual void WaitWhilePaused() = 0;                  // returns when resumed or cancelled
+    virtual bool SleepUnlessInterrupted(unsigned ms) = 0; // false when cancelled or paused before the time was up
+    // A worker has nothing to do and the queue is not Running: lets the operation report the end of the run.
+    virtual void CheckRunOver() = 0;
+    virtual CExploredDirs& ExploredDirs() = 0;
+
+    // Logins the worker cannot decide alone (a host key other than the pinned one, a prompt). They block until the
+    // user answered, the operation was cancelled or the operation cannot ask (then: reject / false).
+    virtual HostKeyDecision AskHostKey(int workerIndex, const std::string& host, int port, const std::string& keyType,
+                                       const std::string& fingerprint, bool changed) = 0;
+    virtual bool AskPrompt(int workerIndex, PromptKind kind, const std::string& name, const std::string& instruction,
+                           const std::string& promptText, bool echo, CSecret& answer) = 0;
 };
 
 // Remote path helpers (raw bytes, no normalisation: a relative path stays relative to the login directory).
@@ -73,17 +90,19 @@ private:
             Done,
             Failed,
             Parked,          // UserInputNeeded
-            ReturnToWaiting, // cancelled
+            Skipped,         // the conflict decision said: leave the target alone
+            ReturnToWaiting, // cancelled or paused
             Replaced         // an explore item: the queue already replaced it with its children
         };
         Kind kind = Kind::Done;
         Problem problem = Problem::None;
         std::wstring text;
-        bool connectionLost = false; // the session is unusable: reconnect, and try the item once more
+        bool connectionLost = false; // the session is unusable or could not be made: reconnect (with backoff), try again
     };
     static CItemResult Done() { return CItemResult(); }
     static CItemResult Failure(Problem problem, std::wstring text);
-    static CItemResult Parked(Problem problem);
+    static CItemResult Parked(Problem problem, std::wstring text = std::wstring());
+    static CItemResult Skipped();
     static CItemResult Returned();
     static CItemResult Replaced();
 
@@ -96,6 +115,7 @@ private:
 
     void ThreadMain();
     void Run();
+    void WaitForNextChance();
     void ProcessItem(const CQueueItem& item);
     void Report(const CQueueItem& item, const CItemResult& result);
     CItemResult RunItem(const CQueueItem& item);
@@ -117,6 +137,19 @@ private:
     CItemResult DeleteLocal(const CQueueItem& item, bool isDir);
     CItemResult ReplaceWithChildren(const CQueueItem& item, std::vector<CQueueItem> children, ItemType afterType);
 
+    // conflicts (a transfer item: where does it go, and what to do when the target exists)
+    bool ResolveLocalTarget(const CQueueItem& item, std::wstring& target, bool& userNamed, CItemResult& stop);
+    bool ResolveRemoteTarget(const CQueueItem& item, std::string& target, bool& userNamed, CItemResult& stop);
+    CConflictDecision Decide(const CQueueItem& item, const CTransferSide& source, const CTransferSide& target,
+                             bool userNamed, bool resumeOwnTarget) const;
+    CItemResult ParkConflict(const CQueueItem& item, const CConflictDecision& decision, const CTransferSide& target,
+                             const std::wstring& shownPath);
+    bool StatRemoteSide(const std::string& path, CTransferSide& side, CItemResult& failure);
+    std::string FreeRemotePath(const std::string& target, bool& statFailed);
+    bool PartialToResume(const std::string& partialPath, uint64_t sourceSize, bool trusted, uint64_t& size,
+                         CItemResult& failure);
+    bool WantsResume(const CQueueItem& item) const;
+
     // helpers
     HANDLE OpenLocalTarget(const std::wstring& path, bool truncate, DWORD& error);
     bool MkdirOrExists(const std::string& path);
@@ -130,6 +163,7 @@ private:
     std::thread thread_;
     CSshSession session_;
     CNameCodec codec_;
+    bool unreachable_ = false; // the last item ended with "connection lost": no more backoff until a connect works
 
     // the running transfer (worker thread only)
     uint64_t transferUid_ = 0;

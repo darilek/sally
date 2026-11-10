@@ -57,7 +57,11 @@ std::wstring MakeLocalPath(const std::wstring& dir, const std::wstring& name)
     if (!path.empty() && path.back() != L'\\' && path.back() != L'/')
         path += L'\\';
     path += name;
+    return ExtendedLocalPath(path);
+}
 
+std::wstring ExtendedLocalPath(const std::wstring& path)
+{
     if (path.size() < MAX_PATH || StartsWith(path, L"\\\\?\\") || StartsWith(path, L"\\\\.\\"))
         return path;
     if (StartsWith(path, L"\\\\"))

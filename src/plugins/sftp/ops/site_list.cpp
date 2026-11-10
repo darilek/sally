@@ -64,6 +64,10 @@ SiteError ValidateSite(const CSite& site)
         return SiteError::TimeoutRange;
     if (site.encoding == CSite::Encoding::CodePage && site.codePage == 0)
         return SiteError::CodePageInvalid;
+    if (site.workers < 1 || site.workers > MaxSiteWorkers)
+        return SiteError::WorkersRange;
+    if (site.setUploadPermissions && site.uploadPermissions > MaxUploadPermissions)
+        return SiteError::UploadPermissionsInvalid;
     return SiteError::None;
 }
 

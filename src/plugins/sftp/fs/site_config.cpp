@@ -237,6 +237,17 @@ bool LoadSite(CSalamanderRegistryAbstract* registry, HKEY key, CSite& site, CSto
         site.codePage = dw;
     if (GetDword(registry, key, L"RememberPassword", dw))
         site.rememberPassword = dw != 0;
+    // transfer settings (added later: a missing value keeps the default; out-of-range values are clamped/ignored)
+    if (GetDword(registry, key, L"Workers", dw) && dw >= 1)
+        site.workers = static_cast<int>(dw > static_cast<DWORD>(MaxSiteWorkers) ? MaxSiteWorkers : dw);
+    if (GetDword(registry, key, L"SafeUpload", dw))
+        site.safeUpload = dw != 0;
+    if (GetDword(registry, key, L"PreserveTime", dw))
+        site.preserveTime = dw != 0;
+    if (GetDword(registry, key, L"SetUploadPermissions", dw))
+        site.setUploadPermissions = dw != 0;
+    if (GetDword(registry, key, L"UploadPermissions", dw) && dw <= MaxUploadPermissions)
+        site.uploadPermissions = dw;
 
     if (site.rememberPassword)
     {
@@ -261,6 +272,11 @@ void SaveSite(CSalamanderRegistryAbstract* registry, HKEY key, const CSite& site
     SetStringIfNotEmpty(registry, key, L"InitialRemotePath", site.initialRemotePath);
     SetStringIfNotEmpty(registry, key, L"InitialLocalPath", site.initialLocalPath);
     SetDword(registry, key, L"RememberPassword", site.rememberPassword ? 1 : 0);
+    SetDword(registry, key, L"Workers", static_cast<DWORD>(site.workers));
+    SetDword(registry, key, L"SafeUpload", site.safeUpload ? 1 : 0);
+    SetDword(registry, key, L"PreserveTime", site.preserveTime ? 1 : 0);
+    SetDword(registry, key, L"SetUploadPermissions", site.setUploadPermissions ? 1 : 0);
+    SetDword(registry, key, L"UploadPermissions", site.uploadPermissions);
     if (site.rememberPassword && secrets != nullptr)
     {
         SaveBlob(registry, key, L"PasswordEncrypted", L"PasswordScrambled", secrets->password);

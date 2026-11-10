@@ -571,3 +571,240 @@ TEST_F(PanelSessionTest, RequestAfterCloseDoesNotLeakItsEvent)
     }
     EXPECT_LE(HandleCount(), before + 2);
 }
+
+// ---- CopyConnectParams ----------------------------------------------------------------------------------------------
+
+TEST_F(PanelSessionTest, CopyConnectParamsIsInvalidUntilConnected)
+{
+    CPanelSession s(nullptr);
+    EXPECT_FALSE(s.CopyConnectParams().valid);
+    CPolicy policy;
+    auto bad = s.Connect(TestSite(), CSecret("wrong"), CSecret());
+    ASSERT_TRUE(Pump(s, *bad, policy));
+    EXPECT_FALSE(bad->Ok());
+    EXPECT_FALSE(s.CopyConnectParams().valid); // a failed connect forgets the site
+}
+
+TEST_F(PanelSessionTest, CopyConnectParamsRecordsAcceptedHostKey)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    ASSERT_EQ(policy.seen.size(), 1u);
+
+    CPanelConnectParams params = s.CopyConnectParams();
+    ASSERT_TRUE(params.valid);
+    EXPECT_EQ(params.hostKeyFingerprint, policy.seen[0].fingerprint); // the key the user accepted
+    EXPECT_EQ(params.hostKeyType, policy.seen[0].keyType);
+    EXPECT_EQ(params.site.host, L"127.0.0.1");
+    EXPECT_EQ(params.site.port, sftptest::kPort);
+    EXPECT_EQ(params.password.ToStdString(), sftptest::kPassword);
+    EXPECT_TRUE(params.passphrase.empty());
+
+    auto d = s.Disconnect();
+    ASSERT_TRUE(d->Wait(10000));
+    EXPECT_FALSE(s.CopyConnectParams().valid);
+    EXPECT_EQ(params.password.ToStdString(), sftptest::kPassword); // the copy outlives the session's secrets
+}
+
+TEST_F(PanelSessionTest, CopyConnectParamsSecretsAreIndependentCopies)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    auto req = s.Connect(TestSite(), CSecret(sftptest::kPassword), CSecret("phrase"));
+    ASSERT_TRUE(Pump(s, *req, policy));
+    ASSERT_TRUE(req->Ok()) << req->Error().message;
+
+    CPanelConnectParams first = s.CopyConnectParams();
+    ASSERT_TRUE(first.valid);
+    first.password.clear(); // wiping one copy must not touch the session or another copy
+    first.passphrase.assign("changed", 7);
+    CPanelConnectParams second = s.CopyConnectParams();
+    EXPECT_EQ(second.password.ToStdString(), sftptest::kPassword);
+    EXPECT_EQ(second.passphrase.ToStdString(), "phrase");
+    EXPECT_NE(second.password.data(), first.password.data());
+}
+
+TEST_F(PanelSessionTest, CopyConnectParamsHasTheFingerprintOfAnAlreadyTrustedKey)
+{
+    const std::string file = TempFileName("kh_params");
+    DeleteFileA(file.c_str());
+    CKnownHosts hosts(file);
+    std::string accepted;
+    {
+        CPanelSession s(&hosts);
+        CPolicy policy;
+        policy.hostKey = HostKeyDecision::AcceptAndSave;
+        ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+        accepted = s.CopyConnectParams().hostKeyFingerprint;
+        EXPECT_EQ(accepted, policy.seen[0].fingerprint);
+    }
+    {
+        CPanelSession s(&hosts);
+        CPolicy policy;
+        ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+        EXPECT_TRUE(policy.seen.empty()); // trusted: the callback was never asked
+        const CPanelConnectParams params = s.CopyConnectParams();
+        ASSERT_TRUE(params.valid);
+        EXPECT_EQ(params.hostKeyFingerprint, accepted);
+        EXPECT_FALSE(params.hostKeyType.empty());
+    }
+    DeleteFileA(file.c_str());
+}
+
+// ---- Rename ---------------------------------------------------------------------------------------------------------
+
+namespace
+{
+// A private directory under the writable upload/ folder on the server, filled and removed through its own session
+// (created and used on the test thread only). The panel session under test works in the same directory.
+class CRemoteSandbox
+{
+public:
+    CRemoteSandbox()
+    {
+        dir_ = "upload/ps_" + std::to_string(GetCurrentProcessId()) + "_" +
+               ::testing::UnitTest::GetInstance()->current_test_info()->name();
+        CSshSite site;
+        site.host = sftptest::kHost;
+        site.port = sftptest::kPort;
+        site.user = sftptest::kUser;
+        site.password.assign(sftptest::kPassword);
+        site.timeoutSeconds = 20;
+        site.nameCodec = CNameCodec::Auto();
+        session_.reset(new CSshSession(&callbacks_, nullptr));
+        ok_ = session_->Connect(site);
+        if (ok_)
+        {
+            RemoveAll(); // leftovers of an aborted run
+            ok_ = session_->Mkdir(dir_);
+        }
+    }
+    ~CRemoteSandbox()
+    {
+        if (ok_)
+            RemoveAll();
+    }
+    bool Ok() const { return ok_; }
+    std::string Path(const std::string& name) const { return dir_ + "/" + name; }
+
+    bool PutFile(const std::string& name, const std::string& content)
+    {
+        const std::string local = TempFileName("sandbox");
+        {
+            std::ofstream out(local, std::ios::binary | std::ios::trunc);
+            out << content;
+        }
+        HANDLE h = CreateFileA(local.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+                               FILE_ATTRIBUTE_NORMAL, nullptr);
+        const bool put = h != INVALID_HANDLE_VALUE && session_->Upload(h, Path(name), 0, false, nullptr);
+        if (h != INVALID_HANDLE_VALUE)
+            CloseHandle(h);
+        DeleteFileA(local.c_str());
+        return put;
+    }
+    bool Exists(const std::string& name, uint64_t* size = nullptr)
+    {
+        CSftpEntry entry;
+        if (!session_->Stat(Path(name), entry))
+            return false;
+        if (size != nullptr)
+            *size = entry.size;
+        return true;
+    }
+
+private:
+    struct CAccept : ISshCallbacks
+    {
+        HostKeyDecision VerifyHostKey(const std::string&, int, const std::string&, const std::string&, bool) override
+        {
+            return HostKeyDecision::AcceptOnce;
+        }
+        bool Prompt(PromptKind, const std::string&, const std::string&, const std::string&, bool, CSecret&) override
+        {
+            return false;
+        }
+        bool Progress(uint64_t, uint64_t) override { return true; }
+    };
+
+    void RemoveAll()
+    {
+        std::vector<CSftpEntry> list;
+        if (session_->ListDir(dir_, list))
+            for (const CSftpEntry& e : list)
+                session_->Remove(dir_ + "/" + e.rawName);
+        session_->Rmdir(dir_);
+    }
+
+    CAccept callbacks_;
+    std::unique_ptr<CSshSession> session_;
+    std::string dir_;
+    bool ok_ = false;
+};
+} // namespace
+
+TEST_F(PanelSessionTest, RenamePlain)
+{
+    CRemoteSandbox box;
+    ASSERT_TRUE(box.Ok());
+    ASSERT_TRUE(box.PutFile("a.txt", "abc"));
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto rename = s.Rename(box.Path("a.txt"), box.Path("b.txt"), false);
+    ASSERT_TRUE(rename->Wait(20000));
+    EXPECT_TRUE(rename->Ok()) << rename->Error().message;
+    EXPECT_EQ(rename->GetKind(), CPanelRequest::Kind::Rename);
+    uint64_t size = 0;
+    EXPECT_FALSE(box.Exists("a.txt"));
+    ASSERT_TRUE(box.Exists("b.txt", &size));
+    EXPECT_EQ(size, 3u);
+
+    auto missing = s.Rename(box.Path("a.txt"), box.Path("c.txt"), false); // the source is gone now
+    ASSERT_TRUE(missing->Wait(20000));
+    EXPECT_EQ(missing->Error().kind, SshErrorKind::NotFound);
+}
+
+TEST_F(PanelSessionTest, RenameOverwriteReplacesTheTarget)
+{
+    CRemoteSandbox box;
+    ASSERT_TRUE(box.Ok());
+    ASSERT_TRUE(box.PutFile("src.txt", "new!"));
+    ASSERT_TRUE(box.PutFile("dst.txt", "old"));
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto rename = s.Rename(box.Path("src.txt"), box.Path("dst.txt"), true);
+    ASSERT_TRUE(rename->Wait(20000));
+    EXPECT_TRUE(rename->Ok()) << rename->Error().message;
+    uint64_t size = 0;
+    EXPECT_FALSE(box.Exists("src.txt"));
+    ASSERT_TRUE(box.Exists("dst.txt", &size));
+    EXPECT_EQ(size, 4u); // the content of the source
+}
+
+TEST_F(PanelSessionTest, RenameOntoAnExistingTargetWithoutOverwriteGivesExists)
+{
+    CRemoteSandbox box;
+    ASSERT_TRUE(box.Ok());
+    ASSERT_TRUE(box.PutFile("src.txt", "new!"));
+    ASSERT_TRUE(box.PutFile("dst.txt", "old"));
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto rename = s.Rename(box.Path("src.txt"), box.Path("dst.txt"), false);
+    ASSERT_TRUE(rename->Wait(20000));
+    EXPECT_EQ(rename->Error().kind, SshErrorKind::Exists);
+    uint64_t size = 0;
+    EXPECT_TRUE(box.Exists("src.txt"));
+    ASSERT_TRUE(box.Exists("dst.txt", &size));
+    EXPECT_EQ(size, 3u); // untouched
+}
+
+TEST_F(PanelSessionTest, RenameWithoutConnectFails)
+{
+    CPanelSession s(nullptr);
+    auto rename = s.Rename("upload/x", "upload/y", false);
+    ASSERT_TRUE(rename->Wait(10000));
+    EXPECT_EQ(rename->Error().kind, SshErrorKind::ConnectFailed);
+}

@@ -89,6 +89,30 @@ std::shared_ptr<CPanelRequest> CPanelSession::Stat(const std::string& rawPath)
     return Submit(req);
 }
 
+std::shared_ptr<CPanelRequest> CPanelSession::Rename(const std::string& fromRaw, const std::string& toRaw, bool overwrite)
+{
+    std::shared_ptr<CPanelRequest> req(new CPanelRequest(CPanelRequest::Kind::Rename));
+    req->path_ = fromRaw;
+    req->path2_ = toRaw;
+    req->overwrite_ = overwrite;
+    return Submit(req);
+}
+
+CPanelConnectParams CPanelSession::CopyConnectParams() const
+{
+    CPanelConnectParams params;
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!hasSite_ || hostKeyFingerprint_.empty())
+        return params;
+    params.site = site_;
+    params.password = password_.Clone();
+    params.passphrase = passphrase_.Clone();
+    params.hostKeyType = hostKeyType_;
+    params.hostKeyFingerprint = hostKeyFingerprint_;
+    params.valid = true;
+    return params;
+}
+
 std::shared_ptr<CPanelRequest> CPanelSession::Disconnect()
 {
     return Submit(std::shared_ptr<CPanelRequest>(new CPanelRequest(CPanelRequest::Kind::Disconnect)));
@@ -281,10 +305,13 @@ void CPanelSession::ThreadMain()
 
 void CPanelSession::ForgetSite()
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     hasSite_ = false;
     site_ = CSite();
     password_.clear();
     passphrase_.clear();
+    hostKeyType_.clear();
+    hostKeyFingerprint_.clear();
 }
 
 bool CPanelSession::DoConnect(CPanelRequest& req)
@@ -300,7 +327,14 @@ bool CPanelSession::DoConnect(CPanelRequest& req)
     }
     CSshSite site = ToSshSite(site_, password_.Clone(), passphrase_.Clone());
     if (session_->Connect(site))
+    {
+        // A successful connect means the host key was trusted (known_hosts match, AcceptOnce or AcceptAndSave), so the
+        // session's key is the one workers must see, whichever way it was accepted.
+        std::lock_guard<std::mutex> lock(mutex_);
+        hostKeyType_ = session_->HostKeyType();
+        hostKeyFingerprint_ = session_->HostKeyFingerprint();
         return true;
+    }
     req.error_ = session_->LastError();
     return false;
 }
@@ -327,10 +361,15 @@ void CPanelSession::Execute(CPanelRequest& req)
     {
     case CPanelRequest::Kind::Connect:
     {
-        site_ = req.site_;
-        password_ = std::move(req.password_);
-        passphrase_ = std::move(req.passphrase_);
-        hasSite_ = true;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            site_ = req.site_;
+            password_ = std::move(req.password_);
+            passphrase_ = std::move(req.passphrase_);
+            hostKeyType_.clear(); // belongs to the previous connection until this one is accepted
+            hostKeyFingerprint_.clear();
+            hasSite_ = true;
+        }
         if (!DoConnect(req))
         {
             bool cancelled;
@@ -353,6 +392,10 @@ void CPanelSession::Execute(CPanelRequest& req)
         break;
     case CPanelRequest::Kind::Stat:
         if (EnsureConnected(req) && !session_->Stat(path, req.attributes_))
+            req.error_ = session_->LastError();
+        break;
+    case CPanelRequest::Kind::Rename:
+        if (EnsureConnected(req) && !session_->Rename(req.path_, req.path2_, req.overwrite_))
             req.error_ = session_->LastError();
         break;
     case CPanelRequest::Kind::List:

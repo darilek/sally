@@ -173,6 +173,52 @@ TEST(SiteList, ValidateSiteFields)
     EXPECT_EQ(ValidateSite(t), SiteError::NameEmpty);
 }
 
+TEST(SiteList, ValidateTransferSettings)
+{
+    CSite t = MakeSite(L"ok");
+    EXPECT_EQ(ValidateSite(t), SiteError::None); // the defaults are valid
+    for (int workers : {0, -1, MaxSiteWorkers + 1})
+    {
+        t.workers = workers;
+        EXPECT_EQ(ValidateSite(t), SiteError::WorkersRange) << workers;
+    }
+    for (int workers : {1, MaxSiteWorkers})
+    {
+        t.workers = workers;
+        EXPECT_EQ(ValidateSite(t), SiteError::None) << workers;
+    }
+
+    t = MakeSite(L"ok");
+    t.uploadPermissions = MaxUploadPermissions + 1;
+    EXPECT_EQ(ValidateSite(t), SiteError::None); // ignored while switched off
+    t.setUploadPermissions = true;
+    EXPECT_EQ(ValidateSite(t), SiteError::UploadPermissionsInvalid);
+    t.uploadPermissions = MaxUploadPermissions;
+    EXPECT_EQ(ValidateSite(t), SiteError::None);
+    t.uploadPermissions = 0;
+    EXPECT_EQ(ValidateSite(t), SiteError::None);
+}
+
+TEST(SiteList, TransferSettingsSurviveAddUpdateDuplicate)
+{
+    CSiteList list;
+    CSite s = MakeSite(L"a");
+    s.workers = 5;
+    s.safeUpload = false;
+    s.preserveTime = false;
+    s.setUploadPermissions = true;
+    s.uploadPermissions = 0600;
+    ASSERT_TRUE(list.Add(s));
+    const std::wstring copy = list.Duplicate(L"a");
+    const CSite* c = list.Find(copy);
+    ASSERT_NE(c, nullptr);
+    EXPECT_EQ(c->workers, 5);
+    EXPECT_FALSE(c->safeUpload);
+    EXPECT_FALSE(c->preserveTime);
+    EXPECT_TRUE(c->setUploadPermissions);
+    EXPECT_EQ(c->uploadPermissions, 0600u);
+}
+
 TEST(KnownHostsPaths, OwnAndUserPaths)
 {
     const std::wstring own = KnownHostsOwnPath();

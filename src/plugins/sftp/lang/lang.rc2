@@ -110,4 +110,7 @@ STRINGTABLE
  IDS_ERR_UNKNOWN,            "Unknown error"
  IDS_ERR_CODE,               "code"
  IDS_ERR_SFTP_STATUS,        "SFTP status"
+ // site edit: transfer settings
+ IDS_SITE_ERR_WORKERS_RANGE, "The number of workers must be a number from 1 to 8."
+ IDS_SITE_ERR_UPLOADPERM_INVALID, "Enter the upload permissions as one to four octal digits from 0 to 7777, for example 644."
 }

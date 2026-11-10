@@ -10,6 +10,12 @@
 // Upper bound of the connect/idle timeout of a site (one hour); the dialog, ValidateSite and the registry loader use it.
 const int MaxTimeoutSeconds = 3600;
 
+// Upper bound of the parallel transfer connections of a site.
+const int MaxSiteWorkers = 8;
+
+// Largest value of the upload permission bits (octal 07777: set-id and sticky bits included).
+const unsigned MaxUploadPermissions = 07777;
+
 enum class SiteError
 {
     None,
@@ -21,7 +27,9 @@ enum class SiteError
     UserEmpty,       // the user is required (every SSH login needs one)
     UserInvalid,     // control characters
     TimeoutRange,    // not 1..MaxTimeoutSeconds
-    CodePageInvalid  // encoding is CodePage and the code page is 0
+    CodePageInvalid, // encoding is CodePage and the code page is 0
+    WorkersRange,    // not 1..MaxSiteWorkers
+    UploadPermissionsInvalid // upload permissions are on and the mode is above MaxUploadPermissions
 };
 
 // A site name must always be usable as "sftp:@Name/path" (see site_path.h: the part after '@' ends at the first '/').

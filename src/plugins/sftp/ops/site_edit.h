@@ -24,6 +24,11 @@ struct CSiteForm
     std::wstring codePage; // meaningful when encoding == CodePage; otherwise kept as it was
     std::wstring initialRemotePath;
     std::wstring initialLocalPath;
+    std::wstring workers;
+    bool safeUpload = true;
+    bool preserveTime = true;
+    bool setUploadPermissions = false;
+    std::wstring uploadPermissions; // octal digits, e.g. "644"; checked only when setUploadPermissions
 };
 
 // What the site edit dialog does with the remembered secrets after OK: they are dropped when "remember" is off or
@@ -39,7 +44,9 @@ enum class SiteField
     Port,
     User,
     Timeout,
-    CodePage
+    CodePage,
+    Workers,
+    UploadPermissions
 };
 
 // The tabs of the site edit dialog.

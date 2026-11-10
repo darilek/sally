@@ -56,6 +56,12 @@ std::wstring SiteErrorText(SiteError error)
     case SiteError::CodePageInvalid:
         id = IDS_SITE_ERR_CODEPAGE_INVALID;
         break;
+    case SiteError::WorkersRange:
+        id = IDS_SITE_ERR_WORKERS_RANGE;
+        break;
+    case SiteError::UploadPermissionsInvalid:
+        id = IDS_SITE_ERR_UPLOADPERM_INVALID;
+        break;
     }
     return id == 0 ? LangStr(IDS_SITE_SAVE_FAILED) : LangStr(id);
 }
@@ -115,7 +121,12 @@ void CSiteConnectionPage::Transfer(CTransferInfo& ti)
 {
     CSiteForm& f = owner_.Form();
     ti.EditLine(IDE_SITE_TIMEOUT, f.timeout);
+    ti.EditLine(IDE_SITE_WORKERS, f.workers);
     TransferCheck(ti, IDX_SITE_COMPRESSION, f.compression);
+    TransferCheck(ti, IDX_SITE_SAFEUPLOAD, f.safeUpload);
+    TransferCheck(ti, IDX_SITE_PRESERVETIME, f.preserveTime);
+    TransferCheck(ti, IDX_SITE_UPLOADPERM, f.setUploadPermissions);
+    ti.EditLine(IDE_SITE_UPLOADMODE, f.uploadPermissions);
     int encoding = static_cast<int>(f.encoding);
     ti.RadioButton(IDR_SITE_ENC_UTF8, static_cast<int>(CSite::Encoding::Utf8), encoding);
     ti.RadioButton(IDR_SITE_ENC_AUTO, static_cast<int>(CSite::Encoding::Auto), encoding);
@@ -257,6 +268,7 @@ void CSiteEditDialog::UpdateEnabled()
     // "Forget" only makes sense while something is stored
     ShowWindow(session_.Control(IDX_SITE_FORGET), hasPassword_ || hasPassphrase_ ? SW_SHOW : SW_HIDE);
     EnableWindow(connection_.Control(IDE_SITE_CODEPAGE), IsChecked(connection_.Control(IDR_SITE_ENC_CODEPAGE)));
+    EnableWindow(connection_.Control(IDE_SITE_UPLOADMODE), IsChecked(connection_.Control(IDX_SITE_UPLOADPERM)));
 }
 
 void CSiteEditDialog::OnPageCommand(int id, int notifyCode)
@@ -282,9 +294,12 @@ void CSiteEditDialog::OnPageCommand(int id, int notifyCode)
     case IDR_SITE_ENC_UTF8:
     case IDR_SITE_ENC_AUTO:
     case IDR_SITE_ENC_CODEPAGE:
+    case IDX_SITE_UPLOADPERM:
         UpdateEnabled();
         if (id == IDR_SITE_ENC_CODEPAGE)
             SetFocus(connection_.Control(IDE_SITE_CODEPAGE));
+        else if (id == IDX_SITE_UPLOADPERM && IsChecked(connection_.Control(id)))
+            SetFocus(connection_.Control(IDE_SITE_UPLOADMODE));
         break;
     case IDB_SITE_KEYBROWSE:
         BrowseKeyFile();
@@ -349,6 +364,12 @@ void CSiteEditDialog::ShowError(const std::wstring& text, SiteField field)
         break;
     case SiteField::CodePage:
         control = connection_.Control(IDE_SITE_CODEPAGE);
+        break;
+    case SiteField::Workers:
+        control = connection_.Control(IDE_SITE_WORKERS);
+        break;
+    case SiteField::UploadPermissions:
+        control = connection_.Control(IDE_SITE_UPLOADMODE);
         break;
     }
     if (control != NULL)

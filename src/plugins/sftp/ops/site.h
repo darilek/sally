@@ -29,6 +29,13 @@ struct CSite
     std::wstring initialLocalPath;  // stored now, used for transfers later
     bool rememberPassword = false;
 
+    // Transfer settings (used by the operations)
+    int workers = 2;              // parallel transfer connections, 1..MaxSiteWorkers
+    bool safeUpload = true;       // upload to "name.filepart" and rename when complete
+    bool preserveTime = true;     // give uploaded/downloaded files the source modification time
+    bool setUploadPermissions = false; // apply uploadPermissions to uploaded files (otherwise the server default)
+    unsigned uploadPermissions = 0644; // used only when setUploadPermissions; 0..MaxUploadPermissions (octal 07777)
+
     CNameCodec MakeCodec() const;
 };
 

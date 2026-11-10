@@ -84,5 +84,7 @@
 #define IDS_ERR_UNKNOWN          171
 #define IDS_ERR_CODE             172
 #define IDS_ERR_SFTP_STATUS      173
+#define IDS_SITE_ERR_WORKERS_RANGE 174
+#define IDS_SITE_ERR_UPLOADPERM_INVALID 175
 
 #endif // __SFTP_RH2

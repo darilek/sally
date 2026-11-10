@@ -131,12 +131,19 @@ BEGIN
     LTEXT           "&Timeout:",IDC_STATIC,4,6,70,8
     EDITTEXT        IDE_SITE_TIMEOUT,78,4,40,12,ES_AUTOHSCROLL
     LTEXT           "seconds",IDC_STATIC,122,6,60,8
-    CONTROL         "Use &compression",IDX_SITE_COMPRESSION,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,4,26,250,10
-    GROUPBOX        "File name encoding",IDC_STATIC,4,46,250,70
-    CONTROL         "&UTF-8",IDR_SITE_ENC_UTF8,"Button",BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,12,60,230,10
-    CONTROL         "&Auto-detect (UTF-8, otherwise the system code page)",IDR_SITE_ENC_AUTO,"Button",BS_AUTORADIOBUTTON,12,74,236,10
-    CONTROL         "Code pa&ge:",IDR_SITE_ENC_CODEPAGE,"Button",BS_AUTORADIOBUTTON,12,90,66,10
-    EDITTEXT        IDE_SITE_CODEPAGE,82,88,40,12,ES_AUTOHSCROLL
+    LTEXT           "&Workers:",IDC_STATIC,4,22,70,8
+    EDITTEXT        IDE_SITE_WORKERS,78,20,40,12,ES_AUTOHSCROLL
+    LTEXT           "parallel transfer connections (1-8)",IDC_STATIC,122,22,132,8
+    CONTROL         "Use &compression",IDX_SITE_COMPRESSION,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,4,38,250,10
+    CONTROL         "&Safe upload (write to a temporary name, then rename)",IDX_SITE_SAFEUPLOAD,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,4,51,250,10
+    CONTROL         "&Preserve the modification time of transferred files",IDX_SITE_PRESERVETIME,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,4,64,250,10
+    CONTROL         "Upload &permissions (octal):",IDX_SITE_UPLOADPERM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,4,77,110,10
+    EDITTEXT        IDE_SITE_UPLOADMODE,118,75,40,12,ES_AUTOHSCROLL
+    GROUPBOX        "File name encoding",IDC_STATIC,4,92,250,56
+    CONTROL         "&UTF-8",IDR_SITE_ENC_UTF8,"Button",BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,12,104,230,10
+    CONTROL         "&Auto-detect (UTF-8, otherwise the system code page)",IDR_SITE_ENC_AUTO,"Button",BS_AUTORADIOBUTTON,12,116,236,10
+    CONTROL         "Code pa&ge:",IDR_SITE_ENC_CODEPAGE,"Button",BS_AUTORADIOBUTTON,12,130,66,10
+    EDITTEXT        IDE_SITE_CODEPAGE,82,128,40,12,ES_AUTOHSCROLL
 END
 
 IDD_SITETAB_DIRECTORIES DIALOGEX 0, 0, 260, 150

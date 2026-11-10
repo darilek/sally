@@ -4,7 +4,10 @@
 // Registry layout below the plugin's root key:
 //   ConfigVersion (DWORD) = 1
 //   Sites\1, Sites\2, ... : Name, Host, Port, User, KeyFile, UseAgent, Compression, Timeout, Encoding (0 UTF-8,
-//     1 auto, 2 code page), CodePage, InitialRemotePath, InitialLocalPath, RememberPassword and, only when
+//     1 auto, 2 code page), CodePage, InitialRemotePath, InitialLocalPath, Workers (1..8), SafeUpload,
+//     PreserveTime, SetUploadPermissions (0/1), UploadPermissions (mode bits, 0..07777; the last five were added
+//     after the first release of version 1 and are optional: a missing value means the default),
+//     RememberPassword and, only when
 //     RememberPassword is 1, REG_BINARY blobs from the Sally password manager: PasswordEncrypted or
 //     PasswordScrambled (AES with the master password / only scrambled), PassphraseEncrypted / PassphraseScrambled.
 // A ConfigVersion newer than this plugin knows: nothing is loaded and nothing is ever written back, so the newer

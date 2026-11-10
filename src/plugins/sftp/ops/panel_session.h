@@ -39,6 +39,7 @@ public:
         List,
         RealPath,
         Stat,
+        Rename,
         Disconnect
     };
 
@@ -71,8 +72,10 @@ private:
     const Kind kind_;
     HANDLE done_;
     // input
-    std::string path_; // raw bytes
-    CSite site_;       // Connect
+    std::string path_;   // raw bytes
+    std::string path2_;  // Rename: the new path (raw bytes)
+    bool overwrite_ = false; // Rename
+    CSite site_;         // Connect
     CSecret password_;
     CSecret passphrase_;
     // state, guarded by CPanelSession::mutex_
@@ -108,6 +111,17 @@ struct CInteraction
     std::thread::id threadId; // thread the callback ran on (diagnostics; tests check it is not the owner thread)
 };
 
+// What a worker connection needs to log in like the panel did (see CPanelSession::CopyConnectParams).
+struct CPanelConnectParams
+{
+    bool valid = false; // false: no site has been connected successfully (never, failed, disconnected, closed)
+    CSite site;
+    CSecret password;   // independent copies
+    CSecret passphrase;
+    std::string hostKeyType;        // "ssh-ed25519", ...
+    std::string hostKeyFingerprint; // "SHA256:..." of the key the panel connection accepted
+};
+
 class CPanelSession : private ISshCallbacks
 {
 public:
@@ -125,6 +139,8 @@ public:
     std::shared_ptr<CPanelRequest> List(const std::string& rawPath);
     std::shared_ptr<CPanelRequest> RealPath(const std::string& rawPath);
     std::shared_ptr<CPanelRequest> Stat(const std::string& rawPath);
+    // Renames/moves on the server (same rules as CSshSession::Rename: an existing target gives Exists unless overwrite).
+    std::shared_ptr<CPanelRequest> Rename(const std::string& fromRaw, const std::string& toRaw, bool overwrite);
     // Closes the connection and forgets the site and the secrets (no automatic reconnect until the next Connect).
     std::shared_ptr<CPanelRequest> Disconnect();
 
@@ -137,6 +153,11 @@ public:
     // false when no matching interaction is waiting (already answered, cancelled, or of the other kind).
     bool AnswerHostKey(HostKeyDecision decision);
     bool AnswerPrompt(bool ok, CSecret answer);
+
+    // Any thread. Copies the remembered site, the secrets and the host key the connection accepted, so worker
+    // connections can log in the same way without asking again (the fingerprint is the key they must see). The result
+    // is invalid until a Connect succeeded. Safe while a request runs.
+    CPanelConnectParams CopyConnectParams() const;
 
     // See the class comment. Returns at once.
     void Cancel();
@@ -174,7 +195,7 @@ private:
     std::thread::id threadId_; // same as thread_.get_id(), readable while thread_ is being joined
 
     // guarded by mutex_
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     std::condition_variable queueCv_;
     std::condition_variable answerCv_;
     std::deque<std::shared_ptr<CPanelRequest>> queue_;
@@ -189,10 +210,13 @@ private:
 
     HANDLE interactionEvent_;
 
-    // session thread only (session_ is created there; Cancel reads it only while running_ is executing)
+    // session_ lives on the session thread only (Cancel reads it only while running_ is executing)
     std::unique_ptr<CSshSession> session_;
+    // Written by the session thread under mutex_, read by it without the lock and by CopyConnectParams with the lock.
     CSite site_;
     CSecret password_;
     CSecret passphrase_;
     bool hasSite_ = false;
+    std::string hostKeyType_;        // of the last successful connect
+    std::string hostKeyFingerprint_;
 };

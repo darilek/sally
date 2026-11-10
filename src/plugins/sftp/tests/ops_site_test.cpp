@@ -181,6 +181,11 @@ TEST(Site, Defaults)
     EXPECT_EQ(site.port, 22);
     EXPECT_EQ(site.timeoutSeconds, 30);
     EXPECT_FALSE(site.rememberPassword);
+    EXPECT_EQ(site.workers, 2);
+    EXPECT_TRUE(site.safeUpload);
+    EXPECT_TRUE(site.preserveTime);
+    EXPECT_FALSE(site.setUploadPermissions);
+    EXPECT_EQ(site.uploadPermissions, 0644u);
     // new and quick-connect sites decode per name: valid UTF-8 as UTF-8, a Latin-1 name through the ANSI code page
     EXPECT_EQ(site.encoding, CSite::Encoding::Auto);
     EXPECT_EQ(ToSshSite(site, CSecret(), CSecret()).nameCodec.GetMode(), CNameCodec::Mode::Auto);

@@ -30,6 +30,33 @@ bool ParseNumber(const std::wstring& text, long& value)
     value = result;
     return true;
 }
+
+// One to four octal digits (0..07777). False for empty or anything else.
+bool ParseOctalMode(const std::wstring& text, unsigned& value)
+{
+    if (text.empty() || text.size() > 4)
+        return false;
+    unsigned result = 0;
+    for (wchar_t c : text)
+    {
+        if (c < L'0' || c > L'7')
+            return false;
+        result = result * 8 + static_cast<unsigned>(c - L'0');
+    }
+    value = result;
+    return true;
+}
+
+std::wstring FormatOctalMode(unsigned mode)
+{
+    std::wstring text;
+    do
+    {
+        text.insert(text.begin(), static_cast<wchar_t>(L'0' + (mode & 7)));
+        mode >>= 3;
+    } while (mode != 0);
+    return text;
+}
 } // namespace
 
 bool ShouldClearSecrets(bool rememberPassword, bool forgetSecrets)
@@ -53,6 +80,11 @@ CSiteForm FormFromSite(const CSite& site)
     form.codePage = std::to_wstring(site.codePage);
     form.initialRemotePath = site.initialRemotePath;
     form.initialLocalPath = site.initialLocalPath;
+    form.workers = std::to_wstring(site.workers);
+    form.safeUpload = site.safeUpload;
+    form.preserveTime = site.preserveTime;
+    form.setUploadPermissions = site.setUploadPermissions;
+    form.uploadPermissions = FormatOctalMode(site.uploadPermissions);
     return form;
 }
 
@@ -90,6 +122,21 @@ SiteError SiteFromForm(const CSiteForm& form, CSite& out)
     else if (form.encoding == CSite::Encoding::CodePage)
         site.codePage = 0;
 
+    if (ParseNumber(Trim(form.workers), number) && number >= 1 && number <= MaxSiteWorkers)
+        site.workers = static_cast<int>(number);
+    else
+        site.workers = 0;
+
+    site.safeUpload = form.safeUpload;
+    site.preserveTime = form.preserveTime;
+    site.setUploadPermissions = form.setUploadPermissions;
+    // like the code page: the mode is only checked when it is switched on; otherwise the default stays
+    unsigned mode = 0;
+    if (ParseOctalMode(Trim(form.uploadPermissions), mode))
+        site.uploadPermissions = mode;
+    else if (form.setUploadPermissions)
+        site.uploadPermissions = MaxUploadPermissions + 1; // reported by ValidateSite
+
     const SiteError error = ValidateSite(site);
     if (error == SiteError::None)
         out = std::move(site);
@@ -116,6 +163,10 @@ SiteField FieldOfError(SiteError error)
         return SiteField::Timeout;
     case SiteError::CodePageInvalid:
         return SiteField::CodePage;
+    case SiteError::WorkersRange:
+        return SiteField::Workers;
+    case SiteError::UploadPermissionsInvalid:
+        return SiteField::UploadPermissions;
     }
     return SiteField::Name;
 }
@@ -126,6 +177,8 @@ SiteTab TabOfField(SiteField field)
     {
     case SiteField::Timeout:
     case SiteField::CodePage:
+    case SiteField::Workers:
+    case SiteField::UploadPermissions:
         return SiteTabConnection;
     default:
         return SiteTabSession;

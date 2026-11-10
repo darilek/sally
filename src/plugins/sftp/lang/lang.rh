@@ -87,3 +87,23 @@
 #define IDB_OP_RETRY              1411
 #define IDB_OP_HIDE               1412
 #define IDX_OP_CLOSE_WHEN_DONE    1413
+
+// Solve-error dialog (IDD_SOLVE_ERROR): one parked or failed item; IDCANCEL = Close
+#define IDD_SOLVE_ERROR           1010
+#define IDC_SOLVE_NAME            1420
+#define IDC_SOLVE_MESSAGE         1421
+#define IDC_SOLVE_SOURCE          1422
+#define IDC_SOLVE_TARGET          1423
+#define IDE_SOLVE_NEWNAME         1424
+#define IDB_SOLVE_OVERWRITE       1425
+#define IDB_SOLVE_RESUME          1426
+#define IDB_SOLVE_RENAME          1427
+#define IDB_SOLVE_RETRY           1428
+#define IDB_SOLVE_SKIP            1429
+#define IDX_SOLVE_ALL             1430
+
+// Operations list dialog (IDD_OPERATIONS); IDCANCEL = Close
+#define IDD_OPERATIONS            1011
+#define IDC_OPS_LIST              1440
+#define IDB_OPS_SHOW              1441
+#define IDB_OPS_CANCEL            1442

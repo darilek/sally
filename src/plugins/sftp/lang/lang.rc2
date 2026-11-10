@@ -161,4 +161,14 @@ STRINGTABLE
  IDS_OP_PROBLEM_OTHER, "Unexpected error"
  // argument: host:port
  IDS_OP_PROMPT_HOST, "This is the connection of a transfer to %ls."
+ // arguments: size, date
+ IDS_SOLVE_SOURCE_INFO, "Source: %ls, %ls"
+ IDS_SOLVE_TARGET_INFO, "Existing target: %ls, %ls"
+ IDS_SOLVE_UNKNOWN_DATE, "unknown date"
+ IDS_SOLVE_BAD_NAME, "The new name is not valid."
+ IDS_OPS_COL_OPERATION, "Operation"
+ IDS_OPS_COL_STATE, "State"
+ IDS_OPS_COL_DESCRIPTION, "From -> To"
+ // arguments: source, target
+ IDS_OPS_DESCRIPTION, "%ls -> %ls"
 }

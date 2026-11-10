@@ -49,8 +49,8 @@ struct COperationWindowOptions
     std::function<void(const CInteraction&)> saveHostKey;
     // The checkbox "Close this window when done" changed.
     std::function<void(bool)> closeWhenDoneChanged;
-    // Step 5b: the "Solve error..." button. Without it the button stays disabled. Gets the window (as dialog parent),
-    // the operation and the uid of the selected item.
+    // The "Solve error..." button. Default: ShowSolveErrorDialog. Gets the window (as dialog parent), the operation
+    // and the uid of the selected item.
     std::function<void(HWND, COperation&, uint64_t)> solveError;
 };
 

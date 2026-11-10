@@ -11,6 +11,7 @@
 #include "problem_text.h"
 #include "progress_format.h"
 #include "prompt_dialog.h"
+#include "solve_error_dialog.h"
 #include "text_util.h"
 
 namespace
@@ -52,6 +53,8 @@ public:
           host_(host), op_(operation), options_(options)
     {
         SetObjectOrigin(ooStatic);
+        if (!options_.solveError)
+            options_.solveError = &ShowSolveErrorDialog; // the owner may bring its own
     }
 
     // Creates the window, runs its message loop and returns after the window was destroyed.
@@ -424,7 +427,7 @@ void COperationWindow::UpdateButtons(const CQueueSummary& summary, OperationStat
     UpdateSolveButton();
 }
 
-// Enabled for a selected item that waits for a decision, when the owner supplied the dialog (step 5b).
+// Enabled for a selected item that waits for a decision.
 void COperationWindow::UpdateSolveButton()
 {
     bool canSolve = false;

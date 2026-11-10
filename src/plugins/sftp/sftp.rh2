@@ -132,5 +132,13 @@
 #define IDS_OP_PROBLEM_DISK_FULL           218
 #define IDS_OP_PROBLEM_OTHER               219
 #define IDS_OP_PROMPT_HOST                 220
+#define IDS_SOLVE_SOURCE_INFO              221
+#define IDS_SOLVE_TARGET_INFO              222
+#define IDS_SOLVE_UNKNOWN_DATE             223
+#define IDS_SOLVE_BAD_NAME                 224
+#define IDS_OPS_COL_OPERATION              225
+#define IDS_OPS_COL_STATE                  226
+#define IDS_OPS_COL_DESCRIPTION            227
+#define IDS_OPS_DESCRIPTION                228
 
 #endif // __SFTP_RH2

@@ -3,6 +3,7 @@
 #include <commdlg.h>
 #include <uxtheme.h>
 
+#include "dark_controls.h"
 #include "plugindarkmode.h"
 #include "secret_edit.h"
 #include "site_edit_dialog.h"
@@ -205,6 +206,7 @@ void CSiteEditDialog::InitDialog()
     SetWindowTextW(HWindow, LangStr(editing_ ? IDS_SITEEDIT_TITLE_EDIT : IDS_SITEEDIT_TITLE_NEW).c_str());
 
     HWND tabs = GetDlgItem(HWindow, IDC_SITEEDIT_TABS);
+    ApplyDarkTabControl(tabs);
     static const int tabTitles[SiteTabCount] = {IDS_SITEEDIT_TAB_SESSION, IDS_SITEEDIT_TAB_AUTH,
                                                 IDS_SITEEDIT_TAB_CONNECTION, IDS_SITEEDIT_TAB_DIRECTORIES};
     for (int i = 0; i < SiteTabCount; i++)

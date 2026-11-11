@@ -4,6 +4,8 @@
 
 #include "site_list_dialog.h"
 
+#include "dark_controls.h"
+
 namespace
 {
 // Small input dialog of the Rename command.
@@ -105,6 +107,7 @@ void CSiteListDialog::InitDialog()
 
     HWND list = GetDlgItem(HWindow, IDC_SITELIST_LIST);
     ListView_SetExtendedListViewStyle(list, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
+    ApplyDarkListHeader(list);
     RECT rc;
     GetClientRect(list, &rc);
     const int width = rc.right - rc.left - GetSystemMetrics(SM_CXVSCROLL);

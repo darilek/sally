@@ -2,6 +2,8 @@
 
 #include "operations_dialog.h"
 
+#include "dark_controls.h"
+
 #include "encoding.h"
 #include "progress_format.h"
 
@@ -90,6 +92,7 @@ void COperationsDialog::InitList()
 {
     HWND list = GetDlgItem(HWindow, IDC_OPS_LIST);
     ListView_SetExtendedListViewStyle(list, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
+    ApplyDarkListHeader(list);
     RECT rc;
     GetClientRect(list, &rc);
     const int width = rc.right - rc.left - GetSystemMetrics(SM_CXVSCROLL);
@@ -233,8 +236,9 @@ void COperationsDialog::CancelSelected()
     const std::shared_ptr<COperation> operation = uid != 0 ? operations_.Get(uid) : nullptr;
     if (operation == nullptr || operation->WasCancelled())
         return;
-    const int answer = MessageBoxW(HWindow, LangStr(IDS_OP_CANCEL_CONFIRM).c_str(), LangStr(IDS_PLUGINNAME).c_str(),
-                                   MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2);
+    const int answer = SalamanderGeneral->SalMessageBox(HWindow, LangStr(IDS_OP_CANCEL_CONFIRM).c_str(),
+                                                        LangStr(IDS_PLUGINNAME).c_str(),
+                                                        MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2);
     if (answer == IDYES)
         operation->RequestCancel(); // returns at once; the next refresh shows "Cancelling"
     Refresh();

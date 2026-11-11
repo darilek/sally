@@ -6,6 +6,8 @@
 
 #include "operation_window.h"
 
+#include "dark_controls.h"
+
 #include "encoding.h"
 #include "host_key_dialog.h"
 #include "problem_text.h"
@@ -307,6 +309,7 @@ void COperationWindow::InitList()
 {
     HWND list = GetDlgItem(HWindow, IDC_OP_LIST);
     ListView_SetExtendedListViewStyle(list, LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
+    ApplyDarkListHeader(list);
     RECT rc;
     GetClientRect(list, &rc);
     const int width = rc.right - rc.left - GetSystemMetrics(SM_CXVSCROLL);
@@ -643,8 +646,10 @@ void COperationWindow::TogglePause()
 void COperationWindow::ConfirmCancel()
 {
     ++modalDepth_;
-    const int answer = MessageBoxW(HWindow, Str(IDS_OP_CANCEL_CONFIRM).c_str(), Str(IDS_PLUGINNAME).c_str(),
-                                   MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2);
+    // Sally's message box (dark mode aware, callable from this window's thread)
+    const int answer = SalamanderGeneral->SalMessageBox(HWindow, Str(IDS_OP_CANCEL_CONFIRM).c_str(),
+                                                        Str(IDS_PLUGINNAME).c_str(),
+                                                        MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2);
     --modalDepth_;
     if (answer == IDYES)
         op_.RequestCancel(); // the window stays until the workers have ended (OnState closes it)

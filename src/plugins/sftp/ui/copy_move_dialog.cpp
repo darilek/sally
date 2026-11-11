@@ -20,7 +20,8 @@ const CPolicyEntry PolicyEntries[] = {
     {ConflictPolicy::OverwriteIfOlder, IDS_POLICY_OVERWRITE_OLDER},
     {ConflictPolicy::Rename, IDS_POLICY_RENAME},
 };
-const int PolicyCount = static_cast<int>(sizeof(PolicyEntries) / sizeof(PolicyEntries[0]));
+const UINT WM_APP_SHOW_TARGET = WM_APP + 1; // posted to ourselves at the end of WM_INITDIALOG
+const int PolicyCount =static_cast<int>(sizeof(PolicyEntries) / sizeof(PolicyEntries[0]));
 
 int PolicyIndex(ConflictPolicy policy)
 {
@@ -115,7 +116,20 @@ INT_PTR CCopyMoveDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
             SetWindowTextW(HWindow, LangStr(copy_ ? IDS_COPYMOVE_TITLE_COPY : IDS_COPYMOVE_TITLE_MOVE).c_str());
             SetDlgItemTextW(HWindow, IDC_COPYMOVE_SUBJECT, subject_.c_str());
         }
-        return CCenteredDialog::DialogProc(uMsg, wParam, lParam);
+        if (uMsg == WM_APP_SHOW_TARGET)
+        {
+            // runs after the dialog has finished opening: whatever filled the combo meanwhile (an entry of the history),
+            // the proposed target is what the user must see
+            HWND target = GetDlgItem(HWindow, IDC_COPYMOVE_TARGET);
+            if (!choice_.target.empty())
+                SetWindowTextW(target, choice_.target.c_str());
+            SendMessageW(target, CB_SETEDITSEL, 0, MAKELPARAM(0, -1));
+            return TRUE;
+        }
+        const INT_PTR result = CCenteredDialog::DialogProc(uMsg, wParam, lParam);
+        if (uMsg == WM_INITDIALOG)
+            PostMessageW(HWindow, WM_APP_SHOW_TARGET, 0, 0);
+        return result;
     }
     catch (...)
     {

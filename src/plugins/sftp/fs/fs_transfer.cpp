@@ -10,6 +10,7 @@
 
 #include "fs_data.h"
 #include "listing_format.h"
+#include "op_trace.h"
 #include "operation.h"
 #include "operations_registry.h"
 #include "../ui/copy_move_dialog.h"
@@ -228,7 +229,10 @@ BOOL CPluginFSInterface::AskDownloadTarget(BOOL copy, const wchar_t* fsName, HWN
     const bool singleFile = IsSingleFile(panel, selectedFiles, selectedDirs);
     CCopyMoveChoice choice;
     choice.target = path;
+    if (mode == 1 && path.empty())
+        choice.target = SftpPathOfTargetPanel(ownName); // Sally proposes nothing when the other panel is an FS
     choice.preserveTime = site_.preserveTime;
+    OpTrace("copy dialog: mode %d, Sally proposed '%ls'", mode, path.c_str()); // TEMPORARY (wrong proposed target)
     for (;;)
     {
         CCopyMoveDialog dialog(parent, copy != FALSE, subject);
@@ -297,6 +301,20 @@ CPluginFSInterface::SftpTargetResult CPluginFSInterface::TryMoveToSftpTarget(BOO
     }
     return MoveOnServer(parent, panel, selectedFiles, selectedDirs, target) ? SftpTargetResult::Moved
                                                                            : SftpTargetResult::MoveFailed;
+}
+
+// The path of the other panel when it shows a folder on this same server (the natural target of a Move), else empty.
+std::wstring CPluginFSInterface::SftpPathOfTargetPanel(const std::wstring& ownName) const
+{
+    std::wstring full;
+    int type = 0;
+    if (!SPLGetPanelPathOwned(SalamanderGeneral, PANEL_TARGET, full, &type) || type != PATH_TYPE_FS)
+        return std::wstring();
+    std::wstring userPart;
+    CSftpPath target;
+    if (!SplitFsPath(full, ownName, userPart) || !ParseSftpPath(userPart, target) || !SameServer(identity_, target))
+        return std::wstring();
+    return full;
 }
 
 // True for exactly one selected file, or no selection and a file in focus (a directory or several items never get a
@@ -450,13 +468,18 @@ CPluginFSInterface::CopyOrMoveFromDiskToFS(BOOL copy, int mode, const wchar_t* f
                         sourceFiles);
     try
     {
-        std::wstring path;
-        if (targetPath == NULL || !sally::plugin_abi::ReadStringBuffer(*targetPath, path))
+        std::wstring payload;
+        if (targetPath == NULL || !sally::plugin_abi::ReadStringBuffer(*targetPath, payload))
         {
             if (invalidPathOrCancel != NULL)
                 *invalidPathOrCancel = TRUE;
             return FALSE;
         }
+        // Sally appends a NUL (and an empty mask) to the path, like for CopyOrMoveFromFS: a NUL left in the path would
+        // reach the server inside the remote names. An upload has no use for a mask.
+        std::wstring path;
+        std::wstring mask;
+        SplitPathAndMask(payload, path, mask);
         const BOOL result = DoCopyOrMoveFromDiskToFS(copy, mode, fsName, parent, sourcePath, next, nextParam, path,
                                                      invalidPathOrCancel);
         return WriteBuffer(targetPath, path) ? result : FALSE;
@@ -538,6 +561,10 @@ BOOL CPluginFSInterface::DoCopyOrMoveFromDiskToFS(BOOL copy, int mode, const wch
     if (!copy)
         launch.changedPaths.push_back(sourcePath); // the moved items are gone from here
     std::vector<CQueueItem> roots = COperation::BuildUploadRoots(sources, settings, codec);
+    OpTrace("Upload launch: %d root(s), source '%ls', remote root '%s', first remote '%s', first local '%ls', connected %d",
+            static_cast<int>(sources.size()), sourcePath, settings.remoteRoot.c_str(),
+            roots.empty() ? "" : roots[0].remotePath.c_str(), roots.empty() ? L"" : roots[0].localPath.c_str(),
+            connected_ ? 1 : 0);
     if (OperationsRegistry.Launch(std::move(settings), std::move(params), std::move(roots), launch) &&
         invalidPathOrCancel != NULL)
         *invalidPathOrCancel = FALSE; // started: Sally deselects the source

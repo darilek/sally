@@ -220,6 +220,7 @@ private:
     SftpTargetResult TryMoveToSftpTarget(BOOL copy, const std::wstring& targetText, const std::wstring& ownName,
                                          HWND parent, int panel, int selectedFiles, int selectedDirs);
     bool IsSingleFile(int panel, int selectedFiles, int selectedDirs) const;
+    std::wstring SftpPathOfTargetPanel(const std::wstring& ownName) const;
     bool IsSameServerFsPath(const wchar_t* fsPath) const;
     BOOL AskDownloadTarget(BOOL copy, const wchar_t* fsName, HWND parent, int panel, int selectedFiles,
                            int selectedDirs, int mode, std::wstring& path, BOOL& operationMask,

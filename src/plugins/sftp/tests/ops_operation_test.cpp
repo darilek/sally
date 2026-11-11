@@ -96,6 +96,35 @@ TEST_F(OperationTest, UploadSetsPermissionsWhenAsked)
     EXPECT_EQ(e.permissions & 07777, 0600u);
 }
 
+// The call shape of Sally's F5 upload: an absolute remote root (the panel's current path), the source path of the
+// enumeration (name appended to a folder with a trailing backslash), a file whose size/time the enumerator reported,
+// default site settings (safe upload, time kept, workers 2), policy Ask.
+TEST_F(OperationTest, UploadsAFileLikeSallyF5Does)
+{
+    const std::string content = PatternBytes(3 * 1024 * 1024 + 17, 3);
+    WriteAll(local_ / "src" / "big.bin", content);
+    std::string absolute;
+    ASSERT_TRUE(admin_.RealPath(remoteDir_, absolute)) << admin_.LastError().message;
+
+    std::wstring base = (local_ / "src").wstring();
+    base += L'\\';
+    CLocalSource source;
+    source.path = base + L"big.bin";
+    source.isDir = false;
+    source.size = content.size();
+    source.mtime = 1577836800;
+
+    COperationSettings settings = SettingsFromSite(TestSite(), TransferDirection::Upload, false);
+    settings.localRoot = (local_ / "src").wstring(); // no trailing backslash
+    settings.remoteRoot = absolute;
+    auto op = std::make_unique<COperation>(
+        settings, Params(), COperation::BuildUploadRoots({source}, settings, CNameCodec::Auto()));
+    CTestObserver observer;
+    ASSERT_TRUE(Run(*op, observer, 30000)) << Describe(*op);
+    EXPECT_EQ(op->State(), OperationState::Finished) << Describe(*op);
+    EXPECT_EQ(GetRemoteFile(remoteDir_ + "/big.bin"), content);
+}
+
 TEST_F(OperationTest, MoveDownRemovesTheRemoteSources)
 {
     ASSERT_TRUE(admin_.Mkdir(remoteDir_ + "/tree"));
@@ -379,4 +408,52 @@ TEST_F(OperationTest, AJunctionToAnAncestorFailsTheLoopItemOnly)
     EXPECT_EQ(op->State(), OperationState::FinishedWithErrors);
     EXPECT_EQ(ItemsWithProblem(*op, Problem::SymlinkLoop).size(), 1u) << Describe(*op);
     EXPECT_EQ(GetRemoteFile(remoteDir_ + "/dest/tree/a.txt"), "a\n");
+}
+
+// ---- roots of an upload (no server needed) ---------------------------------------------------------------------
+
+namespace
+{
+std::vector<CQueueItem> UploadRootsFor(const CNameCodec& codec, const std::wstring& path, const std::string& remoteRoot)
+{
+    CLocalSource source;
+    source.path = path;
+    source.isDir = false;
+    source.size = 2159;
+    COperationSettings settings;
+    settings.direction = TransferDirection::Upload;
+    settings.remoteRoot = remoteRoot;
+    return COperation::BuildUploadRoots({source}, settings, codec);
+}
+} // namespace
+
+TEST(UploadRoots, FileItemTargetsTheNameInsideTheRemoteRootForEveryCodec)
+{
+    const CNameCodec codecs[] = {CNameCodec::Auto(), CNameCodec::Utf8(), CNameCodec::CodePage(1252),
+                                 CNameCodec::CodePage(0), CNameCodec::CodePage(65001), CNameCodec()};
+    for (const CNameCodec& codec : codecs)
+    {
+        const auto roots = UploadRootsFor(codec, LR"(C:\temp\kc_logs.txt)", "/home/test/upload");
+        ASSERT_EQ(roots.size(), 1u);
+        EXPECT_EQ(roots[0].remotePath, "/home/test/upload/kc_logs.txt");
+    }
+}
+
+TEST(UploadRoots, AnUnusableCodePageNeverTargetsTheParentFolder)
+{
+    // 1 is not a code page WideCharToMultiByte knows: the encoding fails and must not give an empty name
+    const auto roots = UploadRootsFor(CNameCodec::CodePage(1), LR"(C:\temp\kc_logs.txt)", "/home/test/upload");
+    ASSERT_EQ(roots.size(), 1u);
+    EXPECT_TRUE(roots[0].remotePath.empty() || roots[0].remotePath == "/home/test/upload/kc_logs.txt");
+    EXPECT_NE(roots[0].remotePath, "/home/test/upload");
+}
+
+// Sally hands the upload target to the plugin as "path<NUL>mask"; a NUL that survives into the remote root once made
+// every file item address "/home/test/upload" itself (the trace printed the path cut at the NUL).
+TEST(UploadRoots, AFolderWithANulNeverBecomesAPath)
+{
+    const std::string withNul = std::string("/home/test/upload") + '\0';
+    auto roots = UploadRootsFor(CNameCodec::Auto(), LR"(C:\temp\kc_logs.txt)", withNul);
+    ASSERT_EQ(roots.size(), 1u);
+    EXPECT_TRUE(roots[0].remotePath.empty());
 }

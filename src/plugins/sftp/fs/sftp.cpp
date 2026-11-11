@@ -6,8 +6,12 @@
 #include <libssh2.h>
 #include <openssl/crypto.h>
 
+#include <cstdio>
+#include <mutex>
+
 #include "SallyUrls.h"
 #include "../core/ssh_init.h"
+#include "../ops/op_trace.h"
 #include "fs_data.h"
 #include "operations_registry.h"
 #include "site_config.h"
@@ -69,6 +73,32 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
         DLLInstance = hinstDLL;
 
     return TRUE; // DLL can be loaded
+}
+
+// The text of the operations layer (see ops/op_trace.h) goes to Sally's trace server. Called on any thread.
+static void ForwardOpTrace(const char* text)
+{
+    TRACE_I("SFTP ops: " << text);
+
+    // TEMPORARY (stuck-upload diagnosis): TRACE_I exists only in Debug builds, and a Debug plugin cannot load into the
+    // release Sally. So the same text also goes to %TEMP%\sftp-ops-trace.log and to OutputDebugString. Remove later.
+    static std::mutex logMutex;
+    std::lock_guard<std::mutex> lock(logMutex);
+    char tempPath[MAX_PATH];
+    if (GetTempPathA(MAX_PATH, tempPath) > 0)
+    {
+        std::string file = std::string(tempPath) + "sftp-ops-trace.log";
+        FILE* f = fopen(file.c_str(), "a");
+        if (f != NULL)
+        {
+            SYSTEMTIME t;
+            GetLocalTime(&t);
+            fprintf(f, "%02d:%02d:%02d.%03d [%lu] %s\n", t.wHour, t.wMinute, t.wSecond, t.wMilliseconds,
+                    GetCurrentThreadId(), text);
+            fclose(f);
+        }
+    }
+    OutputDebugStringA((std::string("SFTP ops: ") + text + "\n").c_str());
 }
 
 // there is no help yet
@@ -156,6 +186,8 @@ CPluginInterfaceAbstract* WINAPI SalamanderPluginEntry(CSalamanderPluginEntryAbs
         const std::wstring invalidNumber = LangStr(IDS_INVALIDNUMBER);
         const std::wstring pluginTitle = LangStr(IDS_PLUGINNAME);
         SetWinLibStrings(invalidNumber.c_str(), pluginTitle.c_str());
+
+        SetOpTraceSink(ForwardOpTrace);
 
         // last step, so that nothing more has to be undone when it fails
         CSshError sshInitError;
@@ -266,6 +298,7 @@ CPluginInterface::Release(HWND parent, BOOL force)
     {
         TRACE_E("Release: unexpected exception while closing the sessions.");
     }
+    SetOpTraceSink(nullptr); // every worker thread is gone
     SshGlobalExit();
     ReleaseWinLib(DLLInstance);
     return TRUE;

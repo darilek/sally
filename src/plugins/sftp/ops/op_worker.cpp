@@ -5,6 +5,7 @@
 
 #include "listing_format.h"
 #include "local_name.h"
+#include "op_trace.h"
 #include "ssh_init.h"
 #include "text_util.h"
 
@@ -280,6 +281,10 @@ void AddUploadItems(std::vector<CQueueItem>& out, const std::wstring& localPath,
 {
     bool unrepresentable = false;
     const std::string rawName = codec.Encode(name, &unrepresentable);
+    // An empty or unusable encoded name (or a target folder with a NUL) must never become a path: the item would
+    // otherwise address the parent folder. The worker parks such an item (empty remotePath).
+    if (!IsValidRemoteEntryName(rawName) || remoteDir.find('\0') != std::string::npos)
+        unrepresentable = true;
 
     CQueueItem item;
     item.localPath = localPath;
@@ -407,6 +412,7 @@ void CWorker::Run()
     codec_ = host_.ConnectParams().site.MakeCodec();
     CQueue& queue = host_.Queue();
     CQueueItem item;
+    OpTrace("worker %d: started", index_);
     // A worker lives until the operation is cancelled: when the work has run out it idles, so a solved or retried item
     // (which becomes Waiting again) is picked up at once, without starting new threads.
     while (!host_.IsCancelRequested())
@@ -528,11 +534,17 @@ CWorker::CItemResult CWorker::RunItem(const CQueueItem& taken)
         if (!NeedsConnection(item.type))
             return ExecuteOnce(item);
 
+        OpTrace("worker %d: item %llu type %d attempt %zu: connecting", index_, static_cast<unsigned long long>(item.uid),
+                static_cast<int>(item.type), attempt);
         if (EnsureConnected(result))
         {
             unreachable_ = false;
+            OpTrace("worker %d: item %llu: connected, executing", index_, static_cast<unsigned long long>(item.uid));
             result = ExecuteOnce(item);
         }
+        OpTrace("worker %d: item %llu: result kind %d problem %d connectionLost %d", index_,
+                static_cast<unsigned long long>(item.uid), static_cast<int>(result.kind), static_cast<int>(result.problem),
+                result.connectionLost ? 1 : 0);
         if (!result.connectionLost)
             return result;
 
@@ -676,6 +688,7 @@ bool CWorker::EnsureConnected(CItemResult& failure)
     {
         const CSshError error = session_.LastError();
         session_.Disconnect();
+        OpTrace("worker %d: connect failed, kind %d: %s", index_, static_cast<int>(error.kind), error.message.c_str());
         if (error.kind == SshErrorKind::Cancelled)
         {
             failure = Returned();
@@ -916,7 +929,9 @@ bool CWorker::ResolveRemoteTarget(const CQueueItem& item, std::string& target, b
         userNamed = true;
         return true;
     }
-    if (item.remotePath.empty())
+    // an empty path, or one that addresses the item's own parent folder, can only come from a bug: never write there
+    if (item.remotePath.empty() ||
+        (!item.parentRemote.empty() && NormalizeRemotePath(item.remotePath) == NormalizeRemotePath(item.parentRemote)))
     {
         stop = Failure(Problem::InvalidRemoteName, std::wstring());
         return false;
@@ -1086,6 +1101,8 @@ CWorker::CItemResult CWorker::Upload(const CQueueItem& item)
         return stop;
     const COperationSettings& settings = host_.Settings();
     CQueue& queue = host_.Queue();
+    OpTrace("upload: local '%ls' -> remote '%s' (safe %d, time %d, perm %d)", item.localPath.c_str(), target.c_str(),
+            settings.safeUpload ? 1 : 0, settings.preserveTime ? 1 : 0, settings.setUploadPermissions ? 1 : 0);
 
     HANDLE file = CreateFileW(ExtendedLocalPath(item.localPath).c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
                               nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
@@ -1104,15 +1121,21 @@ CWorker::CItemResult CWorker::Upload(const CQueueItem& item)
     source.size = SizeOf(info.nFileSizeHigh, info.nFileSizeLow);
     source.mtime = UnixTimeOf(info.ftLastWriteTime);
 
+    OpTrace("upload: local file open, size %llu; looking at the remote target", static_cast<unsigned long long>(source.size));
     CTransferSide existing;
     CItemResult failure;
     if (!StatRemoteSide(target, existing, failure))
+    {
+        OpTrace("upload: stat of the target failed (%s): %ls", failure.kind == CItemResult::Kind::ReturnToWaiting ? "cancelled" : "error", failure.text.c_str());
         return failure;
+    }
 
     uint64_t resumeOffset = 0; // from the conflict decision: the target itself is a partial copy
+    OpTrace("upload: target exists %d", existing.exists ? 1 : 0);
     if (existing.exists)
     {
         const CConflictDecision decision = Decide(item, source, existing, userNamed, !settings.safeUpload);
+        OpTrace("upload: conflict decision %d", static_cast<int>(decision.action));
         if (decision.action == ConflictAction::Skip)
             return Skipped();
         if (decision.action == ConflictAction::Park)
@@ -1156,7 +1179,10 @@ CWorker::CItemResult CWorker::Upload(const CQueueItem& item)
     queue.SetOwnsPartial(item.uid);
     BeginTransfer(item.uid, startAt);
     uint64_t transferred = 0;
+    OpTrace("upload: writing '%s' from offset %llu", writeTo.c_str(), static_cast<unsigned long long>(startAt));
     bool ok = session_.Upload(file, writeTo, startAt, startAt > 0, &transferred);
+    OpTrace("upload: write finished ok %d, %llu bytes%s%s", ok ? 1 : 0, static_cast<unsigned long long>(transferred),
+            ok ? "" : ", error: ", ok ? "" : session_.LastError().message.c_str());
     if (!ok && startAt == 0 && session_.LastError().kind == SshErrorKind::NotFound &&
         EnsureRemoteDir(ParentOfRemote(writeTo), 0))
     {
@@ -1168,13 +1194,16 @@ CWorker::CItemResult CWorker::Upload(const CQueueItem& item)
         return FromSessionError(Problem::TransferFailed); // the partial stays: the next attempt can continue it
 
     // Without overwrite the rename refuses a target that appeared meanwhile (kind Exists) instead of replacing it.
+    OpTrace("upload: renaming the partial (%d)", viaPartial ? 1 : 0);
     if (viaPartial && !session_.Rename(writeTo, target, existing.exists))
         return FromSessionError(Problem::TransferFailed);
+    OpTrace("upload: renamed; setting time/permissions");
 
     if (settings.preserveTime && source.mtime > 0)
         session_.SetTimes(target, source.mtime, source.mtime); // best effort, like the local side
     if (settings.setUploadPermissions)
         session_.Chmod(target, settings.uploadPermissions); // best effort too: the file is there and complete
+    OpTrace("upload: done");
 
     if (settings.move && !item.viaLink)
     {

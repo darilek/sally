@@ -112,6 +112,14 @@ std::shared_ptr<CPanelRequest> CPanelSession::RemoveFile(const std::string& rawP
     return Submit(req);
 }
 
+std::shared_ptr<CPanelRequest> CPanelSession::Chmod(const std::string& rawPath, uint32_t mode)
+{
+    std::shared_ptr<CPanelRequest> req(new CPanelRequest(CPanelRequest::Kind::Chmod));
+    req->path_ = rawPath;
+    req->mode_ = mode & 07777;
+    return Submit(req);
+}
+
 CPanelConnectParams CPanelSession::CopyConnectParams() const
 {
     CPanelConnectParams params;
@@ -418,6 +426,10 @@ void CPanelSession::Execute(CPanelRequest& req)
         break;
     case CPanelRequest::Kind::RemoveFile:
         if (EnsureConnected(req) && !session_->Remove(req.path_))
+            req.error_ = session_->LastError();
+        break;
+    case CPanelRequest::Kind::Chmod:
+        if (EnsureConnected(req) && !session_->Chmod(req.path_, req.mode_))
             req.error_ = session_->LastError();
         break;
     case CPanelRequest::Kind::List:

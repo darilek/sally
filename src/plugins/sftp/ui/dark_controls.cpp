@@ -1,6 +1,8 @@
 #include "precomp.h"
 
 #include <commctrl.h>
+#include <uxtheme.h>
+#include <vsstyle.h>
 
 #include "dark_controls.h"
 #include "plugindarkmode.h"
@@ -211,7 +213,209 @@ LRESULT CALLBACK DarkSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
     }
     return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
+
+// Group box: only the frame and the caption are drawn. The inside is left alone because the controls that sit in the
+// box are separate windows and the dialog already painted the dark background.
+void PaintGroupBox(HWND box, HDC dc, const PluginDarkModeColors& colors)
+{
+    RECT client;
+    GetClientRect(box, &client);
+    SelectObject(dc, reinterpret_cast<HFONT>(SendMessageW(box, WM_GETFONT, 0, 0)));
+    SetBkMode(dc, TRANSPARENT);
+    SetTextColor(dc, colors.DialogText);
+
+    wchar_t text[256];
+    if (GetWindowTextW(box, text, 256) <= 0)
+        text[0] = 0;
+    const LONG style = GetWindowLongW(box, GWL_STYLE);
+
+    // caption size and position (like the light group box: a few pixels from the left edge)
+    RECT textRect = {};
+    DrawTextW(dc, text, -1, &textRect, DT_CALCRECT | DT_SINGLELINE);
+    const int textWidth = textRect.right - textRect.left;
+    const int textHeight = textRect.bottom - textRect.top;
+    const int margin = 9;
+    int left = client.left + margin;
+    if ((style & BS_CENTER) == BS_CENTER)
+        left = (client.left + client.right - textWidth) / 2;
+    else if ((style & BS_CENTER) == BS_RIGHT)
+        left = client.right - margin - textWidth;
+    OffsetRect(&textRect, left - textRect.left, client.top);
+
+    // the frame starts at the vertical middle of the caption
+    {
+        CSelectedPen pen(dc, colors.Border);
+        SelectObject(dc, GetStockObject(NULL_BRUSH));
+        Rectangle(dc, client.left, client.top + textHeight / 2, client.right, client.bottom);
+    }
+
+    // erase the part of the top line behind the caption, then draw the caption
+    if (text[0] != 0)
+    {
+        RECT gap = textRect;
+        InflateRect(&gap, 3, 0);
+        PluginDarkMode_FillRect(dc, &gap, colors.DialogBackground);
+        DrawTextW(dc, text, -1, &textRect, DT_SINGLELINE | DT_LEFT);
+    }
+}
+
+LRESULT CALLBACK GroupBoxSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR id, DWORD_PTR)
+{
+    try
+    {
+        if (msg == WM_NCDESTROY)
+            RemoveWindowSubclass(hwnd, GroupBoxSubclassProc, id);
+        else if (msg == WM_ERASEBKGND)
+            return 1; // the dialog background is already dark; erasing would also wipe the controls' surroundings
+        else if (msg == WM_PAINT || msg == WM_PRINTCLIENT)
+        {
+            PluginDarkModeColors colors;
+            if (PluginDarkMode_GetColors(&colors))
+            {
+                CPaintScope scope(hwnd, msg, wParam);
+                if (scope.Dc() != NULL)
+                    PaintGroupBox(hwnd, scope.Dc(), colors);
+                return 0;
+            }
+        }
+    }
+    catch (...)
+    {
+        TRACE_E("GroupBoxSubclassProc: unexpected exception.");
+    }
+    return DefSubclassProc(hwnd, msg, wParam, lParam);
+}
+
+bool IsRadioStyle(LONG type)
+{
+    return type == BS_RADIOBUTTON || type == BS_AUTORADIOBUTTON;
+}
+
+bool IsCheckStyle(LONG type)
+{
+    return type == BS_CHECKBOX || type == BS_AUTOCHECKBOX || type == BS_3STATE || type == BS_AUTO3STATE;
+}
+
+// Check box and radio button: Windows draws their text with the theme colour (black), whatever the DC says, so the
+// glyph comes from the theme and the text is drawn here (the Sally core does the same). Simplified: no hover state.
+void PaintCheckRadio(HWND button, HDC dc, const PluginDarkModeColors& colors)
+{
+    RECT client;
+    GetClientRect(button, &client);
+    PluginDarkMode_FillRect(dc, &client, colors.DialogBackground);
+
+    const bool radio = IsRadioStyle(GetWindowLongW(button, GWL_STYLE) & BS_TYPEMASK);
+    const bool enabled = IsWindowEnabled(button) != FALSE;
+    const LRESULT check = SendMessageW(button, BM_GETCHECK, 0, 0);
+    const bool pressed = (SendMessageW(button, BM_GETSTATE, 0, 0) & BST_PUSHED) != 0;
+    const int offset = !enabled ? 3 : (pressed ? 2 : 0); // NORMAL, HOT, PRESSED, DISABLED states follow each other
+    int part = radio ? BP_RADIOBUTTON : BP_CHECKBOX;
+    int state;
+    if (radio)
+        state = (check == BST_CHECKED ? RBS_CHECKEDNORMAL : RBS_UNCHECKEDNORMAL) + offset;
+    else if (check == BST_INDETERMINATE)
+        state = CBS_MIXEDNORMAL + offset;
+    else
+        state = (check == BST_CHECKED ? CBS_CHECKEDNORMAL : CBS_UNCHECKEDNORMAL) + offset;
+
+    HFONT font = reinterpret_cast<HFONT>(SendMessageW(button, WM_GETFONT, 0, 0));
+    if (font != NULL)
+        SelectObject(dc, font);
+    SetBkMode(dc, TRANSPARENT);
+    SetTextColor(dc, enabled ? colors.DialogText : colors.DisabledText);
+
+    SIZE glyph = {GetSystemMetrics(SM_CXMENUCHECK), GetSystemMetrics(SM_CYMENUCHECK)};
+    HTHEME theme = OpenThemeData(button, L"Button");
+    if (theme != NULL)
+    {
+        SIZE themed = {};
+        if (SUCCEEDED(GetThemePartSize(theme, dc, part, state, NULL, TS_TRUE, &themed)) && themed.cx > 0 && themed.cy > 0)
+            glyph = themed;
+    }
+    RECT glyphRect = {client.left + 2, client.top + (client.bottom - client.top - glyph.cy) / 2, 0, 0};
+    glyphRect.right = glyphRect.left + glyph.cx;
+    glyphRect.bottom = glyphRect.top + glyph.cy;
+    if (theme != NULL)
+    {
+        DrawThemeBackground(theme, dc, part, state, &glyphRect, NULL);
+        CloseThemeData(theme);
+    }
+
+    wchar_t text[256];
+    if (GetWindowTextW(button, text, 256) > 0)
+    {
+        RECT textRect = client;
+        textRect.left = glyphRect.right + 4;
+        DrawTextW(dc, text, -1, &textRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        if (GetFocus() == button)
+        {
+            RECT size = {};
+            DrawTextW(dc, text, -1, &size, DT_CALCRECT | DT_SINGLELINE);
+            RECT focus = {textRect.left - 1, (client.top + client.bottom - size.bottom) / 2 - 1,
+                          min(textRect.right, textRect.left + size.right + 1), 0};
+            focus.bottom = focus.top + size.bottom + 2;
+            DrawFocusRect(dc, &focus);
+        }
+    }
+}
+
+LRESULT CALLBACK CheckRadioSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR id, DWORD_PTR)
+{
+    try
+    {
+        if (msg == WM_NCDESTROY)
+            RemoveWindowSubclass(hwnd, CheckRadioSubclassProc, id);
+        else if (msg == WM_ERASEBKGND)
+            return 1; // WM_PAINT fills everything
+        else if (msg == WM_PAINT || msg == WM_PRINTCLIENT)
+        {
+            PluginDarkModeColors colors;
+            if (PluginDarkMode_GetColors(&colors))
+            {
+                CPaintScope scope(hwnd, msg, wParam);
+                if (scope.Dc() != NULL)
+                    PaintCheckRadio(hwnd, scope.Dc(), colors);
+                return 0;
+            }
+        }
+        else if (msg == BM_SETCHECK || msg == BM_SETSTATE || msg == WM_ENABLE || msg == WM_SETFOCUS ||
+                 msg == WM_KILLFOCUS || msg == WM_SETTEXT)
+        {
+            const LRESULT result = DefSubclassProc(hwnd, msg, wParam, lParam);
+            InvalidateRect(hwnd, NULL, FALSE); // the state changed: repaint with our painter
+            return result;
+        }
+    }
+    catch (...)
+    {
+        TRACE_E("CheckRadioSubclassProc: unexpected exception.");
+    }
+    return DefSubclassProc(hwnd, msg, wParam, lParam);
+}
+
+BOOL CALLBACK SubclassButton(HWND child, LPARAM)
+{
+    wchar_t className[16];
+    if (GetClassNameW(child, className, 16) <= 0 || _wcsicmp(className, L"Button") != 0)
+        return TRUE;
+    const LONG type = GetWindowLongW(child, GWL_STYLE) & BS_TYPEMASK;
+    if (type == BS_GROUPBOX)
+        SetWindowSubclass(child, GroupBoxSubclassProc, SUBCLASS_ID, 0);
+    else if (IsRadioStyle(type) || IsCheckStyle(type))
+        SetWindowSubclass(child, CheckRadioSubclassProc, SUBCLASS_ID, 0);
+    else
+        return TRUE;
+    InvalidateRect(child, NULL, TRUE);
+    return TRUE;
+}
 } // namespace
+
+void ApplyDarkButtons(HWND dialog)
+{
+    if (!PluginDarkMode_ShouldUseDark() || dialog == NULL)
+        return;
+    EnumChildWindows(dialog, SubclassButton, 0);
+}
 
 void ApplyDarkListHeader(HWND listView)
 {

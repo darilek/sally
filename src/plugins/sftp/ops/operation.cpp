@@ -78,6 +78,26 @@ std::vector<CQueueItem> COperation::BuildDeleteRoots(const std::vector<CRemoteSo
     return items;
 }
 
+std::vector<CQueueItem> COperation::BuildChmodRoots(const std::vector<CRemoteSource>& sources,
+                                                    const COperationSettings& settings, const CNameCodec& codec)
+{
+    std::vector<CQueueItem> items;
+    for (const CRemoteSource& source : sources)
+    {
+        const bool explore = settings.chmodRecursive && source.isDir;
+        if (!explore && settings.chmodRecursive && !settings.chmodFiles)
+            continue; // a recursive change of directories only: a selected file is not one
+        std::string path = source.path;
+        while (path.size() > 1 && path.back() == '/')
+            path.pop_back();
+        CQueueItem item;
+        item.remotePath = path;
+        item.type = explore ? ItemType::ExploreRemote : ItemType::SetAttrs;
+        items.push_back(std::move(item));
+    }
+    return items;
+}
+
 std::vector<CQueueItem> COperation::BuildUploadRoots(const std::vector<CLocalSource>& sources,
                                                      const COperationSettings& settings, const CNameCodec& codec)
 {
@@ -566,7 +586,8 @@ COperationStats COperation::Statistics() const
     stats.bytesDone = summary.totals.bytesDone;
     stats.filesTotal = summary.totals.filesTotal;
     stats.filesDone = summary.totals.filesDone;
-    if (settings_.direction == TransferDirection::Delete) // no bytes: the items are what counts
+    if (settings_.direction == TransferDirection::Delete || settings_.direction == TransferDirection::Chmod)
+        // no bytes: the items are what counts
     {
         stats.filesTotal = summary.totals.deleteTotal;
         stats.filesDone = summary.totals.deleteDone;

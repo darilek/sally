@@ -39,7 +39,8 @@ enum class ItemType
     DeleteRemoteFile, // move: delete the source after a successful upload
     DeleteRemoteDir,
     DeleteLocalFile,
-    DeleteLocalDir
+    DeleteLocalDir,
+    SetAttrs // chmod: apply the operation's mode change to this remote file or directory
 };
 
 // Error states are last, so "state >= Skipped" means "needs a look from the user" (see IsErrorState).
@@ -122,7 +123,8 @@ struct CQueueTotals
     uint64_t bytesDone = 0;  // a Done transfer counts its full size
     int filesTotal = 0;
     int filesDone = 0;
-    // Remote delete items (DeleteRemoteFile/Dir; a move creates them too). A delete operation reports these as its items.
+    // Remote delete items (DeleteRemoteFile/Dir; a move creates them too) and chmod items (SetAttrs). A delete or chmod
+    // operation reports these as its items (the field names say 'delete' for historical reasons).
     int deleteTotal = 0;
     int deleteDone = 0;
 };

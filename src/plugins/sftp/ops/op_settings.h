@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "file_mode.h"
 #include "op_types.h"
 #include "site.h"
 
@@ -11,7 +12,8 @@ enum class TransferDirection
 {
     Download, // remote -> local
     Upload,   // local -> remote
-    Delete    // delete on the server (no local side)
+    Delete,   // delete on the server (no local side)
+    Chmod     // change the permissions on the server (no local side)
 };
 
 struct COperationSettings
@@ -27,6 +29,14 @@ struct COperationSettings
     std::wstring localRoot;                      // where a download puts the selection / where an upload reads from
     std::string remoteRoot;                      // raw bytes: where an upload puts the selection
     // (the source paths themselves are the root items of the queue)
+
+    // Chmod (direction Chmod): the change applied to each item's mode. With 'chmodRecursive' a selected directory is
+    // explored; then files get the change only when chmodFiles, directories (the selected one and those below) only when
+    // chmodDirs. Without it the selected items themselves all get the change.
+    CModeChange modeChange;
+    bool chmodRecursive = false;
+    bool chmodFiles = true;
+    bool chmodDirs = true;
 
     // A worker that lost its connection waits these many milliseconds before each new attempt (so the list length is the
     // number of reconnect attempts), then parks the item. Tests use short delays.

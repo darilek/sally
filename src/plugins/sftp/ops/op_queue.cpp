@@ -374,7 +374,8 @@ CQueueSummary CQueue::Summary() const
     for (const auto& entry : items_)
     {
         const CQueueItem& item = entry.second.item;
-        if (item.type == ItemType::DeleteRemoteFile || item.type == ItemType::DeleteRemoteDir)
+        if (item.type == ItemType::DeleteRemoteFile || item.type == ItemType::DeleteRemoteDir ||
+            item.type == ItemType::SetAttrs)
         {
             ++summary.totals.deleteTotal;
             if (item.state == ItemState::Done)

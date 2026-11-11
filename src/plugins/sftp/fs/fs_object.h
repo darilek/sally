@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "file_mode.h"
 #include "known_hosts.h"
 #include "op_types.h"
 #include "panel_session.h"
@@ -89,11 +90,9 @@ public:
     // ---- F8 (fs/fs_delete.cpp)
     virtual BOOL WINAPI Delete(const wchar_t* fsName, int mode, HWND parent, int panel, int selectedFiles,
                                int selectedDirs, BOOL& cancelOrError);
+    // ---- Ctrl+F2 (fs/fs_chmod.cpp)
     virtual BOOL WINAPI ChangeAttributes(const wchar_t* fsName, HWND parent, int panel, int selectedFiles,
-                                         int selectedDirs)
-    {
-        return FALSE;
-    }
+                                         int selectedDirs);
     virtual void WINAPI ShowProperties(const wchar_t* fsName, HWND parent, int panel, int selectedFiles,
                                        int selectedDirs) {}
     virtual void WINAPI ContextMenu(const wchar_t* fsName, HWND parent, int menuX, int menuY, int type, int panel,
@@ -188,6 +187,7 @@ private:
         uint64_t size = 0;
         int64_t mtime = 0; // Unix seconds
         bool isLink = false; // a symbolic link (isDir then tells what it points to)
+        uint32_t mode = 0;   // st_mode bits from the listing (for a link: of the link itself); 0 = not reported
     };
     struct CDownloadOptions // what the Copy/Move dialog chose, kept for the CopyOrMoveFromFS call with mode 3
     {
@@ -235,6 +235,13 @@ private:
     BOOL DoDelete(HWND parent, int panel, int selectedFiles, int selectedDirs, BOOL& cancelOrError);
     bool DeleteOneOnSession(HWND parent, const CSelectedItem& item);
     bool StartDeleteOperation(const std::vector<CSelectedItem>& items);
+
+    // ---- fs/fs_chmod.cpp
+    BOOL DoChangeAttributes(HWND parent, int panel, int selectedFiles, int selectedDirs);
+    bool ResolveCurrentModes(HWND parent, std::vector<CSelectedItem>& items);
+    bool ChmodOneOnSession(HWND parent, const CSelectedItem& item, const CModeChange& change);
+    bool StartChmodOperation(const std::vector<CSelectedItem>& items, const CModeChange& change, bool recursive,
+                             bool applyToFiles, bool applyToDirs);
 
     // ---- fs/fs_namespace.cpp
     bool DoQuickRename(HWND parent, CFileData& file, CSalamanderStringBuffer* newName, BOOL& cancel);

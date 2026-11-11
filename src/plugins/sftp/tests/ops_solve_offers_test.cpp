@@ -55,6 +55,17 @@ TEST(SolveOffers, SymlinkLoopOnlySkip)
     EXPECT_FALSE(IsOffered(o, SolveAction::Retry));
 }
 
+TEST(SolveOffers, ChmodItemsOfferOnlyRetryAndSkip)
+{
+    for (Problem problem : {Problem::ChmodFailed, Problem::PermissionDenied, Problem::NotFound, Problem::Other})
+        for (ItemType type : {ItemType::SetAttrs, ItemType::ExploreRemote})
+        {
+            const CSolveOffers o = SolveOffersFor(problem, type);
+            EXPECT_TRUE(o.retry && o.skip);
+            EXPECT_FALSE(o.overwrite || o.resume || o.rename);
+        }
+}
+
 TEST(SolveOffers, DeleteItemsOfferOnlyRetryAndSkip)
 {
     for (Problem problem : {Problem::DeleteFailed, Problem::PermissionDenied, Problem::NotFound, Problem::Other})

@@ -707,6 +707,15 @@ public:
     {
         return session_->Symlink(target, Path(name));
     }
+    // The permission bits (07777) of the item, links followed; false when it cannot be read.
+    bool Mode(const std::string& name, uint32_t& mode)
+    {
+        CSftpEntry entry;
+        if (!session_->Stat(Path(name), entry))
+            return false;
+        mode = entry.permissions & 07777;
+        return true;
+    }
     bool Exists(const std::string& name, uint64_t* size = nullptr)
     {
         CSftpEntry entry;
@@ -895,6 +904,60 @@ TEST_F(PanelSessionTest, RemoveFileOnADirectoryFailsAndKeepsIt)
     ASSERT_TRUE(remove->Wait(20000));
     EXPECT_FALSE(remove->Ok());
     EXPECT_TRUE(box.Exists("adir"));
+}
+
+TEST_F(PanelSessionTest, ChmodChangesThePermissionBits)
+{
+    CRemoteSandbox box;
+    ASSERT_TRUE(box.Ok());
+    ASSERT_TRUE(box.PutFile("m.txt", "x"));
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto change = s.Chmod(box.Path("m.txt"), 0640);
+    ASSERT_TRUE(change->Wait(20000));
+    EXPECT_TRUE(change->Ok()) << change->Error().message;
+    EXPECT_EQ(change->GetKind(), CPanelRequest::Kind::Chmod);
+    uint32_t mode = 0;
+    ASSERT_TRUE(box.Mode("m.txt", mode));
+    EXPECT_EQ(mode, 0640u);
+}
+
+TEST_F(PanelSessionTest, ChmodKeepsTheSpecialBitsAndDropsTheFileType)
+{
+    CRemoteSandbox box;
+    ASSERT_TRUE(box.Ok());
+    ASSERT_TRUE(box.PutFile("sticky.txt", "x"));
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    // 0100000 is the "regular file" type bit of a full st_mode: it must be masked off, never sent
+    auto change = s.Chmod(box.Path("sticky.txt"), 0100000 | 02644);
+    ASSERT_TRUE(change->Wait(20000));
+    EXPECT_TRUE(change->Ok()) << change->Error().message;
+    uint32_t mode = 0;
+    ASSERT_TRUE(box.Mode("sticky.txt", mode));
+    EXPECT_EQ(mode, 02644u); // setgid on a file we own (our group): the server keeps it
+}
+
+TEST_F(PanelSessionTest, ChmodOfAMissingPathGivesNotFound)
+{
+    CRemoteSandbox box;
+    ASSERT_TRUE(box.Ok());
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto change = s.Chmod(box.Path("never_existed.txt"), 0644);
+    ASSERT_TRUE(change->Wait(20000));
+    EXPECT_EQ(change->Error().kind, SshErrorKind::NotFound);
+}
+
+TEST_F(PanelSessionTest, ChmodWithoutConnectFails)
+{
+    CPanelSession s(nullptr);
+    auto change = s.Chmod("upload/x", 0644);
+    ASSERT_TRUE(change->Wait(10000));
+    EXPECT_EQ(change->Error().kind, SshErrorKind::ConnectFailed);
 }
 
 TEST_F(PanelSessionTest, RemoveFileWithoutConnectFails)

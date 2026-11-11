@@ -9,3 +9,7 @@ void ApplyDarkListHeader(HWND listView);
 
 // Paints a tab control (the tab strip only; the pages are child dialogs) dark.
 void ApplyDarkTabControl(HWND tabControl);
+
+// Paints every group box (caption and frame), check box and radio button in the dialog (or tab page) light-on-dark.
+// Call after the controls exist.
+void ApplyDarkButtons(HWND dialog);

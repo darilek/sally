@@ -527,6 +527,7 @@ bool CWorker::NeedsConnection(ItemType type)
     case ItemType::MakeDirRemote:
     case ItemType::DeleteRemoteFile:
     case ItemType::DeleteRemoteDir:
+    case ItemType::SetAttrs:
         return true;
     default:
         return false;
@@ -601,6 +602,8 @@ CWorker::CItemResult CWorker::ExecuteOnce(const CQueueItem& item)
         return DeleteLocal(item, false);
     case ItemType::DeleteLocalDir:
         return DeleteLocal(item, true);
+    case ItemType::SetAttrs:
+        return SetAttrs(item);
     }
     return Failure(Problem::Other, std::wstring());
 }
@@ -743,11 +746,14 @@ CWorker::CItemResult CWorker::ReplaceWithChildren(const CQueueItem& item, std::v
 {
     CQueue& queue = host_.Queue();
     MarkViaLink(children, childrenViaLink);
-    // a move deletes the source directory afterwards; a delete operation deletes the directory it explored
-    const bool deleting = host_.Settings().direction == TransferDirection::Delete;
-    if ((host_.Settings().move || deleting) && !item.viaLink)
+    // a move deletes the source directory afterwards; a delete operation deletes the directory it explored; a chmod
+    // changes the directory itself after its content (when directories are to be changed)
+    const COperationSettings& settings = host_.Settings();
+    const bool deleting = settings.direction == TransferDirection::Delete;
+    const bool changing = settings.direction == TransferDirection::Chmod && settings.chmodDirs;
+    if ((settings.move || deleting || changing) && !item.viaLink)
     {
-        CQueueItem after; // the directory itself is deleted once everything in it is done
+        CQueueItem after; // the directory itself is dealt with once everything in it is done
         after.type = afterType;
         after.remotePath = item.remotePath;
         after.localPath = item.localPath;
@@ -792,10 +798,42 @@ CWorker::CItemResult CWorker::ExploreForDelete(const CQueueItem& item)
     return ReplaceWithChildren(item, std::move(children), ItemType::DeleteRemoteDir, false);
 }
 
+// Chmod mode of ExploreRemote (a recursive chmod): the children are SetAttrs items (files, when files are to be changed)
+// and explore items (real directories); the directory itself is changed last (the "after" item). A symbolic link inside
+// the tree is skipped completely: chmod on a link would change what it points to, which may be outside the tree.
+CWorker::CItemResult CWorker::ExploreForChmod(const CQueueItem& item)
+{
+    if (item.depth > kMaxExploreDepth)
+        return Failure(Problem::SymlinkLoop, std::wstring());
+    std::vector<CSftpEntry> entries;
+    if (!session_.ListDir(item.remotePath, entries))
+    {
+        if (session_.LastError().kind == SshErrorKind::NotFound)
+            return Done(); // already gone
+        return FromSessionError(Problem::Other);
+    }
+    std::vector<CQueueItem> children;
+    for (const CSftpEntry& entry : entries)
+    {
+        if (!IsValidRemoteEntryName(entry.rawName) || entry.isLink)
+            continue;
+        if (!entry.isDir && !host_.Settings().chmodFiles)
+            continue;
+        CQueueItem child;
+        child.remotePath = AppendRemoteName(item.remotePath, entry.rawName);
+        child.depth = item.depth + 1;
+        child.type = entry.isDir ? ItemType::ExploreRemote : ItemType::SetAttrs;
+        children.push_back(std::move(child));
+    }
+    return ReplaceWithChildren(item, std::move(children), ItemType::SetAttrs, false);
+}
+
 CWorker::CItemResult CWorker::ExploreRemote(const CQueueItem& item)
 {
     if (host_.Settings().direction == TransferDirection::Delete)
         return ExploreForDelete(item);
+    if (host_.Settings().direction == TransferDirection::Chmod)
+        return ExploreForChmod(item);
     if (item.depth > kMaxExploreDepth)
         return Failure(Problem::SymlinkLoop, std::wstring());
     std::wstring localDir;
@@ -1321,6 +1359,26 @@ CWorker::CItemResult CWorker::DeleteRemote(const CQueueItem& item, bool isDir)
     if (RemoveRemote(item.remotePath, isDir))
         return Done();
     return FromSessionError(Problem::DeleteFailed);
+}
+
+// Reads the current mode (a link is followed, like chmod does) and changes it. Nothing is sent when the mode would stay
+// the same, so a tree that is already right causes no writes (and no errors on items we may not change).
+CWorker::CItemResult CWorker::SetAttrs(const CQueueItem& item)
+{
+    CSftpEntry current;
+    if (!session_.Stat(item.remotePath, current))
+    {
+        if (session_.LastError().kind == SshErrorKind::NotFound)
+            return Done(); // already gone
+        return FromSessionError(Problem::ChmodFailed);
+    }
+    const uint32_t oldMode = PermissionBitsOf(current.permissions);
+    const uint32_t newMode = ApplyModeChange(oldMode, host_.Settings().modeChange);
+    if (newMode == oldMode)
+        return Done();
+    if (session_.Chmod(item.remotePath, newMode))
+        return Done();
+    return FromSessionError(Problem::ChmodFailed);
 }
 
 CWorker::CItemResult CWorker::DeleteLocal(const CQueueItem& item, bool isDir)

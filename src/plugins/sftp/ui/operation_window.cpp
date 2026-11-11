@@ -291,6 +291,8 @@ int COperationWindow::KindTitleId() const
     const COperationSettings& settings = op_.Settings();
     if (settings.direction == TransferDirection::Delete)
         return IDS_OP_TITLE_DELETE;
+    if (settings.direction == TransferDirection::Chmod)
+        return IDS_OP_TITLE_CHMOD;
     if (settings.direction == TransferDirection::Download)
         return settings.move ? IDS_OP_TITLE_MOVE_DOWNLOAD : IDS_OP_TITLE_DOWNLOAD;
     return settings.move ? IDS_OP_TITLE_MOVE_UPLOAD : IDS_OP_TITLE_UPLOAD;
@@ -367,8 +369,9 @@ void COperationWindow::UpdateSummary()
         DecideStatus(summary.state, op_.IsPaused(), op_.WasCancelled(), op_.IsFinished());
     const bool over = IsWorkOver(summary.state);
 
-    // a delete has no bytes: the progress is the share of the items found so far that are done
-    const bool deleting = op_.Settings().direction == TransferDirection::Delete;
+    // a delete or chmod has no bytes: the progress is the share of the items found so far that are done
+    const TransferDirection direction = op_.Settings().direction;
+    const bool deleting = direction == TransferDirection::Delete || direction == TransferDirection::Chmod;
     int percent = deleting ? PercentDone(static_cast<uint64_t>(stats.filesDone), static_cast<uint64_t>(stats.filesTotal))
                            : PercentDone(stats.bytesDone, stats.bytesTotal);
     if (status == OperationStatus::Finished)

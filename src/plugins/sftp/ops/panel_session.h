@@ -42,6 +42,7 @@ public:
         Rename,
         Mkdir,
         RemoveFile, // (not "DeleteFile": windows.h defines that name as a macro)
+        Chmod,
         Disconnect
     };
 
@@ -77,6 +78,7 @@ private:
     std::string path_;   // raw bytes
     std::string path2_;  // Rename: the new path (raw bytes)
     bool overwrite_ = false; // Rename
+    uint32_t mode_ = 0;      // Chmod: the permission bits
     CSite site_;         // Connect
     CSecret password_;
     CSecret passphrase_;
@@ -152,6 +154,9 @@ public:
     // Removes one file or one symbolic link (a link is removed itself, never what it points to). A directory gives an
     // error; a missing path gives NotFound.
     std::shared_ptr<CPanelRequest> RemoveFile(const std::string& rawPath);
+    // Sets the permission bits (mode & 07777, the special bits setuid/setgid/sticky included) of one path. Like chmod(1)
+    // it follows a symbolic link. A missing path gives NotFound, a refusal PermissionDenied.
+    std::shared_ptr<CPanelRequest> Chmod(const std::string& rawPath, uint32_t mode);
     // Closes the connection and forgets the site and the secrets (no automatic reconnect until the next Connect).
     std::shared_ptr<CPanelRequest> Disconnect();
 

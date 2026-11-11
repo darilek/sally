@@ -114,3 +114,22 @@
 #define IDC_COPYMOVE_TARGET       1451
 #define IDC_COPYMOVE_POLICY       1452
 #define IDX_COPYMOVE_PRESERVETIME 1453
+
+// Change attributes dialog (IDD_CHMOD): 3x3 grid (owner/group/others x read/write/execute), octal value, symbolic text,
+// recursive options. The nine grid checkboxes have consecutive ids in the order owner r,w,x, group r,w,x, others r,w,x.
+#define IDD_CHMOD                 1013
+#define IDX_CHMOD_FIRST_BIT       1460
+#define IDX_CHMOD_OWNER_R         1460
+#define IDX_CHMOD_OWNER_W         1461
+#define IDX_CHMOD_OWNER_X         1462
+#define IDX_CHMOD_GROUP_R         1463
+#define IDX_CHMOD_GROUP_W         1464
+#define IDX_CHMOD_GROUP_X         1465
+#define IDX_CHMOD_OTHERS_R        1466
+#define IDX_CHMOD_OTHERS_W        1467
+#define IDX_CHMOD_OTHERS_X        1468
+#define IDE_CHMOD_OCTAL           1469
+#define IDC_CHMOD_SYMBOLIC        1470
+#define IDX_CHMOD_RECURSIVE       1471
+#define IDX_CHMOD_FILES           1472
+#define IDX_CHMOD_DIRS            1473

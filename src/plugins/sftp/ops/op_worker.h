@@ -135,12 +135,14 @@ private:
     // items
     CItemResult ExploreRemote(const CQueueItem& item);
     CItemResult ExploreForDelete(const CQueueItem& item);
+    CItemResult ExploreForChmod(const CQueueItem& item);
     CItemResult ExploreLocal(const CQueueItem& item);
     CItemResult Download(const CQueueItem& item);
     CItemResult Upload(const CQueueItem& item);
     CItemResult MakeDirLocal(const CQueueItem& item);
     CItemResult MakeDirRemote(const CQueueItem& item);
     CItemResult DeleteRemote(const CQueueItem& item, bool isDir);
+    CItemResult SetAttrs(const CQueueItem& item);
     CItemResult DeleteLocal(const CQueueItem& item, bool isDir);
     CItemResult ReplaceWithChildren(const CQueueItem& item, std::vector<CQueueItem> children, ItemType afterType,
                                     bool childrenViaLink);

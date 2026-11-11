@@ -150,6 +150,11 @@ public:
     // settings.direction is Delete). source.path is the full raw remote path; the other fields are not used.
     static std::vector<CQueueItem> BuildDeleteRoots(const std::vector<CRemoteSource>& sources,
                                                     const COperationSettings& settings, const CNameCodec& codec);
+    // Chmod: with settings.chmodRecursive a directory becomes ExploreRemote and a file SetAttrs (only when
+    // settings.chmodFiles); without it every source (a link included) becomes SetAttrs. source.path is the full raw
+    // remote path; isDir tells a real directory from a file or link.
+    static std::vector<CQueueItem> BuildChmodRoots(const std::vector<CRemoteSource>& sources,
+                                                   const COperationSettings& settings, const CNameCodec& codec);
     static std::vector<CQueueItem> BuildUploadRoots(const std::vector<CLocalSource>& sources,
                                                     const COperationSettings& settings, const CNameCodec& codec);
 

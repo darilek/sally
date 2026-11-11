@@ -207,6 +207,20 @@ protected:
             settings, Params(), COperation::BuildDeleteRoots(sources, settings, CNameCodec::Auto()));
     }
 
+    // Chmod on the server: the sources are full remote paths. 'recursive' explores directories; files/dirs choose what
+    // gets the change then.
+    std::unique_ptr<COperation> MakeChmod(const std::vector<CRemoteSource>& sources, const CModeChange& change,
+                                          bool recursive, bool files = true, bool dirs = true, int workers = 2)
+    {
+        COperationSettings settings = Settings(TransferDirection::Chmod, false, workers);
+        settings.modeChange = change;
+        settings.chmodRecursive = recursive;
+        settings.chmodFiles = files;
+        settings.chmodDirs = dirs;
+        return std::make_unique<COperation>(
+            settings, Params(), COperation::BuildChmodRoots(sources, settings, CNameCodec::Auto()));
+    }
+
     std::unique_ptr<COperation> MakeUpload(const std::vector<CLocalSource>& sources, const std::string& remoteRoot,
                                            bool move = false, int workers = 2)
     {

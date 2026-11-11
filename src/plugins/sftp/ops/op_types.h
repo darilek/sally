@@ -25,6 +25,7 @@ enum class Problem
     NotFound,         // the source vanished
     DirCreateFailed,
     DeleteFailed,
+    ChmodFailed,
     SymlinkLoop,
     LocalIoError,     // a local file could not be opened, read or written
     DiskFull,

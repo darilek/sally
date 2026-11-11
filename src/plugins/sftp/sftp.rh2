@@ -173,5 +173,13 @@
 #define IDS_OP_STATS_DELETE                258
 #define IDS_WAIT_DELETING                  259
 #define IDS_ERR_DELETE_ITEM                260
+// chmod (fs/fs_chmod.cpp, ui/chmod_dialog.cpp)
+#define IDS_OP_TITLE_CHMOD                 261
+#define IDS_WAIT_CHMOD                     262
+#define IDS_ERR_CHMOD_ITEM                 263
+#define IDS_OP_PROBLEM_CHMOD_FAILED        264
+#define IDS_CHMOD_TITLE_ONE                265
+#define IDS_CHMOD_TITLE_MANY               266
+#define IDS_ERR_CHMOD_OCTAL                267
 
 #endif // __SFTP_RH2

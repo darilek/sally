@@ -211,4 +211,14 @@ STRINGTABLE
  IDS_WAIT_DELETING, "Deleting on the server..."
  // arguments: name, error text
  IDS_ERR_DELETE_ITEM, "The item ""%ls"" could not be deleted: %ls"
+ IDS_OP_TITLE_CHMOD, "SFTP - Change attributes"
+ IDS_WAIT_CHMOD, "Changing the attributes on the server..."
+ // arguments: name, error text
+ IDS_ERR_CHMOD_ITEM, "The attributes of ""%ls"" could not be changed: %ls"
+ IDS_OP_PROBLEM_CHMOD_FAILED, "The attributes could not be changed"
+ // argument: the name of the item
+ IDS_CHMOD_TITLE_ONE, "Change Attributes - %ls"
+ // argument: the number of items
+ IDS_CHMOD_TITLE_MANY, "Change Attributes - %d items"
+ IDS_ERR_CHMOD_OCTAL, "The octal value must have 1 to 4 digits, each from 0 to 7 (for example 755)."
 }

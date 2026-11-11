@@ -226,6 +226,7 @@ void CSiteEditDialog::InitDialog()
             EndDialog(HWindow, IDCANCEL);
             return;
         }
+        ApplyDarkButtons(Page(i)->HWindow);
     }
     LayoutPages();
     SendMessageW(tabs, TCM_SETCURSEL, SiteTabSession, 0);

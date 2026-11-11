@@ -1,6 +1,7 @@
 #include "precomp.h"
 
 #include "copy_move_dialog.h"
+#include "dark_controls.h"
 
 #include <vector>
 
@@ -116,6 +117,7 @@ INT_PTR CCopyMoveDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
             SalamanderGeneral->InstallWordBreakProc(GetDlgItem(HWindow, IDC_COPYMOVE_TARGET));
             SetWindowTextW(HWindow, LangStr(copy_ ? IDS_COPYMOVE_TITLE_COPY : IDS_COPYMOVE_TITLE_MOVE).c_str());
             SetDlgItemTextW(HWindow, IDC_COPYMOVE_SUBJECT, subject_.c_str());
+            ApplyDarkButtons(HWindow);
         }
         if (uMsg == WM_APP_SHOW_TARGET)
         {

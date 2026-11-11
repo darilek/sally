@@ -14,6 +14,8 @@
 #include "site.h"
 #include "site_path.h"
 
+struct CPropertiesInput; // ui/properties_dialog.h
+
 // What went wrong with the last path change; decides what the next ChangePath does (same idea as the FTP plugin).
 enum class FsErrorState
 {
@@ -71,11 +73,16 @@ public:
     virtual void WINAPI AcceptChangeOnPathNotification(const wchar_t* fsName, const wchar_t* path,
                                                        BOOL includingSubdirs);
 
-    // ---- not available yet (the services are not advertised; Salamander does not call these)
+    // ---- information services (fs/fs_info.cpp, fs/fs_properties.cpp)
     virtual void WINAPI GetFSFreeSpace(CQuadWord* retValue);
+    virtual void WINAPI ShowInfoDialog(const wchar_t* fsName, HWND parent);
+    virtual void WINAPI ShowSecurityInfo(HWND parent);
+    virtual void WINAPI ShowProperties(const wchar_t* fsName, HWND parent, int panel, int selectedFiles,
+                                       int selectedDirs);
+
+    // ---- not available yet (the services are not advertised; Salamander does not call these)
     virtual BOOL WINAPI GetNextDirectoryLineHotPath(const wchar_t* text, int pathLen, int& offset) { return FALSE; }
     virtual BOOL WINAPI CompleteDirectoryLineHotPath(CSalamanderStringBuffer* path) { return FALSE; }
-    virtual void WINAPI ShowInfoDialog(const wchar_t* fsName, HWND parent) {}
     virtual BOOL WINAPI ExecuteCommandLine(HWND parent, CSalamanderStringBuffer* command, int& selFrom, int& selTo)
     {
         return FALSE;
@@ -93,15 +100,12 @@ public:
     // ---- Ctrl+F2 (fs/fs_chmod.cpp)
     virtual BOOL WINAPI ChangeAttributes(const wchar_t* fsName, HWND parent, int panel, int selectedFiles,
                                          int selectedDirs);
-    virtual void WINAPI ShowProperties(const wchar_t* fsName, HWND parent, int panel, int selectedFiles,
-                                       int selectedDirs) {}
     virtual void WINAPI ContextMenu(const wchar_t* fsName, HWND parent, int menuX, int menuY, int type, int panel,
                                     int selectedFiles, int selectedDirs) {}
     virtual BOOL WINAPI HandleMenuMsg(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT* plResult) { return FALSE; }
     virtual BOOL WINAPI OpenFindDialog(const wchar_t* fsName, int panel) { return FALSE; }
     virtual void WINAPI OpenActiveFolder(const wchar_t* fsName, HWND parent) {}
     virtual BOOL WINAPI GetNoItemsInPanelText(CSalamanderStringBuffer* textBuf) { return FALSE; }
-    virtual void WINAPI ShowSecurityInfo(HWND parent) {}
 
     // ---- used by CPluginInterfaceForFS (not part of the SDK interface)
 
@@ -243,6 +247,14 @@ private:
     bool StartChmodOperation(const std::vector<CSelectedItem>& items, const CModeChange& change, bool recursive,
                              bool applyToFiles, bool applyToDirs);
 
+    // ---- fs/fs_info.cpp
+    void UpdateSecurityIcon(int panel);
+    void StoreFreeSpace(const CSftpVfs& vfs);
+
+    // ---- fs/fs_properties.cpp
+    void DoShowProperties(HWND parent, int panel, int selectedFiles, int selectedDirs);
+    bool ReadOneItemProperties(HWND parent, const CSelectedItem& item, CPropertiesInput& input);
+
     // ---- fs/fs_namespace.cpp
     bool DoQuickRename(HWND parent, CFileData& file, CSalamanderStringBuffer* newName, BOOL& cancel);
     bool DoCreateDir(HWND parent, CSalamanderStringBuffer* newName, BOOL& cancel);
@@ -287,6 +299,13 @@ private:
     std::string hintRawPath_;
 
     CDownloadOptions downloadOptions_; // set by the Copy/Move dialog, used (once) by mode 3
+
+    // The free space of the file system of the current directory, read together with each listing (see RunList). Main
+    // thread only. GetFSFreeSpace returns it without any network traffic. Not known (freeKnown_ false) until a listing
+    // brought it, and for a server without the statvfs extension.
+    bool freeKnown_ = false;
+    uint64_t freeBytes_ = 0;  // what a normal user can still write
+    uint64_t totalBytes_ = 0;
 
     int busy_ = 0;                   // main thread only: calls that wait and are on the stack
     bool closeRequested_ = false;    // CloseFS/ReleaseObject came during a wait: no new wait, delete when unwound

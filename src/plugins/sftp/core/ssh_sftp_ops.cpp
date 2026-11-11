@@ -69,7 +69,10 @@ void FillEntry(const LIBSSH2_SFTP_ATTRIBUTES& a, CSftpEntry& e)
     if ((a.flags & LIBSSH2_SFTP_ATTR_SIZE) != 0)
         e.size = a.filesize;
     if ((a.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) != 0)
+    {
         e.mtime = static_cast<int64_t>(a.mtime);
+        e.atime = static_cast<int64_t>(a.atime);
+    }
     if ((a.flags & LIBSSH2_SFTP_ATTR_UIDGID) != 0)
     {
         e.owner = std::to_string(a.uid);
@@ -604,6 +607,24 @@ bool CSshSession::Chmod(const std::string& path, uint32_t mode)
     attrs.permissions = mode & 07777;
     int rc = StatRaw(path, LIBSSH2_SFTP_SETSTAT, attrs);
     return rc == 0 || FailSftp("Cannot change the permissions of", path, rc);
+}
+
+bool CSshSession::Statvfs(const std::string& path, CSftpVfs& out)
+{
+    out = CSftpVfs();
+    if (!BeginSftp())
+        return false;
+    LIBSSH2_SFTP_STATVFS st = {};
+    const int rc = Run([&] { return libssh2_sftp_statvfs(sftp_, path.data(), path.size(), &st); }, timeoutMs_);
+    if (rc != 0)
+        return FailSftp("Cannot read the free space of", path, rc); // OP_UNSUPPORTED becomes kind Unsupported
+    out.bytesTotal = st.f_blocks * st.f_frsize;
+    out.bytesFree = st.f_bfree * st.f_frsize;
+    out.bytesAvailableToUser = st.f_bavail * st.f_frsize;
+    out.files = st.f_files;
+    out.filesFree = st.f_ffree;
+    out.readOnly = (st.f_flag & LIBSSH2_SFTP_ST_RDONLY) != 0;
+    return true;
 }
 
 bool CSshSession::SetTimes(const std::string& path, int64_t atime, int64_t mtime)

@@ -133,3 +133,11 @@
 #define IDX_CHMOD_RECURSIVE       1471
 #define IDX_CHMOD_FILES           1472
 #define IDX_CHMOD_DIRS            1473
+
+// Information dialogs: read-only list of "property: value" rows (IDD_FSINFO Ctrl+F1, IDD_FSSECURITY security icon,
+// IDD_FSPROPERTIES Alt+Enter). All three have the same controls: IDC_INFO_LIST, IDB_INFO_COPY and IDCANCEL (Close).
+#define IDD_FSINFO                1014
+#define IDD_FSSECURITY            1015
+#define IDD_FSPROPERTIES          1016
+#define IDC_INFO_LIST             1480
+#define IDB_INFO_COPY             1481

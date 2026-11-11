@@ -60,12 +60,45 @@ struct CSftpEntry
     std::string rawName; // bytes exactly as the server sent them
     uint64_t size = 0;
     int64_t mtime = 0;        // Unix time, seconds
+    int64_t atime = 0;        // Unix time, seconds (0 = not reported)
     uint32_t permissions = 0; // st_mode bits
     std::string owner;        // may be empty (numeric ids or not reported)
     std::string group;
     bool isDir = false;
     bool isLink = false;
     bool linkTargetIsDir = false; // valid when isLink
+};
+
+// File system size of a remote path (the "statvfs@openssh.com" SFTP extension), all in bytes.
+struct CSftpVfs
+{
+    uint64_t bytesTotal = 0;           // f_blocks * f_frsize
+    uint64_t bytesFree = 0;            // f_bfree * f_frsize (free for root too)
+    uint64_t bytesAvailableToUser = 0; // f_bavail * f_frsize (what a normal user can still write)
+    uint64_t files = 0;                // inodes
+    uint64_t filesFree = 0;
+    bool readOnly = false;
+};
+
+// What the server told at connect time. libssh2 gives the identification banner only: it does not expose the SFTP
+// protocol version the server answered (it speaks version 3 at most) nor the list of SFTP extensions.
+struct CSshServerInfo
+{
+    std::string banner;          // e.g. "SSH-2.0-OpenSSH_9.6"; empty when not known
+    int sftpVersionSupported = 0; // highest SFTP version libssh2 speaks (3); the server's own version is not reported
+};
+
+// Algorithms the handshake negotiated; empty text = not connected.
+struct CSshMethods
+{
+    std::string kex;
+    std::string hostKey;
+    std::string cipherClientToServer;
+    std::string cipherServerToClient;
+    std::string macClientToServer;
+    std::string macServerToClient;
+    std::string compressionClientToServer;
+    std::string compressionServerToClient;
 };
 
 // False for a name that cannot be one entry of a directory listing: empty, "." or "..", or containing '/' or NUL.

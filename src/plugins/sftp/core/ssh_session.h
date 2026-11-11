@@ -95,6 +95,10 @@ public:
     // libssh2 carries the times as unsigned long (32 bits on Windows): values outside 0..4294967295 give Unsupported.
     bool SetTimes(const std::string& path, int64_t atime, int64_t mtime);
 
+    // Size and free space of the file system that holds path (libssh2_sftp_statvfs). Kind Unsupported when the server
+    // does not know the "statvfs@openssh.com" extension.
+    bool Statvfs(const std::string& path, CSftpVfs& out);
+
     // ---- Transfers (ssh_transfer.cpp). Progress goes to ISshCallbacks::Progress (at most every 100 ms, plus once at the
     // end); it reports the position in the whole file (done includes the start offset) and returning false cancels
     // (kind Cancelled). Cancel() from another thread also gives Cancelled. On failure or cancel the partial data stays
@@ -138,6 +142,10 @@ public:
     const std::string& HostKeyFingerprint() const { return fingerprint_; } // "SHA256:..."
     // Algorithms negotiated by the handshake, e.g. LIBSSH2_METHOD_KEX; empty when not connected.
     std::string NegotiatedMethod(int methodType) const;
+    // Banner and SFTP version; no network traffic (reads what the handshake stored). Empty when not connected.
+    CSshServerInfo ServerInfo() const;
+    // All negotiated algorithms at once (no network traffic).
+    CSshMethods NegotiatedMethods() const;
 
 private:
     bool Fail(SshErrorKind kind, const std::string& message, int libssh2Code = 0);

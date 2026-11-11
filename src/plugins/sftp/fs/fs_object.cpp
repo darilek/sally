@@ -308,7 +308,7 @@ bool CPluginFSInterface::OpenConnection(const CSftpPath& wanted)
 CPluginFSInterface::CListResult CPluginFSInterface::RunList(const std::string& rawPath)
 {
     CListResult result;
-    std::shared_ptr<CPanelRequest> request = session_->List(rawPath);
+    std::shared_ptr<CPanelRequest> request = session_->List(rawPath, true); // true: also the free space
     const WaitResult waited = WaitForRequest(SalamanderGeneral->GetMsgBoxParent(), *session_, request,
                                              LangStr(IDS_WAIT_LISTING));
     if (waited == WaitResult::Cancelled || request->Cancelled() || !request->IsDone() || closeRequested_)
@@ -321,6 +321,8 @@ CPluginFSInterface::CListResult CPluginFSInterface::RunList(const std::string& r
         result.outcome = ListOutcome::Ok;
         result.entries = request->Entries();
         result.resolvedPath = request->ResolvedPath();
+        if (request->HasVfs())
+            StoreFreeSpace(request->Vfs());
         return result;
     }
     result.error = request->Error();
@@ -778,6 +780,9 @@ CPluginFSInterface::Event(int event, DWORD param)
     CALL_STACK_MESSAGE2("CPluginFSInterface::Event(%d,)", event);
     switch (event)
     {
+    case FSE_PATHCHANGED:
+        UpdateSecurityIcon(static_cast<int>(param));
+        break;
     case FSE_DETACHED:
         detached_ = true;
         break;
@@ -818,7 +823,8 @@ CPluginFSInterface::ReleaseObject(HWND parent)
 DWORD WINAPI
 CPluginFSInterface::GetSupportedServices()
 {
-    return FS_SERVICE_GETCHANGEDRIVEORDISCONNECTITEM | FS_SERVICE_GETFSICON | FS_SERVICE_GETPATHFORMAINWNDTITLE |
+    return FS_SERVICE_GETFREESPACE | FS_SERVICE_SHOWINFO | FS_SERVICE_SHOWSECURITYINFO | FS_SERVICE_SHOWPROPERTIES |
+           FS_SERVICE_GETCHANGEDRIVEORDISCONNECTITEM | FS_SERVICE_GETFSICON | FS_SERVICE_GETPATHFORMAINWNDTITLE |
            FS_SERVICE_COPYFROMFS | FS_SERVICE_MOVEFROMFS | FS_SERVICE_COPYFROMDISKTOFS |
            FS_SERVICE_MOVEFROMDISKTOFS | FS_SERVICE_ACCEPTSCHANGENOTIF |
            FS_SERVICE_QUICKRENAME | FS_SERVICE_CREATEDIR | FS_SERVICE_DELETE | FS_SERVICE_CHANGEATTRS;
@@ -883,11 +889,4 @@ CPluginFSInterface::GetPathForMainWindowTitle(const wchar_t* fsName, int mode, C
     {
         return FALSE;
     }
-}
-
-void WINAPI
-CPluginFSInterface::GetFSFreeSpace(CQuadWord* retValue)
-{
-    if (retValue != NULL)
-        *retValue = CQuadWord(0xFFFFFFFF, 0xFFFFFFFF); // unknown
 }

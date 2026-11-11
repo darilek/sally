@@ -68,10 +68,11 @@ std::shared_ptr<CPanelRequest> CPanelSession::Connect(const CSite& site, CSecret
     return Submit(req);
 }
 
-std::shared_ptr<CPanelRequest> CPanelSession::List(const std::string& rawPath)
+std::shared_ptr<CPanelRequest> CPanelSession::List(const std::string& rawPath, bool withFreeSpace)
 {
     std::shared_ptr<CPanelRequest> req(new CPanelRequest(CPanelRequest::Kind::List));
     req->path_ = rawPath;
+    req->withFreeSpace_ = withFreeSpace;
     return Submit(req);
 }
 
@@ -118,6 +119,33 @@ std::shared_ptr<CPanelRequest> CPanelSession::Chmod(const std::string& rawPath, 
     req->path_ = rawPath;
     req->mode_ = mode & 07777;
     return Submit(req);
+}
+
+std::shared_ptr<CPanelRequest> CPanelSession::Statvfs(const std::string& rawPath)
+{
+    std::shared_ptr<CPanelRequest> req(new CPanelRequest(CPanelRequest::Kind::Statvfs));
+    req->path_ = rawPath;
+    return Submit(req);
+}
+
+std::shared_ptr<CPanelRequest> CPanelSession::LStat(const std::string& rawPath)
+{
+    std::shared_ptr<CPanelRequest> req(new CPanelRequest(CPanelRequest::Kind::LStat));
+    req->path_ = rawPath;
+    return Submit(req);
+}
+
+std::shared_ptr<CPanelRequest> CPanelSession::ReadLink(const std::string& rawPath)
+{
+    std::shared_ptr<CPanelRequest> req(new CPanelRequest(CPanelRequest::Kind::ReadLink));
+    req->path_ = rawPath;
+    return Submit(req);
+}
+
+CPanelSessionInfo CPanelSession::Info() const
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return info_;
 }
 
 CPanelConnectParams CPanelSession::CopyConnectParams() const
@@ -334,6 +362,7 @@ void CPanelSession::ForgetSite()
     passphrase_.clear();
     hostKeyType_.clear();
     hostKeyFingerprint_.clear();
+    info_ = CPanelSessionInfo();
 }
 
 bool CPanelSession::DoConnect(CPanelRequest& req)
@@ -348,6 +377,12 @@ bool CPanelSession::DoConnect(CPanelRequest& req)
         }
     }
     CSshSite site = ToSshSite(site_, password_.Clone(), passphrase_.Clone());
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        info_ = CPanelSessionInfo(); // the old connection's data must not outlive it
+        hostKeyAsked_ = false;
+    }
+    vfsUnsupported_ = false;
     if (session_->Connect(site))
     {
         // A successful connect means the host key was trusted (known_hosts match, AcceptOnce or AcceptAndSave), so the
@@ -355,6 +390,14 @@ bool CPanelSession::DoConnect(CPanelRequest& req)
         std::lock_guard<std::mutex> lock(mutex_);
         hostKeyType_ = session_->HostKeyType();
         hostKeyFingerprint_ = session_->HostKeyFingerprint();
+        info_.valid = true;
+        info_.server = session_->ServerInfo();
+        info_.methods = session_->NegotiatedMethods();
+        info_.hostKeyType = hostKeyType_;
+        info_.hostKeyFingerprint = hostKeyFingerprint_;
+        info_.trust = !hostKeyAsked_ ? HostKeyTrust::Known
+                      : lastHostKeyDecision_ == HostKeyDecision::AcceptAndSave ? HostKeyTrust::AcceptedAndSaved
+                                                                              : HostKeyTrust::AcceptedOnce;
         return true;
     }
     req.error_ = session_->LastError();
@@ -416,6 +459,22 @@ void CPanelSession::Execute(CPanelRequest& req)
         if (EnsureConnected(req) && !session_->Stat(path, req.attributes_))
             req.error_ = session_->LastError();
         break;
+    case CPanelRequest::Kind::LStat:
+        if (EnsureConnected(req) && !session_->LStat(path, req.attributes_))
+            req.error_ = session_->LastError();
+        break;
+    case CPanelRequest::Kind::ReadLink:
+        if (EnsureConnected(req) && !session_->ReadLink(path, req.realPath_))
+            req.error_ = session_->LastError();
+        break;
+    case CPanelRequest::Kind::Statvfs:
+        if (!EnsureConnected(req))
+            break;
+        if (session_->Statvfs(path, req.vfs_))
+            req.hasVfs_ = true;
+        else
+            req.error_ = session_->LastError();
+        break;
     case CPanelRequest::Kind::Rename:
         if (EnsureConnected(req) && !session_->Rename(req.path_, req.path2_, req.overwrite_))
             req.error_ = session_->LastError();
@@ -438,8 +497,22 @@ void CPanelSession::Execute(CPanelRequest& req)
         // resolve first ("", ".", relative paths, links in the path), then list the real directory
         if (!session_->RealPath(path, req.realPath_) || !session_->ListDir(req.realPath_, req.entries_))
             req.error_ = session_->LastError();
+        else if (req.withFreeSpace_ && !vfsUnsupported_)
+            ReadFreeSpaceAfterList(req);
         break;
     }
+}
+
+// Best effort after a successful listing: the list result stays good whatever happens here. A server that does not
+// know the extension is not asked again until the next connect.
+void CPanelSession::ReadFreeSpaceAfterList(CPanelRequest& req)
+{
+    if (session_->Statvfs(req.realPath_, req.vfs_))
+        req.hasVfs_ = true;
+    else if (session_->LastError().kind == SshErrorKind::Unsupported)
+        vfsUnsupported_ = true;
+    else if (!session_->IsConnected())
+        req.error_ = session_->LastError(); // cancel or timeout: the connection is gone, report that
 }
 
 // ---- callbacks (session thread) ------------------------------------------------------------------------------
@@ -477,7 +550,11 @@ HostKeyDecision CPanelSession::VerifyHostKey(const std::string& host, int port, 
     interaction_.fingerprint = fingerprintSha256;
     interaction_.changed = changed;
     interaction_.threadId = std::this_thread::get_id();
-    return WaitForAnswer(lock) ? hostKeyAnswer_ : HostKeyDecision::Reject;
+    const bool answered = WaitForAnswer(lock);
+    const HostKeyDecision decision = answered ? hostKeyAnswer_ : HostKeyDecision::Reject;
+    hostKeyAsked_ = true;
+    lastHostKeyDecision_ = decision;
+    return decision;
 }
 
 bool CPanelSession::Prompt(PromptKind kind, const std::string& name, const std::string& instruction,

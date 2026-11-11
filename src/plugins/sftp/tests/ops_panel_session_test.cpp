@@ -1002,3 +1002,108 @@ TEST_F(PanelSessionTest, MkdirWithoutConnectFails)
     ASSERT_TRUE(make->Wait(10000));
     EXPECT_EQ(make->Error().kind, SshErrorKind::ConnectFailed);
 }
+
+// ---- information requests ----------------------------------------------------------------------------------------
+
+TEST_F(PanelSessionTest, StatvfsRequest)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto request = s.Statvfs("/home/test");
+    ASSERT_TRUE(request->Wait(20000));
+    ASSERT_TRUE(request->Ok()) << request->Error().message;
+    EXPECT_TRUE(request->HasVfs());
+    EXPECT_GT(request->Vfs().bytesTotal, 0u);
+    EXPECT_GT(request->Vfs().bytesAvailableToUser, 0u);
+
+    auto missing = s.Statvfs("/no/such/dir");
+    ASSERT_TRUE(missing->Wait(20000));
+    EXPECT_FALSE(missing->Ok());
+    EXPECT_FALSE(missing->HasVfs());
+}
+
+TEST_F(PanelSessionTest, ListWithFreeSpace)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto with = s.List("fixtures/small", true);
+    ASSERT_TRUE(with->Wait(20000));
+    ASSERT_TRUE(with->Ok()) << with->Error().message;
+    EXPECT_FALSE(with->Entries().empty());
+    EXPECT_TRUE(with->HasVfs());
+    EXPECT_GT(with->Vfs().bytesTotal, 0u);
+
+    auto without = s.List("fixtures/small");
+    ASSERT_TRUE(without->Wait(20000));
+    EXPECT_TRUE(without->Ok());
+    EXPECT_FALSE(without->HasVfs());
+}
+
+TEST_F(PanelSessionTest, LStatAndReadLink)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto lstat = s.LStat("fixtures/filelink");
+    ASSERT_TRUE(lstat->Wait(20000));
+    ASSERT_TRUE(lstat->Ok()) << lstat->Error().message;
+    EXPECT_TRUE(lstat->Attributes().isLink);
+    EXPECT_GT(lstat->Attributes().atime, 0);
+
+    auto target = s.ReadLink("fixtures/filelink");
+    ASSERT_TRUE(target->Wait(20000));
+    ASSERT_TRUE(target->Ok()) << target->Error().message;
+    EXPECT_EQ(target->LinkTarget(), "small/hello.txt");
+
+    auto notLink = s.ReadLink("fixtures/small/hello.txt");
+    ASSERT_TRUE(notLink->Wait(20000));
+    EXPECT_FALSE(notLink->Ok());
+
+    auto missing = s.LStat("fixtures/nothing-here");
+    ASSERT_TRUE(missing->Wait(20000));
+    EXPECT_EQ(missing->Error().kind, SshErrorKind::NotFound);
+}
+
+TEST_F(PanelSessionTest, InfoSnapshotAfterConnect)
+{
+    CPanelSession s(nullptr);
+    EXPECT_FALSE(s.Info().valid);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    const CPanelSessionInfo info = s.Info();
+    ASSERT_TRUE(info.valid);
+    EXPECT_EQ(info.server.banner.substr(0, 4), "SSH-");
+    EXPECT_FALSE(info.methods.kex.empty());
+    EXPECT_FALSE(info.methods.cipherClientToServer.empty());
+    EXPECT_FALSE(info.hostKeyType.empty());
+    EXPECT_EQ(info.hostKeyFingerprint.substr(0, 7), "SHA256:");
+    EXPECT_EQ(info.trust, HostKeyTrust::AcceptedOnce); // the policy accepted an unknown key once
+
+    auto disconnect = s.Disconnect();
+    ASSERT_TRUE(disconnect->Wait(20000));
+    EXPECT_FALSE(s.Info().valid);
+}
+
+TEST_F(PanelSessionTest, InfoTrustSavedThenKnown)
+{
+    const std::string file = TempFileName("kh_info");
+    DeleteFileA(file.c_str());
+    CKnownHosts hosts(file);
+    {
+        CPanelSession s(&hosts);
+        CPolicy policy;
+        policy.hostKey = HostKeyDecision::AcceptAndSave;
+        ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+        EXPECT_EQ(s.Info().trust, HostKeyTrust::AcceptedAndSaved);
+    }
+    {
+        CPanelSession s(&hosts);
+        CPolicy policy;
+        ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+        EXPECT_TRUE(policy.seen.empty()); // matched the saved entry: nobody was asked
+        EXPECT_EQ(s.Info().trust, HostKeyTrust::Known);
+    }
+    DeleteFileA(file.c_str());
+}

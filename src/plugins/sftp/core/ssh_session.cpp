@@ -80,6 +80,32 @@ std::string CSshSession::NegotiatedMethod(int methodType) const
     return m != nullptr ? m : "";
 }
 
+CSshServerInfo CSshSession::ServerInfo() const
+{
+    CSshServerInfo info;
+    if (session_ == nullptr || !connected_)
+        return info;
+    const char* banner = libssh2_session_banner_get(session_);
+    if (banner != nullptr)
+        info.banner = banner;
+    info.sftpVersionSupported = LIBSSH2_SFTP_VERSION;
+    return info;
+}
+
+CSshMethods CSshSession::NegotiatedMethods() const
+{
+    CSshMethods m;
+    m.kex = NegotiatedMethod(LIBSSH2_METHOD_KEX);
+    m.hostKey = NegotiatedMethod(LIBSSH2_METHOD_HOSTKEY);
+    m.cipherClientToServer = NegotiatedMethod(LIBSSH2_METHOD_CRYPT_CS);
+    m.cipherServerToClient = NegotiatedMethod(LIBSSH2_METHOD_CRYPT_SC);
+    m.macClientToServer = NegotiatedMethod(LIBSSH2_METHOD_MAC_CS);
+    m.macServerToClient = NegotiatedMethod(LIBSSH2_METHOD_MAC_SC);
+    m.compressionClientToServer = NegotiatedMethod(LIBSSH2_METHOD_COMP_CS);
+    m.compressionServerToClient = NegotiatedMethod(LIBSSH2_METHOD_COMP_SC);
+    return m;
+}
+
 bool CSshSession::Fail(SshErrorKind kind, const std::string& message, int libssh2Code)
 {
     error_.kind = IsCancelled() ? SshErrorKind::Cancelled : kind;

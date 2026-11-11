@@ -43,6 +43,9 @@ public:
         Mkdir,
         RemoveFile, // (not "DeleteFile": windows.h defines that name as a macro)
         Chmod,
+        Statvfs,
+        LStat,
+        ReadLink,
         Disconnect
     };
 
@@ -67,6 +70,12 @@ public:
     const std::vector<CSftpEntry>& Entries() const { return entries_; }
     const std::string& ResolvedPath() const { return realPath_; }
     const CSftpEntry& Attributes() const { return attributes_; }
+    // Statvfs, and List made with withFreeSpace: the file system size. HasVfs is false when the server cannot tell (the
+    // list itself is still fine).
+    bool HasVfs() const { return hasVfs_; }
+    const CSftpVfs& Vfs() const { return vfs_; }
+    // ReadLink: the link target (raw bytes).
+    const std::string& LinkTarget() const { return realPath_; }
 
 private:
     friend class CPanelSession;
@@ -78,6 +87,7 @@ private:
     std::string path_;   // raw bytes
     std::string path2_;  // Rename: the new path (raw bytes)
     bool overwrite_ = false; // Rename
+    bool withFreeSpace_ = false; // List: also read the free space of the listed directory
     uint32_t mode_ = 0;      // Chmod: the permission bits
     CSite site_;         // Connect
     CSecret password_;
@@ -90,6 +100,8 @@ private:
     std::vector<CSftpEntry> entries_;
     std::string realPath_;
     CSftpEntry attributes_;
+    CSftpVfs vfs_;
+    bool hasVfs_ = false;
 };
 
 // What the session thread is asking the user. Plain data; show a dialog for it and call AnswerHostKey/AnswerPrompt.
@@ -113,6 +125,26 @@ struct CInteraction
     std::string promptText;
     bool echo = false;        // false: ask like a password
     std::thread::id threadId; // thread the callback ran on (diagnostics; tests check it is not the owner thread)
+};
+
+// How the host key of the current connection became trusted.
+enum class HostKeyTrust
+{
+    Known,            // it matched a known_hosts file (the plugin's own or the user's OpenSSH file)
+    AcceptedOnce,     // the user accepted it for this session only
+    AcceptedAndSaved  // the user accepted it and it was saved to the plugin's known_hosts
+};
+
+// What the session learned at connect time, for the info and security dialogs. A copy: safe to keep and to read on any
+// thread, no network traffic.
+struct CPanelSessionInfo
+{
+    bool valid = false; // false: not connected (never, failed, disconnected, closed)
+    CSshServerInfo server;
+    CSshMethods methods;
+    std::string hostKeyType;        // "ssh-ed25519", ...
+    std::string hostKeyFingerprint; // "SHA256:..."
+    HostKeyTrust trust = HostKeyTrust::Known;
 };
 
 // What a worker connection needs to log in like the panel did (see CPanelSession::CopyConnectParams).
@@ -144,7 +176,9 @@ public:
     // and the secrets for automatic reconnects. A failed (not cancelled) connect forgets them again.
     std::shared_ptr<CPanelRequest> Connect(const CSite& site, CSecret password, CSecret passphrase);
     // Raw bytes; "" means the login directory. Result: entries + the resolved real path.
-    std::shared_ptr<CPanelRequest> List(const std::string& rawPath);
+    // withFreeSpace: after the listing the session also asks for the free space of that directory (one more round trip;
+    // a failure there, e.g. a server without the extension, is ignored). The answer is in Vfs()/HasVfs().
+    std::shared_ptr<CPanelRequest> List(const std::string& rawPath, bool withFreeSpace = false);
     std::shared_ptr<CPanelRequest> RealPath(const std::string& rawPath);
     std::shared_ptr<CPanelRequest> Stat(const std::string& rawPath);
     // Renames/moves on the server (same rules as CSshSession::Rename: an existing target gives Exists unless overwrite).
@@ -157,6 +191,11 @@ public:
     // Sets the permission bits (mode & 07777, the special bits setuid/setgid/sticky included) of one path. Like chmod(1)
     // it follows a symbolic link. A missing path gives NotFound, a refusal PermissionDenied.
     std::shared_ptr<CPanelRequest> Chmod(const std::string& rawPath, uint32_t mode);
+    // Size and free space of the file system of one path (kind Unsupported without the server extension).
+    std::shared_ptr<CPanelRequest> Statvfs(const std::string& rawPath);
+    // Attributes of one path without following a final link (Attributes()), and the target of a link (LinkTarget()).
+    std::shared_ptr<CPanelRequest> LStat(const std::string& rawPath);
+    std::shared_ptr<CPanelRequest> ReadLink(const std::string& rawPath);
     // Closes the connection and forgets the site and the secrets (no automatic reconnect until the next Connect).
     std::shared_ptr<CPanelRequest> Disconnect();
 
@@ -174,6 +213,10 @@ public:
     // connections can log in the same way without asking again (the fingerprint is the key they must see). The result
     // is invalid until a Connect succeeded. Safe while a request runs.
     CPanelConnectParams CopyConnectParams() const;
+
+    // Any thread. Banner, negotiated algorithms and host key of the last successful connect (updated by every reconnect);
+    // valid == false before the first connect and after a disconnect. Does not talk to the server.
+    CPanelSessionInfo Info() const;
 
     // See the class comment. Returns at once.
     void Cancel();
@@ -203,6 +246,7 @@ private:
     bool EnsureConnected(CPanelRequest& req);
     bool DoConnect(CPanelRequest& req);
     void ForgetSite();
+    void ReadFreeSpaceAfterList(CPanelRequest& req);
     bool WaitForAnswer(std::unique_lock<std::mutex>& lock); // true: answered, false: aborted
     bool AbortRequested() const;                            // mutex_ held
 
@@ -235,4 +279,8 @@ private:
     bool hasSite_ = false;
     std::string hostKeyType_;        // of the last successful connect
     std::string hostKeyFingerprint_;
+    CPanelSessionInfo info_;
+    bool hostKeyAsked_ = false; // VerifyHostKey ran during the current connect (the key matched no known host)
+    HostKeyDecision lastHostKeyDecision_ = HostKeyDecision::Reject;
+    bool vfsUnsupported_ = false; // session thread only: the server said "no statvfs", not asked again until reconnect
 };

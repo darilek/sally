@@ -591,6 +591,63 @@ TEST_F(OpsTest, OverwriteWithoutExistingTargetIsAPlainRename)
     EXPECT_EQ(Names(dir_), std::vector<std::string>{"b"});
 }
 
+// ---- Information: statvfs, banner, negotiated methods --------------------------------------------------------------
+
+TEST_F(OpsTest, StatvfsOfTheHomeDirectory)
+{
+    CSftpVfs vfs;
+    ASSERT_TRUE(session_->Statvfs("/home/test", vfs)) << session_->LastError().message;
+    EXPECT_GT(vfs.bytesTotal, 0u);
+    EXPECT_GT(vfs.bytesAvailableToUser, 0u);
+    EXPECT_GE(vfs.bytesTotal, vfs.bytesFree);
+    EXPECT_GE(vfs.bytesFree, vfs.bytesAvailableToUser);
+    EXPECT_GT(vfs.files, 0u);
+}
+
+TEST_F(OpsTest, StatvfsOfAMissingPathFailsWithoutBreakingTheSession)
+{
+    CSftpVfs vfs;
+    EXPECT_FALSE(session_->Statvfs("/no/such/path", vfs));
+    EXPECT_NE(session_->LastError().kind, SshErrorKind::None);
+    EXPECT_TRUE(session_->IsConnected());
+    EXPECT_TRUE(session_->Statvfs(dir_, vfs)); // relative to nothing: dir_ is a login-relative path
+}
+
+TEST_F(OpsTest, ServerInfoAndNegotiatedMethods)
+{
+    const CSshServerInfo info = session_->ServerInfo();
+    EXPECT_EQ(info.banner.substr(0, 4), "SSH-");
+    EXPECT_EQ(info.sftpVersionSupported, 3);
+
+    const CSshMethods m = session_->NegotiatedMethods();
+    EXPECT_FALSE(m.kex.empty());
+    EXPECT_FALSE(m.hostKey.empty());
+    EXPECT_FALSE(m.cipherClientToServer.empty());
+    EXPECT_FALSE(m.cipherServerToClient.empty());
+    EXPECT_FALSE(m.compressionClientToServer.empty()); // "none" when compression is off
+    EXPECT_FALSE(session_->HostKeyType().empty());
+    EXPECT_EQ(session_->HostKeyFingerprint().substr(0, 7), "SHA256:");
+}
+
+TEST_F(OpsTest, StatReportsTheAccessTime)
+{
+    ASSERT_TRUE(PutFile(In("a"), "x"));
+    CSftpEntry e;
+    ASSERT_TRUE(session_->LStat(In("a"), e));
+    EXPECT_GT(e.atime, 0);
+    EXPECT_GT(e.mtime, 0);
+}
+
+TEST(SshInfo, NotConnectedGivesEmptyInfo)
+{
+    CNoCallbacks cb;
+    CSshSession session(&cb, nullptr);
+    EXPECT_TRUE(session.ServerInfo().banner.empty());
+    EXPECT_TRUE(session.NegotiatedMethods().kex.empty());
+    CSftpVfs vfs;
+    EXPECT_FALSE(session.Statvfs("/", vfs));
+}
+
 // ---- Entry name validation ---------------------------------------------------------------------------------------
 
 TEST(RemoteEntryName, Validator)

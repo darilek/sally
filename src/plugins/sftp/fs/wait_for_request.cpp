@@ -88,8 +88,11 @@ public:
     CSafeWaitWindow(const std::wstring& text, HWND parent)
     {
         const std::wstring caption = LangStr(IDS_PLUGINNAME);
+        // The wait window shows itself only while this exact window is the foreground one. Sally often hands us the
+        // panel window (a child window, never the foreground window), so use the top-level window above it.
+        const HWND foreground = parent != NULL ? GetAncestor(parent, GA_ROOT) : NULL;
         SalamanderGeneral->CreateSafeWaitWindow(text.c_str(), caption.c_str(), static_cast<int>(WaitWindowDelayMs),
-                                                TRUE, parent);
+                                                TRUE, foreground != NULL ? foreground : parent);
     }
     ~CSafeWaitWindow() { SalamanderGeneral->DestroySafeWaitWindow(); }
     CSafeWaitWindow(const CSafeWaitWindow&) = delete;
@@ -165,7 +168,7 @@ bool CancelRequested(CSafeWaitWindow& waitWindow, bool escArmed)
 }
 
 WaitResult WaitImpl(HWND parent, CPanelSession& session, const std::shared_ptr<CPanelRequest>& request,
-                    const std::wstring& text)
+                    const std::wstring& text, const std::function<std::wstring()>& textNow)
 {
     CParentDisabler disabler(parent);
     CWaitCursor cursor;
@@ -176,6 +179,7 @@ WaitResult WaitImpl(HWND parent, CPanelSession& session, const std::shared_ptr<C
     bool cancelled = false;
     bool escArmed = (GetAsyncKeyState(VK_ESCAPE) & 0x8000) == 0;
     DWORD cancelTick = 0;
+    std::wstring shownText = text;
 
     GetAsyncKeyState(VK_ESCAPE); // clear the "pressed since the last call" bit, see the Win32 help
     for (;;)
@@ -205,6 +209,15 @@ WaitResult WaitImpl(HWND parent, CPanelSession& session, const std::shared_ptr<C
             Sleep(SliceMs); // never spin
         }
         cursor.Refresh();
+        if (textNow && !cancelled)
+        {
+            const std::wstring now = textNow();
+            if (now != shownText)
+            {
+                shownText = now;
+                SalamanderGeneral->SetSafeWaitWindowText(shownText.c_str());
+            }
+        }
         if (!escArmed && (GetAsyncKeyState(VK_ESCAPE) & 0x8000) == 0)
             escArmed = true;
 
@@ -233,7 +246,7 @@ bool IsWaiting()
 }
 
 WaitResult WaitForRequest(HWND parent, CPanelSession& session, const std::shared_ptr<CPanelRequest>& request,
-                          const std::wstring& text)
+                          const std::wstring& text, const std::function<std::wstring()>& textNow)
 {
     CALL_STACK_MESSAGE1("WaitForRequest()");
     if (request->IsDone())
@@ -249,7 +262,7 @@ WaitResult WaitForRequest(HWND parent, CPanelSession& session, const std::shared
     WaitResult result = WaitResult::Cancelled;
     try
     {
-        result = WaitImpl(parent, session, request, text);
+        result = WaitImpl(parent, session, request, text, textNow);
     }
     catch (...)
     {

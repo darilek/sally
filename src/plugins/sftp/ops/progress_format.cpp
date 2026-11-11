@@ -88,3 +88,15 @@ OperationStatus DecideStatus(OperationState state, bool paused, bool cancelReque
     }
     return OperationStatus::Running;
 }
+
+std::wstring FormatTextBar(uint64_t done, uint64_t total, int cells)
+{
+    if (cells < 1)
+        cells = 1;
+    // the filled cells follow the percentage (integer math, no overflow for big sizes)
+    const int filled = PercentDone(done, total) * cells / 100;
+    // U+25B0 filled slanted bar (done) and U+25B1 outlined one (rest): a clear difference but still thin; written as
+    // escapes so the file stays plain ASCII
+    return std::wstring(static_cast<size_t>(filled), L'\x25B0') +
+           std::wstring(static_cast<size_t>(cells - filled), L'\x25B1');
+}

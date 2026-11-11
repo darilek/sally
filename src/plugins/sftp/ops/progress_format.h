@@ -17,6 +17,9 @@ std::wstring FormatDuration(int64_t seconds);
 std::wstring FormatEta(int64_t etaSeconds);
 // 0..100. total == 0 gives 0; done >= total gives 100.
 int PercentDone(uint64_t done, uint64_t total);
+// A thin text progress bar of 'cells' characters for places that can only show text (Sally's wait window):
+// filled part U+25B0 (filled bar), rest U+25B1 (outlined bar). total == 0 gives an empty bar; done >= total a full one.
+std::wstring FormatTextBar(uint64_t done, uint64_t total, int cells);
 
 // What the window says about the operation in one line.
 enum class OperationStatus

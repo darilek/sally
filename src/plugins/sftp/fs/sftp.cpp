@@ -40,7 +40,7 @@ public:
 
     virtual void WINAPI Event(int event, DWORD param) {}
     virtual void WINAPI ClearHistory(HWND parent) {}
-    virtual void WINAPI AcceptChangeOnPathNotification(const wchar_t* path, BOOL includingSubdirs) {}
+    virtual void WINAPI AcceptChangeOnPathNotification(const wchar_t* path, BOOL includingSubdirs);
 
     virtual void WINAPI PasswordManagerEvent(HWND parent, int event);
 };
@@ -280,9 +280,34 @@ CPluginInterface::Release(HWND parent, BOOL force)
         TRACE_E("Release: unexpected exception while closing the sessions.");
     }
     SetOpTraceSink(nullptr); // every worker thread is gone
+    // the F3 copies in Sally's disk cache are of no use without the plugin (the SDK asks for this call)
+    SalamanderGeneral->RemoveFilesFromCache((AssignedFSName + L":").c_str());
     SshGlobalExit();
     ReleaseWinLib(DLLInstance);
     return TRUE;
+}
+
+// Something changed on 'path' anywhere in Sally (also by this plugin's own operations: they post
+// PostChangeOnPathNotification for the folders they change). The F3 copies in the disk cache of every sftp: file are
+// dropped. That is more than the changed folder needs, but simple and always correct: a viewed file is downloaded again
+// on the next F3. (The cache name also holds size and time, so this is a second safety net, not the only one.)
+// Called on the main thread. The call is made for every path of every plugin, so other file systems are ignored.
+void WINAPI
+CPluginInterface::AcceptChangeOnPathNotification(const wchar_t* path, BOOL includingSubdirs)
+{
+    CALL_STACK_MESSAGE2("CPluginInterface::AcceptChangeOnPathNotification(, %d)", includingSubdirs);
+    try
+    {
+        const size_t nameLength = AssignedFSName.size();
+        if (path == NULL || wcslen(path) <= nameLength || path[nameLength] != L':' ||
+            SalamanderGeneral->StrNICmp(path, AssignedFSName.c_str(), static_cast<int>(nameLength)) != 0)
+            return;
+        SalamanderGeneral->RemoveFilesFromCache((AssignedFSName + L":").c_str());
+    }
+    catch (...)
+    {
+        TRACE_E("AcceptChangeOnPathNotification: unexpected exception.");
+    }
 }
 
 // A listing is gone from the panel: release its data interface (created in ListCurrentPath).

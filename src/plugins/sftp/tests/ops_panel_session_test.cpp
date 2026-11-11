@@ -1107,3 +1107,151 @@ TEST_F(PanelSessionTest, InfoTrustSavedThenKnown)
     }
     DeleteFileA(file.c_str());
 }
+
+// ---- DownloadToFile -------------------------------------------------------------------------------------------------
+
+namespace
+{
+std::wstring TempLocalPath(const char* tag)
+{
+    const std::string narrow = TempFileName(tag);
+    return std::wstring(narrow.begin(), narrow.end());
+}
+
+bool FileExistsW(const std::wstring& path)
+{
+    return GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES;
+}
+
+std::string ReadWholeFile(const std::wstring& path)
+{
+    std::ifstream in(path, std::ios::binary);
+    return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+}
+
+int64_t UnixMtimeOf(const std::wstring& path)
+{
+    WIN32_FILE_ATTRIBUTE_DATA data;
+    if (!GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &data))
+        return -1;
+    ULARGE_INTEGER t;
+    t.LowPart = data.ftLastWriteTime.dwLowDateTime;
+    t.HighPart = data.ftLastWriteTime.dwHighDateTime;
+    return static_cast<int64_t>(t.QuadPart / 10000000ull) - 11644473600ll;
+}
+} // namespace
+
+TEST_F(PanelSessionTest, DownloadToFileWritesTheFileWithTheServerTime)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    const std::wstring local = TempLocalPath("dl_hello");
+    DeleteFileW(local.c_str());
+
+    auto req = s.DownloadToFile("fixtures/small/hello.txt", local, 1700000000);
+    ASSERT_TRUE(Pump(s, *req, policy));
+    ASSERT_TRUE(req->Ok()) << req->Error().message;
+    EXPECT_EQ(req->GetKind(), CPanelRequest::Kind::DownloadToFile);
+    EXPECT_EQ(ReadWholeFile(local), "hello\n");
+    EXPECT_EQ(req->BytesDone(), 6u);
+    EXPECT_EQ(UnixMtimeOf(local), 1700000000);
+    EXPECT_FALSE(FileExistsW(local + L".part"));
+    DeleteFileW(local.c_str());
+}
+
+TEST_F(PanelSessionTest, DownloadToFileOfOneMebibyteMatchesTheServer)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    const std::wstring local = TempLocalPath("dl_1m");
+    DeleteFileW(local.c_str());
+
+    auto req = s.DownloadToFile("fixtures/small/random1m.bin", local, 0);
+    ASSERT_TRUE(Pump(s, *req, policy));
+    ASSERT_TRUE(req->Ok()) << req->Error().message;
+    EXPECT_EQ(req->BytesDone(), 1048576u);
+    EXPECT_EQ(req->BytesTotal(), 1048576u);
+    EXPECT_EQ(ReadWholeFile(local).size(), 1048576u);
+
+    // the same bytes as a plain Download of the core
+    CSshSite site;
+    site.host = sftptest::kHost;
+    site.port = sftptest::kPort;
+    site.user = sftptest::kUser;
+    site.password.assign(sftptest::kPassword);
+    site.timeoutSeconds = 20;
+    site.nameCodec = CNameCodec::Auto();
+    struct CQuiet : ISshCallbacks
+    {
+        HostKeyDecision VerifyHostKey(const std::string&, int, const std::string&, const std::string&, bool) override
+        {
+            return HostKeyDecision::AcceptOnce;
+        }
+        bool Prompt(PromptKind, const std::string&, const std::string&, const std::string&, bool, CSecret&) override
+        {
+            return false;
+        }
+        bool Progress(uint64_t, uint64_t) override { return true; }
+    } quiet;
+    CSshSession direct(&quiet, nullptr);
+    ASSERT_TRUE(direct.Connect(site));
+    const std::wstring reference = TempLocalPath("dl_1m_ref");
+    HANDLE h = CreateFileW(reference.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    ASSERT_NE(h, INVALID_HANDLE_VALUE);
+    const bool got = direct.Download("fixtures/small/random1m.bin", h, 0, nullptr, nullptr);
+    CloseHandle(h);
+    ASSERT_TRUE(got);
+    EXPECT_TRUE(ReadWholeFile(local) == ReadWholeFile(reference));
+    DeleteFileW(local.c_str());
+    DeleteFileW(reference.c_str());
+}
+
+TEST_F(PanelSessionTest, DownloadToFileOfAMissingFileFailsAndLeavesNothing)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    const std::wstring local = TempLocalPath("dl_missing");
+    DeleteFileW(local.c_str());
+
+    auto req = s.DownloadToFile("fixtures/small/no-such-file", local, 0);
+    ASSERT_TRUE(Pump(s, *req, policy));
+    EXPECT_FALSE(req->Ok());
+    EXPECT_EQ(req->Error().kind, SshErrorKind::NotFound);
+    EXPECT_FALSE(FileExistsW(local));
+    EXPECT_FALSE(FileExistsW(local + L".part"));
+}
+
+TEST_F(PanelSessionTest, DownloadToFileIntoAMissingFolderIsAnIoError)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto req = s.DownloadToFile("fixtures/small/hello.txt", L"C:\\no-such-folder-sally\\x.txt", 0);
+    ASSERT_TRUE(Pump(s, *req, policy));
+    EXPECT_EQ(req->Error().kind, SshErrorKind::Io);
+}
+
+TEST_F(PanelSessionTest, CancelledDownloadToFileLeavesNoFileAndTheSessionRecovers)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    const std::wstring local = TempLocalPath("dl_cancel");
+    DeleteFileW(local.c_str());
+    DeleteFileW((local + L".part").c_str());
+
+    auto req = s.DownloadToFile("fixtures/sparse5g.bin", local, 0); // 5 GB: cannot finish in the 300 ms
+    ASSERT_FALSE(req->Wait(300));
+    s.Cancel();
+    ASSERT_TRUE(req->Wait(5000));
+    EXPECT_EQ(req->Error().kind, SshErrorKind::Cancelled);
+    EXPECT_FALSE(FileExistsW(local));
+    EXPECT_FALSE(FileExistsW(local + L".part"));
+
+    auto next = s.Stat("fixtures/small/hello.txt"); // reconnects (the host key is asked again)
+    ASSERT_TRUE(Pump(s, *next, policy, 60000));
+    EXPECT_TRUE(next->Ok()) << next->Error().message;
+}

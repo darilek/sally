@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -24,8 +25,10 @@ enum class WaitResult
 //  - a host key / password question from the session thread is shown through HandleInteraction (the wait window is
 //    hidden meanwhile).
 // 'text' is shown in the wait window. Everything is restored on every exit path. Never throws.
+// 'textNow' (optional) is called about ten times a second on the main thread and returns the current text of the wait
+// window (e.g. with a percentage); the window is changed only when the text differs from the last one.
 // Not reentrant: IsWaiting() tells whether a wait is already running (a second one must not be started).
 WaitResult WaitForRequest(HWND parent, CPanelSession& session, const std::shared_ptr<CPanelRequest>& request,
-                          const std::wstring& text);
+                          const std::wstring& text, const std::function<std::wstring()>& textNow = nullptr);
 
 bool IsWaiting();

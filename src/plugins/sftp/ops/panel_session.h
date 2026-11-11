@@ -17,6 +17,7 @@
 #include <winsock2.h>
 #include <windows.h>
 
+#include <atomic>
 #include <condition_variable>
 #include <deque>
 #include <memory>
@@ -46,6 +47,7 @@ public:
         Statvfs,
         LStat,
         ReadLink,
+        DownloadToFile,
         Disconnect
     };
 
@@ -76,6 +78,10 @@ public:
     const CSftpVfs& Vfs() const { return vfs_; }
     // ReadLink: the link target (raw bytes).
     const std::string& LinkTarget() const { return realPath_; }
+    // DownloadToFile, readable from any thread while it runs: bytes written so far and the size of the remote file
+    // (0 until the server told it).
+    uint64_t BytesDone() const { return bytesDone_.load(); }
+    uint64_t BytesTotal() const { return bytesTotal_.load(); }
 
 private:
     friend class CPanelSession;
@@ -89,6 +95,8 @@ private:
     bool overwrite_ = false; // Rename
     bool withFreeSpace_ = false; // List: also read the free space of the listed directory
     uint32_t mode_ = 0;      // Chmod: the permission bits
+    std::wstring localPath_; // DownloadToFile: the target file
+    int64_t mtime_ = 0;      // DownloadToFile: Unix seconds to give the file, 0 = leave it
     CSite site_;         // Connect
     CSecret password_;
     CSecret passphrase_;
@@ -102,6 +110,8 @@ private:
     CSftpEntry attributes_;
     CSftpVfs vfs_;
     bool hasVfs_ = false;
+    std::atomic<uint64_t> bytesDone_{0}; // DownloadToFile progress, written by the session thread
+    std::atomic<uint64_t> bytesTotal_{0};
 };
 
 // What the session thread is asking the user. Plain data; show a dialog for it and call AnswerHostKey/AnswerPrompt.
@@ -196,6 +206,12 @@ public:
     // Attributes of one path without following a final link (Attributes()), and the target of a link (LinkTarget()).
     std::shared_ptr<CPanelRequest> LStat(const std::string& rawPath);
     std::shared_ptr<CPanelRequest> ReadLink(const std::string& rawPath);
+    // Copies one remote file (a link is followed) to the local file 'localPath' (for F3 view). The data goes to
+    // "<localPath>.part" first and is renamed to 'localPath' only after the last byte, so an incomplete file never has the
+    // final name; on any failure or cancel the ".part" file is deleted again and 'localPath' is not touched. mtime > 0:
+    // the finished file gets that modification time (Unix seconds). Progress: BytesDone()/BytesTotal(). A local error
+    // gives kind Io.
+    std::shared_ptr<CPanelRequest> DownloadToFile(const std::string& rawPath, const std::wstring& localPath, int64_t mtime);
     // Closes the connection and forgets the site and the secrets (no automatic reconnect until the next Connect).
     std::shared_ptr<CPanelRequest> Disconnect();
 
@@ -234,7 +250,7 @@ private:
                                   const std::string& fingerprintSha256, bool changed) override;
     bool Prompt(PromptKind kind, const std::string& name, const std::string& instruction, const std::string& promptText,
                 bool echo, CSecret& answer) override;
-    bool Progress(uint64_t, uint64_t) override { return true; }
+    bool Progress(uint64_t done, uint64_t total) override;
 
     std::shared_ptr<CPanelRequest> Submit(std::shared_ptr<CPanelRequest> req);
     static void Finish(CPanelRequest& req, SshErrorKind kind, const std::string& message) noexcept;
@@ -247,6 +263,7 @@ private:
     bool DoConnect(CPanelRequest& req);
     void ForgetSite();
     void ReadFreeSpaceAfterList(CPanelRequest& req);
+    void DownloadFile(CPanelRequest& req);
     bool WaitForAnswer(std::unique_lock<std::mutex>& lock); // true: answered, false: aborted
     bool AbortRequested() const;                            // mutex_ held
 
@@ -282,5 +299,6 @@ private:
     CPanelSessionInfo info_;
     bool hostKeyAsked_ = false; // VerifyHostKey ran during the current connect (the key matched no known host)
     HostKeyDecision lastHostKeyDecision_ = HostKeyDecision::Reject;
+    CPanelRequest* downloading_ = nullptr; // session thread only: the DownloadToFile request whose progress is reported
     bool vfsUnsupported_ = false; // session thread only: the server said "no statvfs", not asked again until reconnect
 };

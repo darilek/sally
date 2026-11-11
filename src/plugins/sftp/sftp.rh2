@@ -237,4 +237,10 @@
 #define IDS_PROP_LINKS                     319
 #define IDS_ERR_PROPERTIES                 320
 
+// F3 view (fs/fs_view.cpp)
+#define IDS_WAIT_VIEWING                   321
+#define IDS_WAIT_VIEWING_PROGRESS          322
+#define IDS_ERR_VIEW                       323
+#define IDS_WAIT_ESC_HINT                  324
+
 #endif // __SFTP_RH2

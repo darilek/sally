@@ -69,3 +69,16 @@ TEST(ProgressFormat, WorkOver)
     EXPECT_TRUE(IsWorkOver(OperationState::Finished));
     EXPECT_TRUE(IsWorkOver(OperationState::NeedsUser));
 }
+
+TEST(ProgressFormat, TextBar)
+{
+    const std::wstring full(4, L'\x25B0');  // filled bar = done
+    const std::wstring empty(4, L'\x25B1'); // outlined bar = rest
+    EXPECT_EQ(FormatTextBar(0, 100, 4), empty);
+    EXPECT_EQ(FormatTextBar(50, 100, 4), std::wstring(2, L'\x25B0') + std::wstring(2, L'\x25B1'));
+    EXPECT_EQ(FormatTextBar(100, 100, 4), full);
+    EXPECT_EQ(FormatTextBar(500, 100, 4), full); // more than the total
+    EXPECT_EQ(FormatTextBar(5, 0, 4), empty);    // unknown total
+    EXPECT_EQ(FormatTextBar(1, 100, 0).size(), 1u);              // at least one cell
+    EXPECT_EQ(FormatTextBar(UINT64_MAX / 2, UINT64_MAX, 10).size(), 10u); // no overflow
+}

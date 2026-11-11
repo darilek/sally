@@ -4,6 +4,8 @@
 #include <exception>
 #include <new>
 
+#include "listing_format.h"
+#include "local_name.h"
 #include "ssh_init.h"
 
 CPanelRequest::CPanelRequest(Kind kind) : kind_(kind), done_(CreateEventW(nullptr, TRUE, FALSE, nullptr))
@@ -139,6 +141,16 @@ std::shared_ptr<CPanelRequest> CPanelSession::ReadLink(const std::string& rawPat
 {
     std::shared_ptr<CPanelRequest> req(new CPanelRequest(CPanelRequest::Kind::ReadLink));
     req->path_ = rawPath;
+    return Submit(req);
+}
+
+std::shared_ptr<CPanelRequest> CPanelSession::DownloadToFile(const std::string& rawPath, const std::wstring& localPath,
+                                                             int64_t mtime)
+{
+    std::shared_ptr<CPanelRequest> req(new CPanelRequest(CPanelRequest::Kind::DownloadToFile));
+    req->path_ = rawPath;
+    req->localPath_ = localPath;
+    req->mtime_ = mtime;
     return Submit(req);
 }
 
@@ -491,6 +503,9 @@ void CPanelSession::Execute(CPanelRequest& req)
         if (EnsureConnected(req) && !session_->Chmod(req.path_, req.mode_))
             req.error_ = session_->LastError();
         break;
+    case CPanelRequest::Kind::DownloadToFile:
+        DownloadFile(req);
+        break;
     case CPanelRequest::Kind::List:
         if (!EnsureConnected(req))
             break;
@@ -501,6 +516,92 @@ void CPanelSession::Execute(CPanelRequest& req)
             ReadFreeSpaceAfterList(req);
         break;
     }
+}
+
+namespace
+{
+// The "<name>.part" file of a download: closed and deleted when it goes out of scope unless Commit() renamed it, so
+// every exit path (error, cancel, exception) leaves nothing behind. (Like a C# using block with a delete in Dispose.)
+class CPartialFile
+{
+public:
+    explicit CPartialFile(const std::wstring& path)
+        : path_(ExtendedLocalPath(path)),
+          handle_(CreateFileW(path_.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS,
+                              FILE_ATTRIBUTE_NORMAL, nullptr))
+    {
+    }
+    ~CPartialFile()
+    {
+        Close();
+        if (!committed_ && handle_ != INVALID_HANDLE_VALUE)
+            DeleteFileW(path_.c_str());
+    }
+    CPartialFile(const CPartialFile&) = delete;
+    CPartialFile& operator=(const CPartialFile&) = delete;
+
+    bool IsOpen() const { return handle_ != INVALID_HANDLE_VALUE && !closed_; }
+    HANDLE Handle() const { return handle_; }
+    void Close()
+    {
+        if (IsOpen())
+            CloseHandle(handle_);
+        closed_ = true;
+    }
+    // Gives the closed file its final name.
+    bool Commit(const std::wstring& finalPath)
+    {
+        Close();
+        committed_ = MoveFileExW(path_.c_str(), ExtendedLocalPath(finalPath).c_str(), MOVEFILE_REPLACE_EXISTING) != FALSE;
+        return committed_;
+    }
+
+private:
+    std::wstring path_;
+    HANDLE handle_;
+    bool closed_ = false;
+    bool committed_ = false;
+};
+} // namespace
+
+// DownloadToFile on the session thread. The remote file is read into "<target>.part"; see CPartialFile.
+void CPanelSession::DownloadFile(CPanelRequest& req)
+{
+    if (!EnsureConnected(req))
+        return;
+    CPartialFile partial(req.localPath_ + L".part");
+    if (!partial.IsOpen())
+    {
+        SetError(req, SshErrorKind::Io, "The local file could not be created (Win32 error " + std::to_string(GetLastError()) + ")");
+        return;
+    }
+    downloading_ = &req;
+    uint64_t total = 0;
+    const bool ok = session_->Download(req.path_, partial.Handle(), 0, nullptr, &total);
+    downloading_ = nullptr;
+    if (!ok)
+    {
+        req.error_ = session_->LastError();
+        return;
+    }
+    if (req.mtime_ > 0)
+    {
+        const FILETIME time = UnixTimeToFileTime(req.mtime_);
+        SetFileTime(partial.Handle(), nullptr, nullptr, &time); // best effort: a good copy with another time is fine
+    }
+    if (!partial.Commit(req.localPath_))
+        SetError(req, SshErrorKind::Io, "The local file could not be renamed (Win32 error " + std::to_string(GetLastError()) + ")");
+}
+
+// Called by the core on the session thread during a transfer.
+bool CPanelSession::Progress(uint64_t done, uint64_t total)
+{
+    if (downloading_ != nullptr)
+    {
+        downloading_->bytesDone_ = done;
+        downloading_->bytesTotal_ = total;
+    }
+    return true;
 }
 
 // Best effort after a successful listing: the list result stays good whatever happens here. A server that does not

@@ -92,8 +92,9 @@ public:
                                     CSalamanderStringBuffer* newName, BOOL& cancel);
     virtual BOOL WINAPI CreateDir(const wchar_t* fsName, int mode, HWND parent, CSalamanderStringBuffer* newName,
                                   BOOL& cancel);
+    // ---- F3 (fs/fs_view.cpp)
     virtual void WINAPI ViewFile(const wchar_t* fsName, HWND parent, CSalamanderForViewFileOnFSAbstract* salamander,
-                                 CFileData& file) {}
+                                 CFileData& file);
     // ---- F8 (fs/fs_delete.cpp)
     virtual BOOL WINAPI Delete(const wchar_t* fsName, int mode, HWND parent, int panel, int selectedFiles,
                                int selectedDirs, BOOL& cancelOrError);
@@ -246,6 +247,11 @@ private:
     bool ChmodOneOnSession(HWND parent, const CSelectedItem& item, const CModeChange& change);
     bool StartChmodOperation(const std::vector<CSelectedItem>& items, const CModeChange& change, bool recursive,
                              bool applyToFiles, bool applyToDirs);
+
+    // ---- fs/fs_view.cpp
+    void DoViewFile(HWND parent, CSalamanderForViewFileOnFSAbstract* salamander, CFileData& file);
+    bool DownloadCopy(HWND parent, const std::string& remotePath, const wchar_t* copyPath, const std::wstring& displayName,
+                      int64_t mtime, CQuadWord& size);
 
     // ---- fs/fs_info.cpp
     void UpdateSecurityIcon(int panel);

@@ -282,4 +282,12 @@ STRINGTABLE
  IDS_PROP_LINKS, "Symbolic links among them"
  // arguments: name, error text
  IDS_ERR_PROPERTIES, "The properties of ""%ls"" could not be read: %ls"
+ // argument: file name
+ IDS_WAIT_VIEWING, "Downloading %ls ..."
+ // arguments: file name, bytes done, total size (the last two are formatted sizes like "1.5 MB")
+ IDS_WAIT_VIEWING_PROGRESS, "Downloading %ls ... %ls of %ls"
+ // arguments: file name, error text
+ IDS_ERR_VIEW, "The file ""%ls"" could not be downloaded for viewing: %ls"
+ // hint appended to the text of a wait window that ESC can cancel (the Esc key name stays "ESC" in every language)
+ IDS_WAIT_ESC_HINT, "(Press ESC to cancel)"
 }

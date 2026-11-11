@@ -48,6 +48,7 @@ public:
         LStat,
         ReadLink,
         DownloadToFile,
+        Exec,
         Disconnect
     };
 
@@ -82,6 +83,13 @@ public:
     // (0 until the server told it).
     uint64_t BytesDone() const { return bytesDone_.load(); }
     uint64_t BytesTotal() const { return bytesTotal_.load(); }
+    // Exec: the command's output (stdout and stderr in arrival order, raw bytes, cut at the output limit), its exit
+    // status, the signal that ended it ("" = none) and whether the output was cut. A command that ran and failed is an
+    // Ok() request: look at ExitStatus().
+    const std::string& Output() const { return exec_.output; }
+    int ExitStatus() const { return exec_.exitStatus; }
+    const std::string& ExitSignal() const { return exec_.exitSignal; }
+    bool OutputTruncated() const { return exec_.truncated; }
 
 private:
     friend class CPanelSession;
@@ -96,6 +104,8 @@ private:
     bool withFreeSpace_ = false; // List: also read the free space of the listed directory
     uint32_t mode_ = 0;      // Chmod: the permission bits
     std::wstring localPath_; // DownloadToFile: the target file
+    std::string command_;    // Exec: the shell text
+    CExecOptions execOptions_; // Exec
     int64_t mtime_ = 0;      // DownloadToFile: Unix seconds to give the file, 0 = leave it
     CSite site_;         // Connect
     CSecret password_;
@@ -110,6 +120,7 @@ private:
     CSftpEntry attributes_;
     CSftpVfs vfs_;
     bool hasVfs_ = false;
+    CExecResult exec_;
     std::atomic<uint64_t> bytesDone_{0}; // DownloadToFile progress, written by the session thread
     std::atomic<uint64_t> bytesTotal_{0};
 };
@@ -212,6 +223,10 @@ public:
     // the finished file gets that modification time (Unix seconds). Progress: BytesDone()/BytesTotal(). A local error
     // gives kind Io.
     std::shared_ptr<CPanelRequest> DownloadToFile(const std::string& rawPath, const std::wstring& localPath, int64_t mtime);
+    // Runs a shell command on the server and waits for it on the session thread (the owner waits for the request as for
+    // any other; Cancel() ends a command that runs too long and the next request reconnects). See CSshSession::Exec for
+    // the options and the error kinds; the default waits for the command without an idle timeout and keeps 1 MiB of output.
+    std::shared_ptr<CPanelRequest> Exec(const std::string& command, const CExecOptions& options = CExecOptions());
     // Closes the connection and forgets the site and the secrets (no automatic reconnect until the next Connect).
     std::shared_ptr<CPanelRequest> Disconnect();
 

@@ -154,6 +154,14 @@ std::shared_ptr<CPanelRequest> CPanelSession::DownloadToFile(const std::string& 
     return Submit(req);
 }
 
+std::shared_ptr<CPanelRequest> CPanelSession::Exec(const std::string& command, const CExecOptions& options)
+{
+    std::shared_ptr<CPanelRequest> req(new CPanelRequest(CPanelRequest::Kind::Exec));
+    req->command_ = command;
+    req->execOptions_ = options;
+    return Submit(req);
+}
+
 CPanelSessionInfo CPanelSession::Info() const
 {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -341,6 +349,7 @@ void CPanelSession::ThreadMain()
             }
             SetError(*req, SshErrorKind::Cancelled, "Cancelled");
             req->entries_.clear();
+            req->exec_ = CExecResult();
         }
         SetEvent(req->done_);
     }
@@ -505,6 +514,10 @@ void CPanelSession::Execute(CPanelRequest& req)
         break;
     case CPanelRequest::Kind::DownloadToFile:
         DownloadFile(req);
+        break;
+    case CPanelRequest::Kind::Exec:
+        if (EnsureConnected(req) && !session_->Exec(req.command_, req.execOptions_, req.exec_))
+            req.error_ = session_->LastError();
         break;
     case CPanelRequest::Kind::List:
         if (!EnsureConnected(req))

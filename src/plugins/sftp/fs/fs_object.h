@@ -83,10 +83,6 @@ public:
     // ---- not available yet (the services are not advertised; Salamander does not call these)
     virtual BOOL WINAPI GetNextDirectoryLineHotPath(const wchar_t* text, int pathLen, int& offset) { return FALSE; }
     virtual BOOL WINAPI CompleteDirectoryLineHotPath(CSalamanderStringBuffer* path) { return FALSE; }
-    virtual BOOL WINAPI ExecuteCommandLine(HWND parent, CSalamanderStringBuffer* command, int& selFrom, int& selTo)
-    {
-        return FALSE;
-    }
     // ---- F2 and F7 (fs/fs_namespace.cpp)
     virtual BOOL WINAPI QuickRename(const wchar_t* fsName, int mode, HWND parent, CFileData& file, BOOL isDir,
                                     CSalamanderStringBuffer* newName, BOOL& cancel);
@@ -95,6 +91,8 @@ public:
     // ---- F3 (fs/fs_view.cpp)
     virtual void WINAPI ViewFile(const wchar_t* fsName, HWND parent, CSalamanderForViewFileOnFSAbstract* salamander,
                                  CFileData& file);
+    // ---- command line under the panels (fs/fs_commandline.cpp)
+    virtual BOOL WINAPI ExecuteCommandLine(HWND parent, CSalamanderStringBuffer* command, int& selFrom, int& selTo);
     // ---- F8 (fs/fs_delete.cpp)
     virtual BOOL WINAPI Delete(const wchar_t* fsName, int mode, HWND parent, int panel, int selectedFiles,
                                int selectedDirs, BOOL& cancelOrError);
@@ -241,6 +239,10 @@ private:
     bool DeleteOneOnSession(HWND parent, const CSelectedItem& item);
     bool StartDeleteOperation(const std::vector<CSelectedItem>& items);
 
+    // ---- fs/fs_commandline.cpp
+    BOOL DoExecuteCommandLine(HWND parent, CSalamanderStringBuffer* command, int& selFrom, int& selTo);
+    void ShowCommandResult(HWND parent, const CPanelRequest& request) const;
+
     // ---- fs/fs_chmod.cpp
     BOOL DoChangeAttributes(HWND parent, int panel, int selectedFiles, int selectedDirs);
     bool ResolveCurrentModes(HWND parent, std::vector<CSelectedItem>& items);
@@ -280,6 +282,7 @@ private:
     CSftpPath identity_; // which server this FS is connected to (the path member is not used)
     CSite site_;
     CNameCodec codec_;
+    bool execConfirmed_ = false; // the user agreed to run commands on this connection (ExecuteCommandLine)
     bool connected_ = false; // Connect succeeded at least once
     std::string curRaw_ = "/";
     FsErrorState errorState_ = FsErrorState::Ok;

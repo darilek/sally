@@ -243,4 +243,14 @@
 #define IDS_ERR_VIEW                       323
 #define IDS_WAIT_ESC_HINT                  324
 
+// Command line (fs/fs_commandline.cpp, ui/exec_output_dialog.cpp)
+#define IDS_WAIT_EXEC                      325
+#define IDS_ERR_EXEC                       326
+#define IDS_ERR_EXEC_REFUSED               327
+#define IDS_EXEC_STATUS_EXIT               328
+#define IDS_EXEC_STATUS_SIGNAL             329
+#define IDS_EXEC_STATUS_CUT                330
+#define IDS_ERR_EXEC_ENCODING              331
+#define IDS_EXEC_CONFIRM                   332
+
 #endif // __SFTP_RH2

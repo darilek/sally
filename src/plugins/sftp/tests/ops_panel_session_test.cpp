@@ -10,6 +10,7 @@
 #include <thread>
 
 #include "panel_session.h"
+#include "shell_quote.h"
 #include "site.h"
 
 namespace
@@ -1254,4 +1255,141 @@ TEST_F(PanelSessionTest, CancelledDownloadToFileLeavesNoFileAndTheSessionRecover
     auto next = s.Stat("fixtures/small/hello.txt"); // reconnects (the host key is asked again)
     ASSERT_TRUE(Pump(s, *next, policy, 60000));
     EXPECT_TRUE(next->Ok()) << next->Error().message;
+}
+
+// ---- Exec ------------------------------------------------------------------------------------------------------
+
+namespace
+{
+// Runs a command and waits; false when the request did not finish or failed.
+bool RunCommand(CPanelSession& s, CPolicy& policy, const std::string& command, std::shared_ptr<CPanelRequest>& req,
+                const CExecOptions& options = CExecOptions())
+{
+    req = s.Exec(command, options);
+    return Pump(s, *req, policy, 60000) && req->Ok();
+}
+} // namespace
+
+TEST_F(PanelSessionTest, ExecEchoAndExitCode)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    std::shared_ptr<CPanelRequest> req;
+    ASSERT_TRUE(RunCommand(s, policy, "echo hello", req)) << req->Error().message;
+    EXPECT_EQ(req->GetKind(), CPanelRequest::Kind::Exec);
+    EXPECT_EQ(req->Output(), "hello\n");
+    EXPECT_EQ(req->ExitStatus(), 0);
+    EXPECT_TRUE(req->ExitSignal().empty());
+    EXPECT_FALSE(req->OutputTruncated());
+
+    ASSERT_TRUE(RunCommand(s, policy, "exit 3", req)); // a failing command is still an Ok request
+    EXPECT_EQ(req->ExitStatus(), 3);
+}
+
+TEST_F(PanelSessionTest, ExecMergesStderrIntoTheOutput)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    std::shared_ptr<CPanelRequest> req;
+    ASSERT_TRUE(RunCommand(s, policy, "echo err 1>&2", req));
+    EXPECT_EQ(req->Output(), "err\n");
+}
+
+TEST_F(PanelSessionTest, ExecOfAMissingCommandGivesExit127)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    std::shared_ptr<CPanelRequest> req;
+    ASSERT_TRUE(RunCommand(s, policy, "no-such-command-sally", req));
+    EXPECT_EQ(req->ExitStatus(), 127);
+    EXPECT_FALSE(req->Output().empty()); // "command not found" from the shell
+}
+
+TEST_F(PanelSessionTest, ExecRunsInTheGivenDirectory)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    std::shared_ptr<CPanelRequest> req;
+    ASSERT_TRUE(RunCommand(s, policy, BuildRemoteCommand("/home/test/fixtures", "pwd"), req)) << req->Error().message;
+    EXPECT_EQ(req->Output(), "/home/test/fixtures\n");
+    EXPECT_EQ(req->ExitStatus(), 0);
+
+    ASSERT_TRUE(RunCommand(s, policy, BuildRemoteCommand("/no/such/dir", "pwd"), req)); // cd fails: pwd never runs
+    EXPECT_NE(req->ExitStatus(), 0);
+}
+
+TEST_F(PanelSessionTest, ExecExitCodeInsideTheGroupIsTheExitStatus)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    std::shared_ptr<CPanelRequest> req;
+    ASSERT_TRUE(RunCommand(s, policy, BuildRemoteCommand("/home/test/fixtures", "exit 3"), req));
+    EXPECT_EQ(req->ExitStatus(), 3);
+}
+
+TEST_F(PanelSessionTest, ExecNothingOfTheLineRunsWhenTheCdFails)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    std::shared_ptr<CPanelRequest> req;
+    ASSERT_TRUE(RunCommand(s, policy, BuildRemoteCommand("/no/such/dir/sally", "false; echo SECOND"), req));
+    EXPECT_EQ(req->Output().find("SECOND"), std::string::npos);
+    EXPECT_NE(req->ExitStatus(), 0);
+}
+
+TEST_F(PanelSessionTest, ExecInADirectoryWithASpaceAndAQuoteInItsName)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto home = s.RealPath("upload");
+    ASSERT_TRUE(Pump(s, *home, policy) && home->Ok());
+    const std::string dir = home->ResolvedPath() + "/ps exec it's " + std::to_string(GetCurrentProcessId());
+    auto made = s.Mkdir(dir);
+    ASSERT_TRUE(Pump(s, *made, policy) && made->Ok()) << made->Error().message;
+
+    std::shared_ptr<CPanelRequest> req;
+    const bool ran = RunCommand(s, policy, BuildRemoteCommand(dir, "pwd"), req);
+    std::shared_ptr<CPanelRequest> cleanup;
+    RunCommand(s, policy, "rmdir " + QuoteForPosixShell(dir), cleanup);
+    ASSERT_TRUE(ran) << req->Error().message;
+    EXPECT_EQ(req->Output(), dir + "\n");
+    EXPECT_EQ(req->ExitStatus(), 0);
+}
+
+TEST_F(PanelSessionTest, ExecOutputOverTheCapIsTruncatedToExactlyTheCap)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    std::shared_ptr<CPanelRequest> req;
+    ASSERT_TRUE(RunCommand(s, policy, "head -c 3000000 /dev/zero | tr '\\0' x", req)) << req->Error().message;
+    EXPECT_TRUE(req->OutputTruncated());
+    EXPECT_EQ(req->Output().size(), 1024u * 1024u);
+    EXPECT_EQ(req->ExitStatus(), 0);
+}
+
+TEST_F(PanelSessionTest, CancelledExecEndsQuicklyAndTheNextRequestReconnects)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto req = s.Exec("sleep 30");
+    ASSERT_FALSE(req->Wait(500));
+    const auto start = Clock::now();
+    s.Cancel();
+    ASSERT_TRUE(req->Wait(5000));
+    EXPECT_LT(Clock::now() - start, std::chrono::seconds(5));
+    EXPECT_EQ(req->Error().kind, SshErrorKind::Cancelled);
+    EXPECT_TRUE(req->Output().empty());
+
+    std::shared_ptr<CPanelRequest> next;
+    ASSERT_TRUE(RunCommand(s, policy, "echo back", next)) << next->Error().message; // reconnects (host key asked again)
+    EXPECT_EQ(next->Output(), "back\n");
 }

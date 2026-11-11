@@ -828,7 +828,7 @@ CPluginFSInterface::GetSupportedServices()
            FS_SERVICE_COPYFROMFS | FS_SERVICE_MOVEFROMFS | FS_SERVICE_COPYFROMDISKTOFS |
            FS_SERVICE_MOVEFROMDISKTOFS | FS_SERVICE_ACCEPTSCHANGENOTIF |
            FS_SERVICE_QUICKRENAME | FS_SERVICE_CREATEDIR | FS_SERVICE_DELETE | FS_SERVICE_CHANGEATTRS |
-           FS_SERVICE_VIEWFILE;
+           FS_SERVICE_VIEWFILE | FS_SERVICE_COMMANDLINE;
 }
 
 // Item of this connection in the Change Drive menu and the Disconnect dialog: "\t" + "sftp:user@host/path"

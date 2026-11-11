@@ -80,6 +80,24 @@ struct CSftpVfs
     bool readOnly = false;
 };
 
+// How CSshSession::Exec runs a command.
+struct CExecOptions
+{
+    size_t maxOutputBytes = 1024 * 1024; // more output is read and thrown away (CExecResult::truncated)
+    // Gives up (kind Timeout, the session becomes broken) when the server sends nothing for this long. 0 = wait until
+    // the command ends or the caller cancels: a quiet long-running command is not an error.
+    int idleTimeoutSeconds = 0;
+};
+
+// Result of CSshSession::Exec. A command that ran and failed is still a successful Exec: look at exitStatus.
+struct CExecResult
+{
+    std::string output;     // stdout and stderr in the order they arrived (raw bytes; decode with the site codec)
+    int exitStatus = 0;     // 0 when the server reported none
+    std::string exitSignal; // name of the signal that ended the command ("TERM", ...); empty = ended normally
+    bool truncated = false; // the output was longer than maxOutputBytes
+};
+
 // What the server told at connect time. libssh2 gives the identification banner only: it does not expose the SFTP
 // protocol version the server answered (it speaks version 3 at most) nor the list of SFTP extensions.
 struct CSshServerInfo

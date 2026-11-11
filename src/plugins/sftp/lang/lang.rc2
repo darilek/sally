@@ -290,4 +290,17 @@ STRINGTABLE
  IDS_ERR_VIEW, "The file ""%ls"" could not be downloaded for viewing: %ls"
  // hint appended to the text of a wait window that ESC can cancel (the Esc key name stays "ESC" in every language)
  IDS_WAIT_ESC_HINT, "(Press ESC to cancel)"
+ IDS_WAIT_EXEC, "Running the command ..."
+ // argument: error text
+ IDS_ERR_EXEC, "The command could not be run: %ls"
+ IDS_ERR_EXEC_REFUSED, "The server does not allow running commands."
+ // argument: the exit code of the command
+ IDS_EXEC_STATUS_EXIT, "Exit code %d"
+ // argument: the name of the signal that ended the command (e.g. TERM)
+ IDS_EXEC_STATUS_SIGNAL, "Terminated by signal %ls"
+ // argument: the status text (the exit code or the signal), the output limit stays 1 MB
+ IDS_EXEC_STATUS_CUT, "%ls. Output cut at 1 MB."
+ // arguments: the server as host:port, the command text (cut to about 300 characters)
+ IDS_EXEC_CONFIRM, "You are about to run a command on the server %ls (not on this computer):\n\n%ls\n\nIt runs with the rights of the logged-in user, like in an SSH terminal. Run it?"
+ IDS_ERR_EXEC_ENCODING, "The command contains characters that the encoding used for this server cannot represent."
 }

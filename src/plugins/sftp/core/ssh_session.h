@@ -99,6 +99,13 @@ public:
     // does not know the "statvfs@openssh.com" extension.
     bool Statvfs(const std::string& path, CSftpVfs& out);
 
+    // ---- Remote command (ssh_exec.cpp). Needs an authenticated session (the SFTP subsystem is not used). Runs
+    // "command" through the user's login shell on a new channel and waits until it ends. Kinds: Unsupported when the
+    // server refuses to run commands (the exact refusal depends on the server: a ForceCommand may run something else
+    // instead, which libssh2 cannot tell), Timeout/ConnectFailed/Cancelled as for the SFTP calls. Cancel() or an
+    // idle timeout breaks the session like everywhere else (D24). The channel is closed on every path.
+    bool Exec(const std::string& command, const CExecOptions& options, CExecResult& out);
+
     // ---- Transfers (ssh_transfer.cpp). Progress goes to ISshCallbacks::Progress (at most every 100 ms, plus once at the
     // end); it reports the position in the whole file (done includes the start offset) and returning false cancels
     // (kind Cancelled). Cancel() from another thread also gives Cancelled. On failure or cancel the partial data stays
@@ -234,6 +241,13 @@ private:
     void CloseSftpHandle(LIBSSH2_SFTP_HANDLE* h);
     std::string AsideName(const std::string& target) const;
     bool RenameAside(const std::string& from, const std::string& to);
+
+    // remote command (ssh_exec.cpp)
+    bool ExecOnChannel(LIBSSH2_CHANNEL* channel, const std::string& command, const CExecOptions& options,
+                       CExecResult& out);
+    bool FailExec(const std::string& what, int code);
+    bool FailExecWaiting(const std::string& what, int code, int idleTimeoutSeconds);
+    void CloseChannel(LIBSSH2_CHANNEL* channel);
 
     // transfers (ssh_transfer.cpp)
     bool FailLocal(const char* what, DWORD winError);

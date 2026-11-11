@@ -141,3 +141,10 @@
 #define IDD_FSPROPERTIES          1016
 #define IDC_INFO_LIST             1480
 #define IDB_INFO_COPY             1481
+
+// Command output dialog (IDD_EXEC_OUTPUT): read-only text of what a command line command printed, a status line (exit
+// code, signal, cut output), Copy (all text to the clipboard) and Close.
+#define IDD_EXEC_OUTPUT           1017
+#define IDE_EXEC_OUTPUT           1490
+#define IDC_EXEC_STATUS           1491
+#define IDB_EXEC_COPY             1492

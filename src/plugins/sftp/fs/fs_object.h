@@ -79,18 +79,11 @@ public:
     {
         return FALSE;
     }
+    // ---- F2 and F7 (fs/fs_namespace.cpp)
     virtual BOOL WINAPI QuickRename(const wchar_t* fsName, int mode, HWND parent, CFileData& file, BOOL isDir,
-                                    CSalamanderStringBuffer* newName, BOOL& cancel)
-    {
-        cancel = TRUE;
-        return FALSE;
-    }
+                                    CSalamanderStringBuffer* newName, BOOL& cancel);
     virtual BOOL WINAPI CreateDir(const wchar_t* fsName, int mode, HWND parent, CSalamanderStringBuffer* newName,
-                                  BOOL& cancel)
-    {
-        cancel = TRUE;
-        return FALSE;
-    }
+                                  BOOL& cancel);
     virtual void WINAPI ViewFile(const wchar_t* fsName, HWND parent, CSalamanderForViewFileOnFSAbstract* salamander,
                                  CFileData& file) {}
     virtual BOOL WINAPI Delete(const wchar_t* fsName, int mode, HWND parent, int panel, int selectedFiles,
@@ -239,6 +232,13 @@ private:
                        ConflictPolicy policy, bool preserveTime, const std::wstring& targetName);
     bool MoveOnServer(HWND parent, int panel, int selectedFiles, int selectedDirs, const CSftpPath& target);
     std::wstring FullFsPath(const std::string& rawPath) const; // "sftp:user@host/path"
+
+    // ---- fs/fs_namespace.cpp
+    bool DoQuickRename(HWND parent, CFileData& file, CSalamanderStringBuffer* newName, BOOL& cancel);
+    bool DoCreateDir(HWND parent, CSalamanderStringBuffer* newName, BOOL& cancel);
+    bool RefuseBadName(HWND parent, const std::wstring& name) const;
+    bool EncodeNewName(HWND parent, const std::wstring& name, std::string& raw) const;
+    bool WaitForNameRequest(HWND parent, const std::shared_ptr<CPanelRequest>& request, const std::wstring& waitText);
 
     std::wstring DisplayPath(const std::string& rawPath) const;
     std::wstring UserPartOf(const std::string& rawPath) const; // "user@host:port/path" or "@Site/path"

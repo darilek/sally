@@ -808,3 +808,61 @@ TEST_F(PanelSessionTest, RenameWithoutConnectFails)
     ASSERT_TRUE(rename->Wait(10000));
     EXPECT_EQ(rename->Error().kind, SshErrorKind::ConnectFailed);
 }
+
+TEST_F(PanelSessionTest, MkdirCreatesAndReportsExists)
+{
+    CRemoteSandbox box;
+    ASSERT_TRUE(box.Ok());
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto make = s.Mkdir(box.Path("newdir"));
+    ASSERT_TRUE(make->Wait(20000));
+    EXPECT_TRUE(make->Ok()) << make->Error().message;
+    EXPECT_EQ(make->GetKind(), CPanelRequest::Kind::Mkdir);
+    EXPECT_TRUE(box.Exists("newdir"));
+
+    auto again = s.Mkdir(box.Path("newdir"));
+    ASSERT_TRUE(again->Wait(20000));
+    EXPECT_EQ(again->Error().kind, SshErrorKind::Exists);
+
+    ASSERT_TRUE(box.PutFile("afile", "x"));
+    auto onFile = s.Mkdir(box.Path("afile")); // a file with that name counts as existing too
+    ASSERT_TRUE(onFile->Wait(20000));
+    EXPECT_EQ(onFile->Error().kind, SshErrorKind::Exists);
+}
+
+TEST_F(PanelSessionTest, MkdirNonAsciiName)
+{
+    CRemoteSandbox box;
+    ASSERT_TRUE(box.Ok());
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    const std::string name = CNameCodec::Utf8().Encode(L"složená říže");
+    auto make = s.Mkdir(box.Path(name));
+    ASSERT_TRUE(make->Wait(20000));
+    EXPECT_TRUE(make->Ok()) << make->Error().message;
+    EXPECT_TRUE(box.Exists(name));
+}
+
+TEST_F(PanelSessionTest, MkdirWithMissingParentFails)
+{
+    CRemoteSandbox box;
+    ASSERT_TRUE(box.Ok());
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto make = s.Mkdir(box.Path("no_such_parent/child"));
+    ASSERT_TRUE(make->Wait(20000));
+    EXPECT_FALSE(make->Ok());
+    EXPECT_EQ(make->Error().kind, SshErrorKind::NotFound);
+}
+
+TEST_F(PanelSessionTest, MkdirWithoutConnectFails)
+{
+    CPanelSession s(nullptr);
+    auto make = s.Mkdir("upload/x");
+    ASSERT_TRUE(make->Wait(10000));
+    EXPECT_EQ(make->Error().kind, SshErrorKind::ConnectFailed);
+}

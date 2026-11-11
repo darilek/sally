@@ -194,4 +194,15 @@ STRINGTABLE
  IDS_WAIT_MOVING, "Moving on the server..."
  IDS_ERR_NOT_CONNECTED, "The connection to the server is not available."
  IDS_ERR_MASK_UNSUPPORTED, "Masks with * or ? are not supported when downloading from an SFTP server. Enter a folder, or a single file name when one file is selected."
+ IDS_ERR_NAME_EMPTY, "Enter a name."
+ IDS_ERR_NAME_INVALID, "The name must not be ""."" or "".."" and must not contain ""/"". Enter one plain name, not a path."
+ IDS_ERR_NAME_ENCODING, "The name contains characters that the encoding used for this server cannot represent."
+ // argument: the name
+ IDS_ERR_NAME_EXISTS, "An item named ""%ls"" already exists in this folder."
+ // arguments: old name, new name, error text
+ IDS_ERR_RENAME_ITEM, "The item ""%ls"" could not be renamed to ""%ls"": %ls"
+ // arguments: name, error text
+ IDS_ERR_CREATE_DIR, "The directory ""%ls"" could not be created: %ls"
+ IDS_WAIT_RENAMING, "Renaming on the server..."
+ IDS_WAIT_CREATING_DIR, "Creating the directory on the server..."
 }

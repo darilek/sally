@@ -161,5 +161,13 @@
 #define IDS_ERR_NOT_CONNECTED              246
 #define IDS_OP_STATUS_PAUSED_REASON        247
 #define IDS_ERR_MASK_UNSUPPORTED           248
+#define IDS_ERR_NAME_EMPTY                 249
+#define IDS_ERR_NAME_INVALID               250
+#define IDS_ERR_NAME_EXISTS                251
+#define IDS_ERR_RENAME_ITEM                252
+#define IDS_ERR_CREATE_DIR                 253
+#define IDS_WAIT_RENAMING                  254
+#define IDS_WAIT_CREATING_DIR              255
+#define IDS_ERR_NAME_ENCODING              256
 
 #endif // __SFTP_RH2

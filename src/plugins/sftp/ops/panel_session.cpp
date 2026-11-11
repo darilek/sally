@@ -98,6 +98,13 @@ std::shared_ptr<CPanelRequest> CPanelSession::Rename(const std::string& fromRaw,
     return Submit(req);
 }
 
+std::shared_ptr<CPanelRequest> CPanelSession::Mkdir(const std::string& rawPath)
+{
+    std::shared_ptr<CPanelRequest> req(new CPanelRequest(CPanelRequest::Kind::Mkdir));
+    req->path_ = rawPath;
+    return Submit(req);
+}
+
 CPanelConnectParams CPanelSession::CopyConnectParams() const
 {
     CPanelConnectParams params;
@@ -396,6 +403,10 @@ void CPanelSession::Execute(CPanelRequest& req)
         break;
     case CPanelRequest::Kind::Rename:
         if (EnsureConnected(req) && !session_->Rename(req.path_, req.path2_, req.overwrite_))
+            req.error_ = session_->LastError();
+        break;
+    case CPanelRequest::Kind::Mkdir:
+        if (EnsureConnected(req) && !session_->Mkdir(req.path_))
             req.error_ = session_->LastError();
         break;
     case CPanelRequest::Kind::List:

@@ -144,6 +144,7 @@ sal_add_plugin(NAME sftp
     "${SAL_PLUGINS}/sftp/fs/fs_object.cpp"
     "${SAL_PLUGINS}/sftp/fs/fs_data.cpp"
     "${SAL_PLUGINS}/sftp/fs/fs_transfer.cpp"
+    "${SAL_PLUGINS}/sftp/fs/fs_namespace.cpp"
     "${SAL_PLUGINS}/sftp/fs/operations_registry.cpp"
     "${SAL_PLUGINS}/sftp/fs/wait_for_request.cpp"
     "${SAL_PLUGINS}/sftp/ui/dark_controls.cpp"

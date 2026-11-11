@@ -40,6 +40,7 @@ public:
         RealPath,
         Stat,
         Rename,
+        Mkdir,
         Disconnect
     };
 
@@ -145,6 +146,8 @@ public:
     std::shared_ptr<CPanelRequest> Stat(const std::string& rawPath);
     // Renames/moves on the server (same rules as CSshSession::Rename: an existing target gives Exists unless overwrite).
     std::shared_ptr<CPanelRequest> Rename(const std::string& fromRaw, const std::string& toRaw, bool overwrite);
+    // Creates one directory (mode 0755). An existing path gives Exists, a missing parent NotFound.
+    std::shared_ptr<CPanelRequest> Mkdir(const std::string& rawPath);
     // Closes the connection and forgets the site and the secrets (no automatic reconnect until the next Connect).
     std::shared_ptr<CPanelRequest> Disconnect();
 

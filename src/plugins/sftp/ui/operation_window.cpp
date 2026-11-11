@@ -194,8 +194,10 @@ INT_PTR COperationWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
         const NMHDR* header = reinterpret_cast<const NMHDR*>(lParam);
         if (header->idFrom == IDC_OP_LIST && header->code == LVN_ITEMCHANGED && !rebuildingList_)
             UpdateSolveButton();
-        // double-click on an item that waits for a decision = the Solve button (SolveSelected needs a selected item)
+        // double-click on an item that waits for a decision = the Solve button (SolveSelected needs a selected item);
+        // a double-click on the empty area (iItem -1) does nothing
         else if (header->idFrom == IDC_OP_LIST && header->code == NM_DBLCLK &&
+                 reinterpret_cast<const NMITEMACTIVATE*>(lParam)->iItem >= 0 &&
                  IsWindowEnabled(GetDlgItem(HWindow, IDB_OP_SOLVE)))
             SolveSelected();
         break;

@@ -1,7 +1,6 @@
 #include "precomp.h"
 
 #include <commctrl.h>
-#include <string>
 
 #include "dark_controls.h"
 #include "plugindarkmode.h"
@@ -13,18 +12,39 @@ namespace
 {
 const UINT_PTR SUBCLASS_ID = 0x53465450; // any value unique for this subclass
 
-std::wstring ReadHeaderText(HWND header, int index, UINT& format)
+// Fixed buffers instead of std::wstring: nothing here may throw while a paint is open (see DarkSubclassProc).
+UINT ReadHeaderText(HWND header, int index, wchar_t* text, int textSize)
 {
-    wchar_t text[256] = {};
+    text[0] = 0;
     HDITEMW item = {};
     item.mask = HDI_TEXT | HDI_FORMAT;
     item.pszText = text;
-    item.cchTextMax = 256;
-    format = 0;
-    if (SendMessageW(header, HDM_GETITEMW, index, reinterpret_cast<LPARAM>(&item)))
-        format = item.fmt;
-    return text;
+    item.cchTextMax = textSize;
+    return SendMessageW(header, HDM_GETITEMW, index, reinterpret_cast<LPARAM>(&item)) ? item.fmt : 0;
 }
+
+// A pen selected into a DC for the length of a function (like a using block in C#). Windows cannot delete a pen that
+// is still selected into a DC (the call fails and the handle leaks), so the old pen is selected back first.
+class CSelectedPen
+{
+public:
+    CSelectedPen(HDC dc, COLORREF color) : dc_(dc), pen_(CreatePen(PS_SOLID, 1, color))
+    {
+        oldPen_ = SelectObject(dc_, pen_);
+    }
+    ~CSelectedPen()
+    {
+        SelectObject(dc_, oldPen_);
+        DeleteObject(pen_);
+    }
+    CSelectedPen(const CSelectedPen&) = delete;
+    CSelectedPen& operator=(const CSelectedPen&) = delete;
+
+private:
+    HDC dc_;
+    HPEN pen_;
+    HGDIOBJ oldPen_;
+};
 
 void PaintHeader(HWND header, HDC dc, const PluginDarkModeColors& colors)
 {
@@ -35,8 +55,7 @@ void PaintHeader(HWND header, HDC dc, const PluginDarkModeColors& colors)
     SelectObject(dc, reinterpret_cast<HFONT>(SendMessageW(header, WM_GETFONT, 0, 0)));
     SetBkMode(dc, TRANSPARENT);
     SetTextColor(dc, colors.DialogText);
-    HPEN pen = CreatePen(PS_SOLID, 1, colors.Border);
-    HGDIOBJ oldPen = SelectObject(dc, pen);
+    CSelectedPen pen(dc, colors.Border);
 
     const int count = static_cast<int>(SendMessageW(header, HDM_GETITEMCOUNT, 0, 0));
     for (int i = 0; i < count; i++)
@@ -44,15 +63,15 @@ void PaintHeader(HWND header, HDC dc, const PluginDarkModeColors& colors)
         RECT rc;
         if (!SendMessageW(header, HDM_GETITEMRECT, i, reinterpret_cast<LPARAM>(&rc)))
             continue;
-        UINT format;
-        const std::wstring text = ReadHeaderText(header, i, format);
+        wchar_t text[256];
+        const UINT format = ReadHeaderText(header, i, text, 256);
         UINT flags = DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX;
         flags |= (format & HDF_JUSTIFYMASK) == HDF_RIGHT    ? DT_RIGHT
                  : (format & HDF_JUSTIFYMASK) == HDF_CENTER ? DT_CENTER
                                                             : DT_LEFT;
         RECT textRect = rc;
         InflateRect(&textRect, -6, 0);
-        DrawTextW(dc, text.c_str(), static_cast<int>(text.size()), &textRect, flags);
+        DrawTextW(dc, text, -1, &textRect, flags);
 
         // divider on the right edge and line under the item
         MoveToEx(dc, rc.right - 1, rc.top + 2, NULL);
@@ -60,8 +79,6 @@ void PaintHeader(HWND header, HDC dc, const PluginDarkModeColors& colors)
         MoveToEx(dc, rc.left, rc.bottom - 1, NULL);
         LineTo(dc, rc.right, rc.bottom - 1);
     }
-    SelectObject(dc, oldPen);
-    DeleteObject(pen);
 }
 
 void PaintTabs(HWND tabs, HDC dc, const PluginDarkModeColors& colors)
@@ -73,9 +90,8 @@ void PaintTabs(HWND tabs, HDC dc, const PluginDarkModeColors& colors)
     SelectObject(dc, reinterpret_cast<HFONT>(SendMessageW(tabs, WM_GETFONT, 0, 0)));
     SetBkMode(dc, TRANSPARENT);
     SetTextColor(dc, colors.DialogText);
-    HPEN pen = CreatePen(PS_SOLID, 1, colors.Border);
-    HGDIOBJ oldPen = SelectObject(dc, pen);
-    HGDIOBJ oldBrush = SelectObject(dc, GetStockObject(NULL_BRUSH));
+    CSelectedPen pen(dc, colors.Border);
+    SelectObject(dc, GetStockObject(NULL_BRUSH));
 
     const int selected = static_cast<int>(SendMessageW(tabs, TCM_GETCURSEL, 0, 0));
     const int count = static_cast<int>(SendMessageW(tabs, TCM_GETITEMCOUNT, 0, 0));
@@ -104,11 +120,11 @@ void PaintTabs(HWND tabs, HDC dc, const PluginDarkModeColors& colors)
         {
             rc.top += 1;
         }
-        wchar_t text[128] = {};
+        wchar_t text[256] = {};
         TCITEMW item = {};
         item.mask = TCIF_TEXT;
         item.pszText = text;
-        item.cchTextMax = 128;
+        item.cchTextMax = 256;
         SendMessageW(tabs, TCM_GETITEMW, i, reinterpret_cast<LPARAM>(&item));
 
         if (i == selected)
@@ -127,10 +143,36 @@ void PaintTabs(HWND tabs, HDC dc, const PluginDarkModeColors& colors)
         }
         DrawTextW(dc, text, -1, &rc, DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOPREFIX);
     }
-    SelectObject(dc, oldBrush);
-    SelectObject(dc, oldPen);
-    DeleteObject(pen);
 }
+
+// One paint: WM_PAINT gets its DC from BeginPaint (and must call EndPaint), WM_PRINTCLIENT gets a DC from the caller.
+// The destructor always ends the paint and gives the DC back as it was received, also when drawing throws.
+class CPaintScope
+{
+public:
+    CPaintScope(HWND hwnd, UINT msg, WPARAM wParam) : hwnd_(hwnd), ownsPaint_(msg == WM_PAINT)
+    {
+        dc_ = ownsPaint_ ? BeginPaint(hwnd, &ps_) : reinterpret_cast<HDC>(wParam);
+        saved_ = dc_ != NULL ? SaveDC(dc_) : 0;
+    }
+    ~CPaintScope()
+    {
+        if (saved_ != 0)
+            RestoreDC(dc_, saved_);
+        if (ownsPaint_)
+            EndPaint(hwnd_, &ps_);
+    }
+    CPaintScope(const CPaintScope&) = delete;
+    CPaintScope& operator=(const CPaintScope&) = delete;
+    HDC Dc() const { return dc_; }
+
+private:
+    HWND hwnd_;
+    bool ownsPaint_;
+    PAINTSTRUCT ps_ = {};
+    HDC dc_ = NULL;
+    int saved_ = 0;
+};
 
 enum class Kind
 {
@@ -151,14 +193,14 @@ LRESULT CALLBACK DarkSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
             PluginDarkModeColors colors;
             if (PluginDarkMode_GetColors(&colors))
             {
-                PAINTSTRUCT ps;
-                HDC dc = msg == WM_PAINT ? BeginPaint(hwnd, &ps) : reinterpret_cast<HDC>(wParam);
-                if (static_cast<Kind>(data) == Kind::Header)
-                    PaintHeader(hwnd, dc, colors);
-                else
-                    PaintTabs(hwnd, dc, colors);
-                if (msg == WM_PAINT)
-                    EndPaint(hwnd, &ps);
+                CPaintScope scope(hwnd, msg, wParam);
+                if (scope.Dc() != NULL)
+                {
+                    if (static_cast<Kind>(data) == Kind::Header)
+                        PaintHeader(hwnd, scope.Dc(), colors);
+                    else
+                        PaintTabs(hwnd, scope.Dc(), colors);
+                }
                 return 0;
             }
         }

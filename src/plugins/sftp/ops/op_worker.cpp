@@ -174,6 +174,24 @@ std::wstring FreeLocalPath(const std::wstring& target)
     return free.empty() ? std::wstring() : MakeLocalPath(dir, free);
 }
 
+// Closes a FindFirstFile handle on every way out (also when something in the loop throws). Plain CloseHandle is wrong
+// for these handles, hence an own guard (like a using block around the enumeration in C#).
+class CFindGuard
+{
+public:
+    explicit CFindGuard(HANDLE find) : find_(find) {}
+    ~CFindGuard()
+    {
+        if (find_ != INVALID_HANDLE_VALUE)
+            FindClose(find_);
+    }
+    CFindGuard(const CFindGuard&) = delete;
+    CFindGuard& operator=(const CFindGuard&) = delete;
+
+private:
+    HANDLE find_;
+};
+
 // A symbolic link or junction (not any reparse point: cloud placeholders and the like are normal files and folders).
 bool IsLocalLink(const std::wstring& path)
 {
@@ -181,7 +199,7 @@ bool IsLocalLink(const std::wstring& path)
     HANDLE find = FindFirstFileW(ExtendedLocalPath(path).c_str(), &data);
     if (find == INVALID_HANDLE_VALUE)
         return false;
-    FindClose(find);
+    CFindGuard findGuard(find);
     return (data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0 &&
            (data.dwReserved0 == IO_REPARSE_TAG_SYMLINK || data.dwReserved0 == IO_REPARSE_TAG_MOUNT_POINT);
 }
@@ -534,17 +552,15 @@ CWorker::CItemResult CWorker::RunItem(const CQueueItem& taken)
         if (!NeedsConnection(item.type))
             return ExecuteOnce(item);
 
-        OpTrace("worker %d: item %llu type %d attempt %zu: connecting", index_, static_cast<unsigned long long>(item.uid),
-                static_cast<int>(item.type), attempt);
         if (EnsureConnected(result))
         {
             unreachable_ = false;
-            OpTrace("worker %d: item %llu: connected, executing", index_, static_cast<unsigned long long>(item.uid));
             result = ExecuteOnce(item);
         }
-        OpTrace("worker %d: item %llu: result kind %d problem %d connectionLost %d", index_,
-                static_cast<unsigned long long>(item.uid), static_cast<int>(result.kind), static_cast<int>(result.problem),
-                result.connectionLost ? 1 : 0);
+        if (result.kind == CItemResult::Kind::Failed || result.problem != Problem::None)
+            OpTrace("worker %d: item %llu failed: kind %d problem %d connectionLost %d", index_,
+                    static_cast<unsigned long long>(item.uid), static_cast<int>(result.kind),
+                    static_cast<int>(result.problem), result.connectionLost ? 1 : 0);
         if (!result.connectionLost)
             return result;
 
@@ -827,6 +843,7 @@ CWorker::CItemResult CWorker::ExploreLocal(const CQueueItem& item)
         const DWORD error = GetLastError();
         return Failure(ProblemFromWin32(error, Problem::LocalIoError), WindowsErrorText(error));
     }
+    CFindGuard findGuard(find);
 
     std::vector<CQueueItem> children;
     if (renamed)
@@ -855,7 +872,6 @@ CWorker::CItemResult CWorker::ExploreLocal(const CQueueItem& item)
                        remoteDir, codec_, item.depth + 1);
     }
     const DWORD error = GetLastError(); // of the failed FindNextFileW: ERROR_NO_MORE_FILES at the normal end
-    FindClose(find);
     if (error != ERROR_NO_MORE_FILES)
         return Failure(Problem::LocalIoError, WindowsErrorText(error));
     // remembered only now: a listing that failed above can be retried
@@ -1101,8 +1117,6 @@ CWorker::CItemResult CWorker::Upload(const CQueueItem& item)
         return stop;
     const COperationSettings& settings = host_.Settings();
     CQueue& queue = host_.Queue();
-    OpTrace("upload: local '%ls' -> remote '%s' (safe %d, time %d, perm %d)", item.localPath.c_str(), target.c_str(),
-            settings.safeUpload ? 1 : 0, settings.preserveTime ? 1 : 0, settings.setUploadPermissions ? 1 : 0);
 
     HANDLE file = CreateFileW(ExtendedLocalPath(item.localPath).c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
                               nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
@@ -1121,21 +1135,15 @@ CWorker::CItemResult CWorker::Upload(const CQueueItem& item)
     source.size = SizeOf(info.nFileSizeHigh, info.nFileSizeLow);
     source.mtime = UnixTimeOf(info.ftLastWriteTime);
 
-    OpTrace("upload: local file open, size %llu; looking at the remote target", static_cast<unsigned long long>(source.size));
     CTransferSide existing;
     CItemResult failure;
     if (!StatRemoteSide(target, existing, failure))
-    {
-        OpTrace("upload: stat of the target failed (%s): %ls", failure.kind == CItemResult::Kind::ReturnToWaiting ? "cancelled" : "error", failure.text.c_str());
         return failure;
-    }
 
     uint64_t resumeOffset = 0; // from the conflict decision: the target itself is a partial copy
-    OpTrace("upload: target exists %d", existing.exists ? 1 : 0);
     if (existing.exists)
     {
         const CConflictDecision decision = Decide(item, source, existing, userNamed, !settings.safeUpload);
-        OpTrace("upload: conflict decision %d", static_cast<int>(decision.action));
         if (decision.action == ConflictAction::Skip)
             return Skipped();
         if (decision.action == ConflictAction::Park)
@@ -1179,10 +1187,7 @@ CWorker::CItemResult CWorker::Upload(const CQueueItem& item)
     queue.SetOwnsPartial(item.uid);
     BeginTransfer(item.uid, startAt);
     uint64_t transferred = 0;
-    OpTrace("upload: writing '%s' from offset %llu", writeTo.c_str(), static_cast<unsigned long long>(startAt));
     bool ok = session_.Upload(file, writeTo, startAt, startAt > 0, &transferred);
-    OpTrace("upload: write finished ok %d, %llu bytes%s%s", ok ? 1 : 0, static_cast<unsigned long long>(transferred),
-            ok ? "" : ", error: ", ok ? "" : session_.LastError().message.c_str());
     if (!ok && startAt == 0 && session_.LastError().kind == SshErrorKind::NotFound &&
         EnsureRemoteDir(ParentOfRemote(writeTo), 0))
     {
@@ -1194,16 +1199,13 @@ CWorker::CItemResult CWorker::Upload(const CQueueItem& item)
         return FromSessionError(Problem::TransferFailed); // the partial stays: the next attempt can continue it
 
     // Without overwrite the rename refuses a target that appeared meanwhile (kind Exists) instead of replacing it.
-    OpTrace("upload: renaming the partial (%d)", viaPartial ? 1 : 0);
     if (viaPartial && !session_.Rename(writeTo, target, existing.exists))
         return FromSessionError(Problem::TransferFailed);
-    OpTrace("upload: renamed; setting time/permissions");
 
     if (settings.preserveTime && source.mtime > 0)
         session_.SetTimes(target, source.mtime, source.mtime); // best effort, like the local side
     if (settings.setUploadPermissions)
         session_.Chmod(target, settings.uploadPermissions); // best effort too: the file is there and complete
-    OpTrace("upload: done");
 
     if (settings.move && !item.viaLink)
     {

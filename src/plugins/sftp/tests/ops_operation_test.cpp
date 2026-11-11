@@ -457,3 +457,43 @@ TEST(UploadRoots, AFolderWithANulNeverBecomesAPath)
     ASSERT_EQ(roots.size(), 1u);
     EXPECT_TRUE(roots[0].remotePath.empty());
 }
+
+// ---- guard of the upload target (ResolveRemoteTarget is private in CWorker: tested through a whole operation) ----
+
+// An upload item whose remote path is empty or is its own parent folder can only come from a bug; the worker must park
+// it with InvalidRemoteName and never write there.
+TEST_F(OperationTest, UploadItemAddressingItsParentFolderFailsWithInvalidRemoteName)
+{
+    WriteAll(local_ / "src" / "guard.txt", "guard\n");
+    const COperationSettings settings = Settings(TransferDirection::Upload);
+
+    CQueueItem item;
+    item.type = ItemType::Upload;
+    item.localPath = (local_ / "src" / "guard.txt").wstring();
+    item.remotePath = remoteDir_; // the folder itself
+    item.parentRemote = remoteDir_;
+    COperation op(settings, Params(), {item});
+    CTestObserver observer;
+    ASSERT_TRUE(Run(op, observer)) << Describe(op);
+
+    EXPECT_EQ(ItemsWithProblem(op, Problem::InvalidRemoteName).size(), 1u) << Describe(op);
+    CSftpEntry e;
+    ASSERT_TRUE(admin_.Stat(remoteDir_, e));
+    EXPECT_TRUE(e.isDir); // still the folder, nothing replaced it
+}
+
+TEST_F(OperationTest, UploadItemWithAnEmptyRemoteNameFailsWithInvalidRemoteName)
+{
+    WriteAll(local_ / "src" / "guard.txt", "guard\n");
+    const COperationSettings settings = Settings(TransferDirection::Upload);
+
+    CQueueItem item;
+    item.type = ItemType::Upload;
+    item.localPath = (local_ / "src" / "guard.txt").wstring();
+    item.parentRemote = remoteDir_; // remotePath stays empty
+    COperation op(settings, Params(), {item});
+    CTestObserver observer;
+    ASSERT_TRUE(Run(op, observer)) << Describe(op);
+
+    EXPECT_EQ(ItemsWithProblem(op, Problem::InvalidRemoteName).size(), 1u) << Describe(op);
+}

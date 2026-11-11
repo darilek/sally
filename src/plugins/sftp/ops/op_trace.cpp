@@ -19,11 +19,11 @@ void OpTrace(const char* format, ...)
     const OpTraceSink sink = Sink;
     if (sink == nullptr)
         return;
-    char text[512];
+    char text[512] = {};
     va_list args;
     va_start(args, format);
-    vsnprintf(text, sizeof(text), format, args);
+    const int written = vsnprintf(text, sizeof(text), format, args);
     va_end(args);
     text[sizeof(text) - 1] = 0;
-    sink(text);
+    sink(written < 0 ? "(trace text could not be formatted)" : text);
 }

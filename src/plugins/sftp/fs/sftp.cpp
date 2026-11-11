@@ -72,11 +72,13 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
     return TRUE; // DLL can be loaded
 }
 
+#ifdef TRACE_ENABLE
 // The text of the operations layer (see ops/op_trace.h) goes to Sally's trace server. Called on any thread.
 static void ForwardOpTrace(const char* text)
 {
     TRACE_I("SFTP ops: " << text);
 }
+#endif
 
 // there is no help yet
 static void WINAPI HelpCallback(HWND window, UINT helpID)
@@ -164,7 +166,9 @@ CPluginInterfaceAbstract* WINAPI SalamanderPluginEntry(CSalamanderPluginEntryAbs
         const std::wstring pluginTitle = LangStr(IDS_PLUGINNAME);
         SetWinLibStrings(invalidNumber.c_str(), pluginTitle.c_str());
 
+#ifdef TRACE_ENABLE // TRACE_I does nothing otherwise
         SetOpTraceSink(ForwardOpTrace);
+#endif
 
         // last step, so that nothing more has to be undone when it fails
         CSshError sshInitError;

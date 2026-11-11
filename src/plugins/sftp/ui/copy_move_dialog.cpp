@@ -6,6 +6,8 @@
 
 namespace
 {
+const UINT WM_APP_SHOW_TARGET = WM_APP + 1; // posted to ourselves at the end of WM_INITDIALOG
+
 // The order of the entries in the "If the file exists" combo box (the combo index is the position in this table).
 struct CPolicyEntry
 {
@@ -20,8 +22,7 @@ const CPolicyEntry PolicyEntries[] = {
     {ConflictPolicy::OverwriteIfOlder, IDS_POLICY_OVERWRITE_OLDER},
     {ConflictPolicy::Rename, IDS_POLICY_RENAME},
 };
-const UINT WM_APP_SHOW_TARGET = WM_APP + 1; // posted to ourselves at the end of WM_INITDIALOG
-const int PolicyCount =static_cast<int>(sizeof(PolicyEntries) / sizeof(PolicyEntries[0]));
+const int PolicyCount = static_cast<int>(sizeof(PolicyEntries) / sizeof(PolicyEntries[0]));
 
 int PolicyIndex(ConflictPolicy policy)
 {

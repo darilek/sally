@@ -229,10 +229,9 @@ BOOL CPluginFSInterface::AskDownloadTarget(BOOL copy, const wchar_t* fsName, HWN
     const bool singleFile = IsSingleFile(panel, selectedFiles, selectedDirs);
     CCopyMoveChoice choice;
     choice.target = path;
-    if (mode == 1 && path.empty())
+    if (!copy && mode == 1 && path.empty()) // only a Move can go to an sftp: folder (a Copy there is refused)
         choice.target = SftpPathOfTargetPanel(ownName); // Sally proposes nothing when the other panel is an FS
     choice.preserveTime = site_.preserveTime;
-    OpTrace("copy dialog: mode %d, Sally proposed '%ls'", mode, path.c_str()); // TEMPORARY (wrong proposed target)
     for (;;)
     {
         CCopyMoveDialog dialog(parent, copy != FALSE, subject);

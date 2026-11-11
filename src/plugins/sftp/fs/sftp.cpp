@@ -6,9 +6,6 @@
 #include <libssh2.h>
 #include <openssl/crypto.h>
 
-#include <cstdio>
-#include <mutex>
-
 #include "SallyUrls.h"
 #include "../core/ssh_init.h"
 #include "../ops/op_trace.h"
@@ -79,26 +76,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 static void ForwardOpTrace(const char* text)
 {
     TRACE_I("SFTP ops: " << text);
-
-    // TEMPORARY (stuck-upload diagnosis): TRACE_I exists only in Debug builds, and a Debug plugin cannot load into the
-    // release Sally. So the same text also goes to %TEMP%\sftp-ops-trace.log and to OutputDebugString. Remove later.
-    static std::mutex logMutex;
-    std::lock_guard<std::mutex> lock(logMutex);
-    char tempPath[MAX_PATH];
-    if (GetTempPathA(MAX_PATH, tempPath) > 0)
-    {
-        std::string file = std::string(tempPath) + "sftp-ops-trace.log";
-        FILE* f = fopen(file.c_str(), "a");
-        if (f != NULL)
-        {
-            SYSTEMTIME t;
-            GetLocalTime(&t);
-            fprintf(f, "%02d:%02d:%02d.%03d [%lu] %s\n", t.wHour, t.wMinute, t.wSecond, t.wMilliseconds,
-                    GetCurrentThreadId(), text);
-            fclose(f);
-        }
-    }
-    OutputDebugStringA((std::string("SFTP ops: ") + text + "\n").c_str());
 }
 
 // there is no help yet

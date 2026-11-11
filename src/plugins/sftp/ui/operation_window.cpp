@@ -289,6 +289,8 @@ void COperationWindow::EnableIfChanged(int controlId, bool enable)
 int COperationWindow::KindTitleId() const
 {
     const COperationSettings& settings = op_.Settings();
+    if (settings.direction == TransferDirection::Delete)
+        return IDS_OP_TITLE_DELETE;
     if (settings.direction == TransferDirection::Download)
         return settings.move ? IDS_OP_TITLE_MOVE_DOWNLOAD : IDS_OP_TITLE_DOWNLOAD;
     return settings.move ? IDS_OP_TITLE_MOVE_UPLOAD : IDS_OP_TITLE_UPLOAD;
@@ -365,7 +367,10 @@ void COperationWindow::UpdateSummary()
         DecideStatus(summary.state, op_.IsPaused(), op_.WasCancelled(), op_.IsFinished());
     const bool over = IsWorkOver(summary.state);
 
-    int percent = PercentDone(stats.bytesDone, stats.bytesTotal);
+    // a delete has no bytes: the progress is the share of the items found so far that are done
+    const bool deleting = op_.Settings().direction == TransferDirection::Delete;
+    int percent = deleting ? PercentDone(static_cast<uint64_t>(stats.filesDone), static_cast<uint64_t>(stats.filesTotal))
+                           : PercentDone(stats.bytesDone, stats.bytesTotal);
     if (status == OperationStatus::Finished)
         percent = 100;
     if (percent != shownPercent_)
@@ -382,12 +387,17 @@ void COperationWindow::UpdateSummary()
     const long long now = NowMs();
     const long long end = host_.endMs_.load();
     const long long elapsedMs = (end != 0 ? end : now) - host_.startMs_.load();
-    SetTextIfChanged(IDC_OP_STATS,
-                     SPLFormatStringOwned(Str(IDS_OP_STATS).c_str(), FormatBytes(stats.bytesDone).c_str(),
-                                          FormatBytes(stats.bytesTotal).c_str(), stats.filesDone, stats.filesTotal,
-                                          FormatSpeed(over ? 0 : stats.bytesPerSecond).c_str(),
-                                          FormatEta(over ? 0 : stats.etaSeconds).c_str(),
-                                          FormatDuration(elapsedMs / 1000).c_str()));
+    if (deleting)
+        SetTextIfChanged(IDC_OP_STATS,
+                         SPLFormatStringOwned(Str(IDS_OP_STATS_DELETE).c_str(), stats.filesDone, stats.filesTotal,
+                                              FormatDuration(elapsedMs / 1000).c_str()));
+    else
+        SetTextIfChanged(IDC_OP_STATS,
+                         SPLFormatStringOwned(Str(IDS_OP_STATS).c_str(), FormatBytes(stats.bytesDone).c_str(),
+                                              FormatBytes(stats.bytesTotal).c_str(), stats.filesDone, stats.filesTotal,
+                                              FormatSpeed(over ? 0 : stats.bytesPerSecond).c_str(),
+                                              FormatEta(over ? 0 : stats.etaSeconds).c_str(),
+                                              FormatDuration(elapsedMs / 1000).c_str()));
 
     std::wstring text;
     if (interactionOpen_)

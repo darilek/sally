@@ -41,6 +41,7 @@ public:
         Stat,
         Rename,
         Mkdir,
+        RemoveFile, // (not "DeleteFile": windows.h defines that name as a macro)
         Disconnect
     };
 
@@ -148,6 +149,9 @@ public:
     std::shared_ptr<CPanelRequest> Rename(const std::string& fromRaw, const std::string& toRaw, bool overwrite);
     // Creates one directory (mode 0755). An existing path gives Exists, a missing parent NotFound.
     std::shared_ptr<CPanelRequest> Mkdir(const std::string& rawPath);
+    // Removes one file or one symbolic link (a link is removed itself, never what it points to). A directory gives an
+    // error; a missing path gives NotFound.
+    std::shared_ptr<CPanelRequest> RemoveFile(const std::string& rawPath);
     // Closes the connection and forgets the site and the secrets (no automatic reconnect until the next Connect).
     std::shared_ptr<CPanelRequest> Disconnect();
 

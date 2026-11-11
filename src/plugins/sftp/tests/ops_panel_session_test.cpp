@@ -703,6 +703,10 @@ public:
         DeleteFileA(local.c_str());
         return put;
     }
+    bool Link(const std::string& target, const std::string& name)
+    {
+        return session_->Symlink(target, Path(name));
+    }
     bool Exists(const std::string& name, uint64_t* size = nullptr)
     {
         CSftpEntry entry;
@@ -732,7 +736,8 @@ private:
         std::vector<CSftpEntry> list;
         if (session_->ListDir(dir_, list))
             for (const CSftpEntry& e : list)
-                session_->Remove(dir_ + "/" + e.rawName);
+                if (!session_->Remove(dir_ + "/" + e.rawName))
+                    session_->Rmdir(dir_ + "/" + e.rawName); // an empty sub-directory
         session_->Rmdir(dir_);
     }
 
@@ -830,6 +835,74 @@ TEST_F(PanelSessionTest, MkdirCreatesAndReportsExists)
     auto onFile = s.Mkdir(box.Path("afile")); // a file with that name counts as existing too
     ASSERT_TRUE(onFile->Wait(20000));
     EXPECT_EQ(onFile->Error().kind, SshErrorKind::Exists);
+}
+
+TEST_F(PanelSessionTest, RemoveFileDeletesAFile)
+{
+    CRemoteSandbox box;
+    ASSERT_TRUE(box.Ok());
+    ASSERT_TRUE(box.PutFile("gone.txt", "abc"));
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto remove = s.RemoveFile(box.Path("gone.txt"));
+    ASSERT_TRUE(remove->Wait(20000));
+    EXPECT_TRUE(remove->Ok()) << remove->Error().message;
+    EXPECT_EQ(remove->GetKind(), CPanelRequest::Kind::RemoveFile);
+    EXPECT_FALSE(box.Exists("gone.txt"));
+}
+
+TEST_F(PanelSessionTest, RemoveFileOfAMissingFileGivesNotFound)
+{
+    CRemoteSandbox box;
+    ASSERT_TRUE(box.Ok());
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto remove = s.RemoveFile(box.Path("never_existed.txt"));
+    ASSERT_TRUE(remove->Wait(20000));
+    EXPECT_EQ(remove->Error().kind, SshErrorKind::NotFound);
+}
+
+TEST_F(PanelSessionTest, RemoveFileOnALinkRemovesTheLinkAndKeepsTheTarget)
+{
+    CRemoteSandbox box;
+    ASSERT_TRUE(box.Ok());
+    ASSERT_TRUE(box.PutFile("target.txt", "keep me"));
+    ASSERT_TRUE(box.Link("target.txt", "link.txt"));
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto remove = s.RemoveFile(box.Path("link.txt"));
+    ASSERT_TRUE(remove->Wait(20000));
+    EXPECT_TRUE(remove->Ok()) << remove->Error().message;
+    uint64_t size = 0;
+    EXPECT_FALSE(box.Exists("link.txt"));
+    ASSERT_TRUE(box.Exists("target.txt", &size));
+    EXPECT_EQ(size, 7u);
+}
+
+TEST_F(PanelSessionTest, RemoveFileOnADirectoryFailsAndKeepsIt)
+{
+    CRemoteSandbox box;
+    ASSERT_TRUE(box.Ok());
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto make = s.Mkdir(box.Path("adir"));
+    ASSERT_TRUE(make->Wait(20000));
+    auto remove = s.RemoveFile(box.Path("adir"));
+    ASSERT_TRUE(remove->Wait(20000));
+    EXPECT_FALSE(remove->Ok());
+    EXPECT_TRUE(box.Exists("adir"));
+}
+
+TEST_F(PanelSessionTest, RemoveFileWithoutConnectFails)
+{
+    CPanelSession s(nullptr);
+    auto remove = s.RemoveFile("upload/x");
+    ASSERT_TRUE(remove->Wait(10000));
+    EXPECT_EQ(remove->Error().kind, SshErrorKind::ConnectFailed);
 }
 
 TEST_F(PanelSessionTest, MkdirNonAsciiName)

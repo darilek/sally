@@ -10,7 +10,8 @@
 enum class TransferDirection
 {
     Download, // remote -> local
-    Upload    // local -> remote
+    Upload,   // local -> remote
+    Delete    // delete on the server (no local side)
 };
 
 struct COperationSettings

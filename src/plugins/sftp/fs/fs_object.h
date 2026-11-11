@@ -86,12 +86,9 @@ public:
                                   BOOL& cancel);
     virtual void WINAPI ViewFile(const wchar_t* fsName, HWND parent, CSalamanderForViewFileOnFSAbstract* salamander,
                                  CFileData& file) {}
+    // ---- F8 (fs/fs_delete.cpp)
     virtual BOOL WINAPI Delete(const wchar_t* fsName, int mode, HWND parent, int panel, int selectedFiles,
-                               int selectedDirs, BOOL& cancelOrError)
-    {
-        cancelOrError = TRUE;
-        return FALSE;
-    }
+                               int selectedDirs, BOOL& cancelOrError);
     virtual BOOL WINAPI ChangeAttributes(const wchar_t* fsName, HWND parent, int panel, int selectedFiles,
                                          int selectedDirs)
     {
@@ -190,6 +187,7 @@ private:
         bool isDir = false;
         uint64_t size = 0;
         int64_t mtime = 0; // Unix seconds
+        bool isLink = false; // a symbolic link (isDir then tells what it points to)
     };
     struct CDownloadOptions // what the Copy/Move dialog chose, kept for the CopyOrMoveFromFS call with mode 3
     {
@@ -232,6 +230,11 @@ private:
                        ConflictPolicy policy, bool preserveTime, const std::wstring& targetName);
     bool MoveOnServer(HWND parent, int panel, int selectedFiles, int selectedDirs, const CSftpPath& target);
     std::wstring FullFsPath(const std::string& rawPath) const; // "sftp:user@host/path"
+
+    // ---- fs/fs_delete.cpp
+    BOOL DoDelete(HWND parent, int panel, int selectedFiles, int selectedDirs, BOOL& cancelOrError);
+    bool DeleteOneOnSession(HWND parent, const CSelectedItem& item);
+    bool StartDeleteOperation(const std::vector<CSelectedItem>& items);
 
     // ---- fs/fs_namespace.cpp
     bool DoQuickRename(HWND parent, CFileData& file, CSalamanderStringBuffer* newName, BOOL& cancel);

@@ -122,6 +122,9 @@ struct CQueueTotals
     uint64_t bytesDone = 0;  // a Done transfer counts its full size
     int filesTotal = 0;
     int filesDone = 0;
+    // Remote delete items (DeleteRemoteFile/Dir; a move creates them too). A delete operation reports these as its items.
+    int deleteTotal = 0;
+    int deleteDone = 0;
 };
 
 // Everything the operation window shows, taken in one go under one lock so the numbers fit together.

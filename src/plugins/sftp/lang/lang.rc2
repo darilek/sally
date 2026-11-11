@@ -205,4 +205,10 @@ STRINGTABLE
  IDS_ERR_CREATE_DIR, "The directory ""%ls"" could not be created: %ls"
  IDS_WAIT_RENAMING, "Renaming on the server..."
  IDS_WAIT_CREATING_DIR, "Creating the directory on the server..."
+ IDS_OP_TITLE_DELETE, "SFTP - Delete"
+ // arguments: items done, items total, elapsed
+ IDS_OP_STATS_DELETE, "Items: %d of %d   Elapsed: %ls"
+ IDS_WAIT_DELETING, "Deleting on the server..."
+ // arguments: name, error text
+ IDS_ERR_DELETE_ITEM, "The item ""%ls"" could not be deleted: %ls"
 }

@@ -105,6 +105,13 @@ std::shared_ptr<CPanelRequest> CPanelSession::Mkdir(const std::string& rawPath)
     return Submit(req);
 }
 
+std::shared_ptr<CPanelRequest> CPanelSession::RemoveFile(const std::string& rawPath)
+{
+    std::shared_ptr<CPanelRequest> req(new CPanelRequest(CPanelRequest::Kind::RemoveFile));
+    req->path_ = rawPath;
+    return Submit(req);
+}
+
 CPanelConnectParams CPanelSession::CopyConnectParams() const
 {
     CPanelConnectParams params;
@@ -407,6 +414,10 @@ void CPanelSession::Execute(CPanelRequest& req)
         break;
     case CPanelRequest::Kind::Mkdir:
         if (EnsureConnected(req) && !session_->Mkdir(req.path_))
+            req.error_ = session_->LastError();
+        break;
+    case CPanelRequest::Kind::RemoveFile:
+        if (EnsureConnected(req) && !session_->Remove(req.path_))
             req.error_ = session_->LastError();
         break;
     case CPanelRequest::Kind::List:

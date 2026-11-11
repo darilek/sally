@@ -54,3 +54,14 @@ TEST(SolveOffers, SymlinkLoopOnlySkip)
     EXPECT_TRUE(IsOffered(o, SolveAction::Skip));
     EXPECT_FALSE(IsOffered(o, SolveAction::Retry));
 }
+
+TEST(SolveOffers, DeleteItemsOfferOnlyRetryAndSkip)
+{
+    for (Problem problem : {Problem::DeleteFailed, Problem::PermissionDenied, Problem::NotFound, Problem::Other})
+        for (ItemType type : {ItemType::DeleteRemoteFile, ItemType::DeleteRemoteDir, ItemType::ExploreRemote})
+        {
+            const CSolveOffers o = SolveOffersFor(problem, type);
+            EXPECT_TRUE(o.retry && o.skip);
+            EXPECT_FALSE(o.overwrite || o.resume || o.rename);
+        }
+}

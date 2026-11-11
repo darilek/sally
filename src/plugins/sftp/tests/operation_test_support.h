@@ -199,6 +199,14 @@ protected:
             settings, Params(), COperation::BuildDownloadRoots(sources, settings, CNameCodec::Auto()));
     }
 
+    // Delete on the server: the sources are full remote paths (isDir tells a directory from a file or link).
+    std::unique_ptr<COperation> MakeDelete(const std::vector<CRemoteSource>& sources, int workers = 2)
+    {
+        const COperationSettings settings = Settings(TransferDirection::Delete, false, workers);
+        return std::make_unique<COperation>(
+            settings, Params(), COperation::BuildDeleteRoots(sources, settings, CNameCodec::Auto()));
+    }
+
     std::unique_ptr<COperation> MakeUpload(const std::vector<CLocalSource>& sources, const std::string& remoteRoot,
                                            bool move = false, int workers = 2)
     {

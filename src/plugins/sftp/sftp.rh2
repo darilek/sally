@@ -169,5 +169,9 @@
 #define IDS_WAIT_RENAMING                  254
 #define IDS_WAIT_CREATING_DIR              255
 #define IDS_ERR_NAME_ENCODING              256
+#define IDS_OP_TITLE_DELETE                257
+#define IDS_OP_STATS_DELETE                258
+#define IDS_WAIT_DELETING                  259
+#define IDS_ERR_DELETE_ITEM                260
 
 #endif // __SFTP_RH2

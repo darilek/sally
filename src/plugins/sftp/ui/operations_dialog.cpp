@@ -113,6 +113,8 @@ void COperationsDialog::InitList()
 std::wstring COperationsDialog::TitleOf(const COperationInfo& info) const
 {
     const COperationSettings& settings = info.operation->Settings();
+    if (settings.direction == TransferDirection::Delete)
+        return LangStr(IDS_OP_TITLE_DELETE);
     if (settings.direction == TransferDirection::Download)
         return LangStr(settings.move ? IDS_OP_TITLE_MOVE_DOWNLOAD : IDS_OP_TITLE_DOWNLOAD);
     return LangStr(settings.move ? IDS_OP_TITLE_MOVE_UPLOAD : IDS_OP_TITLE_UPLOAD);
@@ -154,6 +156,8 @@ std::wstring COperationsDialog::DescriptionOf(const COperationInfo& info) const
     // fallback: the two roots of the settings (the selected items themselves are not named here)
     const COperationSettings& settings = info.operation->Settings();
     const std::wstring remote = CNameCodec::Utf8().Decode(settings.remoteRoot);
+    if (settings.direction == TransferDirection::Delete)
+        return remote;
     if (settings.direction == TransferDirection::Download)
         return SPLFormatStringOwned(LangStr(IDS_OPS_DESCRIPTION).c_str(), remote.c_str(), settings.localRoot.c_str());
     return SPLFormatStringOwned(LangStr(IDS_OPS_DESCRIPTION).c_str(), settings.localRoot.c_str(), remote.c_str());

@@ -59,6 +59,25 @@ std::vector<CQueueItem> COperation::BuildDownloadRoots(const std::vector<CRemote
     return items;
 }
 
+std::vector<CQueueItem> COperation::BuildDeleteRoots(const std::vector<CRemoteSource>& sources,
+                                                     const COperationSettings& settings, const CNameCodec& codec)
+{
+    std::vector<CQueueItem> items;
+    for (const CRemoteSource& source : sources)
+    {
+        std::string path = source.path;
+        while (path.size() > 1 && path.back() == '/')
+            path.pop_back();
+        CQueueItem item;
+        item.remotePath = path;
+        // A directory is explored first (its content is deleted, then the directory itself); a file or a link is deleted
+        // at once. A link to a directory is explored too: the worker sees that it is a link and removes only the link.
+        item.type = source.isDir ? ItemType::ExploreRemote : ItemType::DeleteRemoteFile;
+        items.push_back(std::move(item));
+    }
+    return items;
+}
+
 std::vector<CQueueItem> COperation::BuildUploadRoots(const std::vector<CLocalSource>& sources,
                                                      const COperationSettings& settings, const CNameCodec& codec)
 {
@@ -547,6 +566,11 @@ COperationStats COperation::Statistics() const
     stats.bytesDone = summary.totals.bytesDone;
     stats.filesTotal = summary.totals.filesTotal;
     stats.filesDone = summary.totals.filesDone;
+    if (settings_.direction == TransferDirection::Delete) // no bytes: the items are what counts
+    {
+        stats.filesTotal = summary.totals.deleteTotal;
+        stats.filesDone = summary.totals.deleteDone;
+    }
 
     const long long now = NowMs();
     std::lock_guard<std::mutex> lock(statsMutex_);

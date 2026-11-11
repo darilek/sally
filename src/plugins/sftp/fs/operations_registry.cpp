@@ -41,8 +41,10 @@ bool COperationsRegistry::Launch(COperationSettings settings, CPanelConnectParam
     }
     CEntry entry;
     entry.window = made.window;
-    entry.description = SPLFormatStringOwned(LangStr(IDS_OPS_DESCRIPTION).c_str(), launch.source.c_str(),
-                                             launch.target.c_str());
+    entry.description = launch.target.empty() // a delete has no target
+                            ? launch.source
+                            : SPLFormatStringOwned(LangStr(IDS_OPS_DESCRIPTION).c_str(), launch.source.c_str(),
+                                                   launch.target.c_str());
     entries_[uid] = std::move(entry);
     return true;
 }

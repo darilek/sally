@@ -134,6 +134,7 @@ private:
 
     // items
     CItemResult ExploreRemote(const CQueueItem& item);
+    CItemResult ExploreForDelete(const CQueueItem& item);
     CItemResult ExploreLocal(const CQueueItem& item);
     CItemResult Download(const CQueueItem& item);
     CItemResult Upload(const CQueueItem& item);

@@ -743,7 +743,9 @@ CWorker::CItemResult CWorker::ReplaceWithChildren(const CQueueItem& item, std::v
 {
     CQueue& queue = host_.Queue();
     MarkViaLink(children, childrenViaLink);
-    if (host_.Settings().move && !item.viaLink)
+    // a move deletes the source directory afterwards; a delete operation deletes the directory it explored
+    const bool deleting = host_.Settings().direction == TransferDirection::Delete;
+    if ((host_.Settings().move || deleting) && !item.viaLink)
     {
         CQueueItem after; // the directory itself is deleted once everything in it is done
         after.type = afterType;
@@ -759,8 +761,41 @@ CWorker::CItemResult CWorker::ReplaceWithChildren(const CQueueItem& item, std::v
     return Replaced();
 }
 
+// Delete mode of ExploreRemote: the children are delete items (files and links) and explore items (real directories),
+// and the directory itself is deleted last (the "after" item, Delayed until its children are done). A symbolic link is
+// NEVER followed: a link to a directory is deleted as a link, so what it points to survives.
+CWorker::CItemResult CWorker::ExploreForDelete(const CQueueItem& item)
+{
+    if (item.depth > kMaxExploreDepth)
+        return Failure(Problem::SymlinkLoop, std::wstring());
+    std::vector<CQueueItem> children;
+    if (!IsRemoteLink(item.remotePath)) // a link has no children here: its "after" item removes the link
+    {
+        std::vector<CSftpEntry> entries;
+        if (!session_.ListDir(item.remotePath, entries))
+        {
+            if (session_.LastError().kind == SshErrorKind::NotFound)
+                return Done(); // already gone
+            return FromSessionError(Problem::Other);
+        }
+        for (const CSftpEntry& entry : entries)
+        {
+            if (!IsValidRemoteEntryName(entry.rawName))
+                continue; // the directory then cannot be removed and the item parks with the server's message
+            CQueueItem child;
+            child.remotePath = AppendRemoteName(item.remotePath, entry.rawName);
+            child.depth = item.depth + 1;
+            child.type = entry.isDir && !entry.isLink ? ItemType::ExploreRemote : ItemType::DeleteRemoteFile;
+            children.push_back(std::move(child));
+        }
+    }
+    return ReplaceWithChildren(item, std::move(children), ItemType::DeleteRemoteDir, false);
+}
+
 CWorker::CItemResult CWorker::ExploreRemote(const CQueueItem& item)
 {
+    if (host_.Settings().direction == TransferDirection::Delete)
+        return ExploreForDelete(item);
     if (item.depth > kMaxExploreDepth)
         return Failure(Problem::SymlinkLoop, std::wstring());
     std::wstring localDir;

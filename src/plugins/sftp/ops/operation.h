@@ -146,6 +146,10 @@ public:
     // Root items for a selection. Names that cannot be used (see AddDownloadItems) are parked by the worker.
     static std::vector<CQueueItem> BuildDownloadRoots(const std::vector<CRemoteSource>& sources,
                                                       const COperationSettings& settings, const CNameCodec& codec);
+    // Delete: a file or link becomes DeleteRemoteFile, a directory ExploreRemote (the worker deletes in explore mode when
+    // settings.direction is Delete). source.path is the full raw remote path; the other fields are not used.
+    static std::vector<CQueueItem> BuildDeleteRoots(const std::vector<CRemoteSource>& sources,
+                                                    const COperationSettings& settings, const CNameCodec& codec);
     static std::vector<CQueueItem> BuildUploadRoots(const std::vector<CLocalSource>& sources,
                                                     const COperationSettings& settings, const CNameCodec& codec);
 

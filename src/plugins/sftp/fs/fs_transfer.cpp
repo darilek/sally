@@ -87,6 +87,7 @@ bool CPluginFSInterface::CollectSelection(int panel, int selectedFiles, int sele
             CSelectedItem item;
             item.rawName = data != NULL ? data->rawName : codec_.Encode(file->Name);
             item.isDir = isDir != FALSE;
+            item.isLink = data != NULL && (data->mode & 0170000) == 0120000; // S_IFLNK
             item.size = file->Size.Value;
             item.mtime = FileTimeToUnixTime(file->LastWrite);
             items.push_back(std::move(item));

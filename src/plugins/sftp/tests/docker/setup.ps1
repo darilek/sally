@@ -26,7 +26,7 @@ if ($LASTEXITCODE -ne 0) { throw 'The Docker daemon is not running' }
 Invoke-Docker build -t $image $here
 
 cmd /c "docker rm -f $container >nul 2>&1"
-Invoke-Docker run -d --name $container -p 127.0.0.1:2222:2222 -p 127.0.0.1:2223:2223 -p 127.0.0.1:2224:2224 -p 127.0.0.1:2225:2225 -p 127.0.0.1:2226:2226 $image | Out-Null
+Invoke-Docker run -d --name $container -p 127.0.0.1:2222:2222 -p 127.0.0.1:2223:2223 -p 127.0.0.1:2224:2224 -p 127.0.0.1:2225:2225 -p 127.0.0.1:2226:2226 -p 127.0.0.1:2121:2121 -p 127.0.0.1:30000-30009:30000-30009 $image | Out-Null
 
 # wait for sshd (the entrypoint first creates the fixtures)
 $ready = $false
@@ -91,5 +91,6 @@ $auth = (Get-Content (Join-Path $out 'id_ed25519.pub'), (Join-Path $out 'id_rsa.
 $auth | & docker exec -i $container sh -c 'cat > /home/test/.ssh/authorized_keys && chown test:test /home/test/.ssh/authorized_keys && chmod 600 /home/test/.ssh/authorized_keys'
 if ($LASTEXITCODE -ne 0) { throw 'authorizing the keys failed' }
 
+Write-Host "Plain FTP (for comparing with the FTP plugin): 127.0.0.1:2121, passive mode, user test / password test."
 Write-Host "Test server ready: 127.0.0.1:2222 (SFTP), 2223 (no SFTP), 2224 (keyboard-interactive only), 2225 (public key only), 2226 (legacy algorithms only), user test / password test."
 Write-Host "Keys: $out (passphrase of the protected keys: $passphrase)"

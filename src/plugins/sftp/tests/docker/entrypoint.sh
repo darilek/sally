@@ -1,5 +1,5 @@
 #!/bin/sh
-# Creates the test fixtures (once) and runs five sshd instances: 2222 (SFTP), 2223 (no SFTP), 2224 (keyboard-interactive only), 2225 (public key only), 2226 (legacy algorithms only).
+# Creates the test fixtures (once), runs a plain FTP server (vsftpd, 2121) and five sshd instances: 2222 (SFTP), 2223 (no SFTP), 2224 (keyboard-interactive only), 2225 (public key only), 2226 (legacy algorithms only).
 set -e
 
 ssh-keygen -A
@@ -36,6 +36,8 @@ chown -R test:test "$HOME_DIR/.ssh"
 chmod 700 "$HOME_DIR/.ssh"
 chmod 600 "$HOME_DIR/.ssh/authorized_keys"
 
+mkdir -p /var/run/vsftpd/empty
+/usr/sbin/vsftpd /etc/vsftpd.conf &
 /usr/sbin/sshd -f /etc/ssh/sshd_config_nosftp
 /usr/sbin/sshd -f /etc/ssh/sshd_config_kbdint
 /usr/sbin/sshd -f /etc/ssh/sshd_config_pubkey

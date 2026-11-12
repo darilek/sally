@@ -62,6 +62,7 @@ uint64_t CQueue::Insert(CQueueItem item, uint64_t parentUid)
     item.state = ItemState::Waiting;
     item.problem = Problem::None;
     item.errorText.clear();
+    item.sshError = CSshError();
     const uint64_t uid = item.uid;
 
     Count(KidsOf(parentUid), ItemState::Waiting, +1);
@@ -151,6 +152,7 @@ void CQueue::ApplySolve(Node& node, SolveAction action, const std::wstring& newN
         item.forceNewName = action == SolveAction::Rename ? newName : std::wstring();
         item.problem = Problem::None;
         item.errorText.clear();
+        item.sshError = CSshError();
         SetState(node, ItemState::Waiting);
     }
     Reevaluate(item.parentUid);
@@ -210,6 +212,7 @@ bool CQueue::ReplaceWithChildren(uint64_t uid, std::vector<CQueueItem> children,
         node->item.state = ItemState::Processing; // SetState below moves it on (and fixes the counters)
         node->item.problem = Problem::None;
         node->item.errorText.clear();
+        node->item.sshError = CSshError();
         node->item.bytesDone = 0;
         SetState(*node, ItemState::Delayed);
         for (CQueueItem& child : children)
@@ -226,7 +229,8 @@ bool CQueue::ReplaceWithChildren(uint64_t uid, std::vector<CQueueItem> children,
     return true;
 }
 
-bool CQueue::Finish(uint64_t uid, ItemState state, Problem problem, const std::wstring& errorText)
+bool CQueue::Finish(uint64_t uid, ItemState state, Problem problem, const std::wstring& errorText,
+                    const CSshError& sshError)
 {
     const bool allowed = state == ItemState::Done || state == ItemState::Skipped || state == ItemState::Failed ||
                          state == ItemState::UserInputNeeded;
@@ -238,6 +242,7 @@ bool CQueue::Finish(uint64_t uid, ItemState state, Problem problem, const std::w
     CQueueItem& item = node->item;
     item.problem = problem;
     item.errorText = errorText;
+    item.sshError = sshError;
     if (state == ItemState::Done && IsTransferType(item.type))
         item.bytesDone = item.size;
     SetState(*node, state);

@@ -347,5 +347,8 @@
 #define IDS_ERRMSG_EXEC_IDLE_TIMEOUT              419
 #define IDS_ERRMSG_INVALID_SERVER_DATA            420
 #define IDS_ERRMSG_CANCELLED                      421
+#define IDS_ERRMSG_NOT_CONNECTED                  422
+#define IDS_ERRMSG_LOCAL_FILE_CREATE_FAILED       423
+#define IDS_ERRMSG_LOCAL_FILE_RENAME_FAILED       424
 
 #endif // __SFTP_RH2

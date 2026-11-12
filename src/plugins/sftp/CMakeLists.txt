@@ -159,6 +159,7 @@ sal_add_plugin(NAME sftp
     "${SAL_PLUGINS}/sftp/ui/host_key_dialog.cpp"
     "${SAL_PLUGINS}/sftp/ui/prompt_dialog.cpp"
     "${SAL_PLUGINS}/sftp/ui/interaction_ui.cpp"
+    "${SAL_PLUGINS}/sftp/ui/error_text.cpp"
     "${SAL_PLUGINS}/sftp/ui/problem_text.cpp"
     "${SAL_PLUGINS}/sftp/ui/operation_window.cpp"
     "${SAL_PLUGINS}/sftp/ui/operations_dialog.cpp"

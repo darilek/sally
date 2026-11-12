@@ -214,11 +214,12 @@ void COperation::Pause()
     NotifyObserverState();
 }
 
-void COperation::PauseForLoginProblem(const std::wstring& text)
+void COperation::PauseForLoginProblem(const std::wstring& text, const CSshError& error)
 {
     {
         std::lock_guard<std::mutex> lock(waitMutex_);
         pauseReason_ = text.empty() ? std::wstring(1, L'?') : text; // non-empty: that is what tells it from a user pause
+        pauseError_ = error;
     }
     Pause();
 }
@@ -229,6 +230,12 @@ std::wstring COperation::PauseReason() const
     return pauseReason_;
 }
 
+CSshError COperation::PauseError() const
+{
+    std::lock_guard<std::mutex> lock(waitMutex_);
+    return pauseError_;
+}
+
 void COperation::Resume()
 {
     {
@@ -236,6 +243,7 @@ void COperation::Resume()
         if (!paused_.exchange(false))
             return;
         pauseReason_.clear();
+        pauseError_ = CSshError();
     }
     waitCv_.notify_all();
     queue_.WakeAll();

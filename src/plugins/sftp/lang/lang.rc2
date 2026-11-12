@@ -448,4 +448,9 @@ STRINGTABLE
  // arguments: %1 directory path
  IDS_ERRMSG_INVALID_SERVER_DATA, "The server sent invalid data for the directory '%1'"
  IDS_ERRMSG_CANCELLED, "The operation was cancelled"
+ IDS_ERRMSG_NOT_CONNECTED, "Not connected"
+ // arguments: %1 Windows error number
+ IDS_ERRMSG_LOCAL_FILE_CREATE_FAILED, "The local file could not be created (Windows error %1)"
+ // arguments: %1 Windows error number
+ IDS_ERRMSG_LOCAL_FILE_RENAME_FAILED, "The local file could not be renamed (Windows error %1)"
 }

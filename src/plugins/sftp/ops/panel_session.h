@@ -269,7 +269,9 @@ private:
 
     std::shared_ptr<CPanelRequest> Submit(std::shared_ptr<CPanelRequest> req);
     static void Finish(CPanelRequest& req, SshErrorKind kind, const std::string& message) noexcept;
-    static void SetError(CPanelRequest& req, SshErrorKind kind, const std::string& message) noexcept;
+    // msgId/arg1: the translatable text of the error (see CSshError::msgId); message stays the English fallback.
+    static void SetError(CPanelRequest& req, SshErrorKind kind, const std::string& message, SshMsg msgId = SshMsg::None,
+                         const std::string& arg1 = std::string()) noexcept;
 
     // session thread
     void ThreadMain();

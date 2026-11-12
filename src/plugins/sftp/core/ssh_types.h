@@ -108,7 +108,10 @@ enum class SshMsg
     ExecFinishFailed,     // %1 English text of libssh2
     NoAnswerTimeout,      // %1 time limit in seconds (plain number)
     ExecIdleTimeout,      // %1 idle limit in seconds (plain number)
-    InvalidServerData     // %1 directory path (invalid entry name or too many entries)
+    InvalidServerData,    // %1 directory path (invalid entry name or too many entries)
+    NotConnected,         // no arguments (a panel request without a connection)
+    LocalFileCreateFailed, // %1 Windows error number (the .part file of a panel download)
+    LocalFileRenameFailed // %1 Windows error number (the .part file could not get its final name)
 };
 
 struct CSshError

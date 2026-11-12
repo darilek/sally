@@ -49,7 +49,7 @@ public:
     virtual CExploredDirs& ExploredDirs() = 0;
     // A login that will fail the same way for every item (rejected host key, wrong password, bad key file, cancelled
     // prompt): pauses the operation and shows 'text'; Resume tries the login again.
-    virtual void PauseForLoginProblem(const std::wstring& text) = 0;
+    virtual void PauseForLoginProblem(const std::wstring& text, const CSshError& error) = 0;
 
     // Logins the worker cannot decide alone (a host key other than the pinned one, a prompt). They block until the
     // user answered, the operation was cancelled or the operation cannot ask (then: reject / false).
@@ -101,10 +101,12 @@ private:
         Kind kind = Kind::Done;
         Problem problem = Problem::None;
         std::wstring text;
+        CSshError sshError; // the SSH error behind text, when there is one (shown in the user's language by the UI)
         bool connectionLost = false; // the session is unusable or could not be made: reconnect (with backoff), try again
     };
     static CItemResult Done() { return CItemResult(); }
     static CItemResult Failure(Problem problem, std::wstring text);
+    static CItemResult FailureOfError(Problem problem, const CSshError& error); // the English message is the text
     static CItemResult Parked(Problem problem, std::wstring text = std::wstring());
     static CItemResult Skipped();
     static CItemResult Returned();

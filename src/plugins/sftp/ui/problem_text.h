@@ -11,5 +11,7 @@
 std::wstring ProblemText(Problem problem);
 // ProblemText, followed by ": details" when the item carries more detail from the worker.
 std::wstring ProblemTextWithDetails(Problem problem, const std::wstring& details);
+// The details of an item in an error state: its SSH error in the user's language, else the text the worker stored.
+std::wstring ItemDetails(const CQueueItem& item);
 // "Waiting", "Done", "Failed", ...
 std::wstring ItemStateText(ItemState state);

@@ -5,6 +5,7 @@
 #include <windows.h>
 
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <thread>
@@ -180,6 +181,18 @@ TEST_F(PanelSessionTest, WrongPasswordFailsAndForgetsTheSite)
     auto list = s.List("");
     ASSERT_TRUE(list->Wait(5000));
     EXPECT_EQ(list->Error().kind, SshErrorKind::ConnectFailed);
+}
+
+// Not a PanelSessionTest: no server is needed for a session that was never connected.
+TEST(PanelSessionNoServer, ARequestWithoutAConnectionIsNotConnectedWithATranslatableId)
+{
+    CPanelSession s(nullptr);
+    auto list = s.List("");
+    ASSERT_TRUE(list->Wait(5000));
+    EXPECT_EQ(list->Error().kind, SshErrorKind::ConnectFailed);
+    EXPECT_EQ(list->Error().msgId, SshMsg::NotConnected);
+    EXPECT_TRUE(list->Error().args.empty());
+    EXPECT_EQ(list->Error().message, "Not connected"); // the English text stays
 }
 
 TEST_F(PanelSessionTest, DisconnectForgetsTheSite)
@@ -1252,6 +1265,28 @@ TEST_F(PanelSessionTest, DownloadToFileIntoAMissingFolderIsAnIoError)
     auto req = s.DownloadToFile("fixtures/small/hello.txt", L"C:\\no-such-folder-sally\\x.txt", 0);
     ASSERT_TRUE(Pump(s, *req, policy));
     EXPECT_EQ(req->Error().kind, SshErrorKind::Io);
+    EXPECT_EQ(req->Error().msgId, SshMsg::LocalFileCreateFailed);
+    ASSERT_EQ(req->Error().args.size(), 1u);
+    EXPECT_FALSE(req->Error().args[0].empty()); // the Windows error number
+    EXPECT_NE(req->Error().message.find("Win32 error " + req->Error().args[0]), std::string::npos); // English stays
+}
+
+TEST_F(PanelSessionTest, DownloadOntoAFolderOfTheSameNameCannotBeRenamedIntoPlace)
+{
+    const std::filesystem::path target = std::filesystem::temp_directory_path() / "sally_sftp_rename_target";
+    std::filesystem::remove_all(target);
+    std::filesystem::create_directories(target); // the final name is a folder: the .part file cannot replace it
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    auto req = s.DownloadToFile("fixtures/small/hello.txt", target.wstring(), 0);
+    ASSERT_TRUE(Pump(s, *req, policy));
+    std::filesystem::remove_all(target);
+    std::filesystem::remove(target.wstring() + L".part");
+    EXPECT_EQ(req->Error().kind, SshErrorKind::Io);
+    EXPECT_EQ(req->Error().msgId, SshMsg::LocalFileRenameFailed);
+    ASSERT_EQ(req->Error().args.size(), 1u);
+    EXPECT_FALSE(req->Error().args[0].empty());
 }
 
 TEST_F(PanelSessionTest, CancelledDownloadToFileLeavesNoFileAndTheSessionRecovers)

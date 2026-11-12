@@ -566,6 +566,37 @@ TEST_F(OperationFlowTest, AWrongPasswordPausesTheOperationInsteadOfLoggingInPerI
     EXPECT_TRUE(op.Queue().Items(true).empty()) << "no item failed; they wait for Resume";
 }
 
+TEST_F(OperationFlowTest, AFailedItemKeepsTheSessionErrorSoTheUiCanWordItInTheUsersLanguage)
+{
+    delays_ = {10, 10, 10};
+    CPanelConnectParams params = Params();
+    params.site.host = L"no-such-host.invalid"; // .invalid never resolves (RFC 2606)
+    const COperationSettings settings = Settings(TransferDirection::Download, false, 1);
+    COperation op(settings, std::move(params),
+                  COperation::BuildDownloadRoots({RemoteSrc("fixtures/small/hello.txt", false, 6)}, settings,
+                                                 CNameCodec::Auto()));
+    CTestObserver observer;
+    op.SetObserver(&observer);
+    ASSERT_TRUE(op.Start());
+    ASSERT_TRUE(op.WaitFinished(60000));
+
+    const std::vector<CQueueItem> failed = ItemsWithProblem(op, Problem::ConnectionLost);
+    ASSERT_EQ(failed.size(), 1u);
+    const CSshError& error = failed[0].sshError;
+    // a very slow DNS could end as a timeout instead; both carry the host as the first argument
+    ASSERT_TRUE(error.msgId == SshMsg::ResolveFailed || error.msgId == SshMsg::ResolveTimeout) << error.message;
+    ASSERT_FALSE(error.args.empty());
+    EXPECT_EQ(error.args[0], "no-such-host.invalid");
+    EXPECT_FALSE(failed[0].errorText.empty()); // the English text stays as the fallback
+
+    // a retry clears the stored error; the item fails again with a fresh one
+    EXPECT_EQ(op.RetryAllFailed(), 1);
+    ASSERT_TRUE(op.WaitFinished(60000));
+    const std::vector<CQueueItem> again = ItemsWithProblem(op, Problem::ConnectionLost);
+    ASSERT_EQ(again.size(), 1u);
+    EXPECT_TRUE(again[0].sshError.IsError());
+}
+
 TEST_F(OperationFlowTest, DestroyingTheOperationWhileAWorkerWaitsForTheUserDoesNotHang)
 {
     const DWORD handlesBefore = HandleCount();

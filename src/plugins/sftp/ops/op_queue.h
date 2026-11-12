@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "op_types.h"
+#include "ssh_types.h"
 
 enum class ItemType
 {
@@ -83,6 +84,7 @@ struct CQueueItem
     int64_t mtime = 0;       // source modification time, Unix seconds, 0 = unknown
     Problem problem = Problem::None; // why it is in an error state
     std::wstring errorText;          // details for the user
+    CSshError sshError;              // the SSH error behind errorText, when there is one (the UI words it from the string table)
     SolveAction forceAction = SolveAction::Retry; // the user's answer; Retry = none, the policy decides
     std::wstring forceNewName;                    // for forceAction == Rename
     uint64_t bytesDone = 0;          // kept when the item goes back to Waiting, so a resume knows the offset
@@ -159,7 +161,8 @@ public:
 
     // A worker reports the result of the Processing item 'uid'. 'state' must be Done, Skipped, Failed or
     // UserInputNeeded. For Done a transfer's bytesDone becomes its size. False when the call does not apply.
-    bool Finish(uint64_t uid, ItemState state, Problem problem = Problem::None, const std::wstring& errorText = L"");
+    bool Finish(uint64_t uid, ItemState state, Problem problem = Problem::None, const std::wstring& errorText = L"",
+                const CSshError& sshError = CSshError());
 
     // A worker reports the bytes it has transferred so far (progress for the window and the resume offset).
     bool SetProgress(uint64_t uid, uint64_t bytesDone);

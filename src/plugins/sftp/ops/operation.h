@@ -113,6 +113,8 @@ public:
     // Why the operation paused itself (a login that failed, see IWorkerHost::PauseForLoginProblem); empty for a pause of
     // the user and while running. Cleared by Resume.
     std::wstring PauseReason() const;
+    // The SSH error behind PauseReason (kind None when there is none): the UI words it from the string table.
+    CSshError PauseError() const;
     // True when the current run is finished (observer told) or the operation was cancelled and the workers ended,
     // within timeoutMs (INFINITE allowed).
     bool WaitFinished(DWORD timeoutMs);
@@ -168,7 +170,7 @@ private:
     bool SleepUnlessInterrupted(unsigned ms) override;
     void CheckRunOver() override { FinishRun(false); }
     CExploredDirs& ExploredDirs() override { return explored_; }
-    void PauseForLoginProblem(const std::wstring& text) override;
+    void PauseForLoginProblem(const std::wstring& text, const CSshError& error) override;
     HostKeyDecision AskHostKey(int workerIndex, const std::string& host, int port, const std::string& keyType,
                                const std::string& fingerprint, bool changed) override;
     bool AskPrompt(int workerIndex, PromptKind kind, const std::string& name, const std::string& instruction,
@@ -207,6 +209,7 @@ private:
     mutable std::mutex waitMutex_;
     std::condition_variable waitCv_;
     std::wstring pauseReason_; // guarded by waitMutex_
+    CSshError pauseError_;     // guarded by waitMutex_
 
     // the one interaction at a time: a leaf lock
     std::mutex interMutex_;

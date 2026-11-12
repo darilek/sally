@@ -2,6 +2,8 @@
 
 #include "problem_text.h"
 
+#include "error_text.h"
+
 namespace
 {
 int ProblemStringId(Problem problem)
@@ -57,6 +59,11 @@ std::wstring ProblemTextWithDetails(Problem problem, const std::wstring& details
     if (details.empty())
         return text;
     return text.empty() ? details : text + L": " + details;
+}
+
+std::wstring ItemDetails(const CQueueItem& item)
+{
+    return item.sshError.IsError() ? DescribeError(item.sshError) : item.errorText;
 }
 
 std::wstring ItemStateText(ItemState state)

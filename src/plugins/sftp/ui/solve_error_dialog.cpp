@@ -79,7 +79,7 @@ void CSolveErrorDialog::InitControls()
 {
     const std::wstring name = !item_.localPath.empty() ? item_.localPath : CNameCodec::Utf8().Decode(item_.remotePath);
     SetDlgItemTextW(HWindow, IDC_SOLVE_NAME, name.c_str());
-    SetDlgItemTextW(HWindow, IDC_SOLVE_MESSAGE, ProblemTextWithDetails(item_.problem, item_.errorText).c_str());
+    SetDlgItemTextW(HWindow, IDC_SOLVE_MESSAGE, ProblemTextWithDetails(item_.problem, ItemDetails(item_)).c_str());
 
     if (IsTransferType(item_.type))
         SetDlgItemTextW(HWindow, IDC_SOLVE_SOURCE, SideInfo(IDS_SOLVE_SOURCE_INFO, item_.size, item_.mtime).c_str());

@@ -9,6 +9,7 @@
 #include "dark_controls.h"
 
 #include "encoding.h"
+#include "error_text.h"
 #include "host_key_dialog.h"
 #include "problem_text.h"
 #include "progress_format.h"
@@ -414,7 +415,9 @@ void COperationWindow::UpdateSummary()
             break;
         case OperationStatus::Paused:
         {
-            const std::wstring reason = op_.PauseReason(); // a login problem paused it
+            const CSshError pauseError = op_.PauseError();
+            // a login problem paused it
+            const std::wstring reason = pauseError.IsError() ? DescribeError(pauseError) : op_.PauseReason();
             text = reason.empty() ? Str(IDS_OP_STATUS_PAUSED)
                                   : SPLFormatStringOwned(Str(IDS_OP_STATUS_PAUSED_REASON).c_str(), reason.c_str());
             break;
@@ -549,8 +552,9 @@ void COperationWindow::RebuildList()
         if (cached == problemTexts_.end())
             cached = problemTexts_.emplace(static_cast<int>(item.problem), ProblemText(item.problem)).first;
         std::wstring problem = cached->second;
-        if (!item.errorText.empty())
-            problem = problem.empty() ? item.errorText : problem + L": " + item.errorText;
+        const std::wstring details = ItemDetails(item);
+        if (!details.empty())
+            problem = problem.empty() ? details : problem + L": " + details;
         const std::wstring size = IsTransferType(item.type) ? FormatBytes(item.size) : std::wstring();
 
         LVITEMW row = {};

@@ -264,13 +264,17 @@ void CPanelSession::Finish(CPanelRequest& req, SshErrorKind kind, const std::str
 }
 
 // Never throws (it is also used in catch blocks): when the message cannot be copied, the kind alone is reported.
-void CPanelSession::SetError(CPanelRequest& req, SshErrorKind kind, const std::string& message) noexcept
+void CPanelSession::SetError(CPanelRequest& req, SshErrorKind kind, const std::string& message, SshMsg msgId,
+                             const std::string& arg1) noexcept
 {
     req.error_ = CSshError();
     req.error_.kind = kind;
     try
     {
         req.error_.message = message;
+        req.error_.msgId = msgId;
+        if (msgId == SshMsg::LocalFileCreateFailed || msgId == SshMsg::LocalFileRenameFailed)
+            req.error_.args.push_back(arg1);
     }
     catch (...)
     {
@@ -437,7 +441,7 @@ bool CPanelSession::EnsureConnected(CPanelRequest& req)
         return true;
     if (!hasSite_)
     {
-        SetError(req, SshErrorKind::ConnectFailed, "Not connected");
+        SetError(req, SshErrorKind::ConnectFailed, "Not connected", SshMsg::NotConnected);
         return false;
     }
     return DoConnect(req);
@@ -590,7 +594,9 @@ void CPanelSession::DownloadFile(CPanelRequest& req)
     CPartialFile partial(req.localPath_ + L".part");
     if (!partial.IsOpen())
     {
-        SetError(req, SshErrorKind::Io, "The local file could not be created (Win32 error " + std::to_string(GetLastError()) + ")");
+        const std::string code = std::to_string(GetLastError());
+        SetError(req, SshErrorKind::Io, "The local file could not be created (Win32 error " + code + ")",
+                 SshMsg::LocalFileCreateFailed, code);
         return;
     }
     downloading_ = &req;
@@ -619,7 +625,11 @@ void CPanelSession::DownloadFile(CPanelRequest& req)
         return;
     }
     if (!partial.Commit(req.localPath_))
-        SetError(req, SshErrorKind::Io, "The local file could not be renamed (Win32 error " + std::to_string(GetLastError()) + ")");
+    {
+        const std::string code = std::to_string(GetLastError());
+        SetError(req, SshErrorKind::Io, "The local file could not be renamed (Win32 error " + code + ")",
+                 SshMsg::LocalFileRenameFailed, code);
+    }
 }
 
 // Called by the core on the session thread during a transfer.

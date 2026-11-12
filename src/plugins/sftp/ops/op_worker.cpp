@@ -338,6 +338,13 @@ CWorker::CItemResult CWorker::Failure(Problem problem, std::wstring text)
     return r;
 }
 
+CWorker::CItemResult CWorker::FailureOfError(Problem problem, const CSshError& error)
+{
+    CItemResult r = Failure(problem, ToWide(error.message));
+    r.sshError = error;
+    return r;
+}
+
 CWorker::CItemResult CWorker::Parked(Problem problem, std::wstring text)
 {
     CItemResult r;
@@ -500,10 +507,10 @@ void CWorker::Report(const CQueueItem& item, const CItemResult& result)
         queue.Finish(item.uid, ItemState::Done);
         break;
     case CItemResult::Kind::Failed:
-        queue.Finish(item.uid, ItemState::Failed, result.problem, result.text);
+        queue.Finish(item.uid, ItemState::Failed, result.problem, result.text, result.sshError);
         break;
     case CItemResult::Kind::Parked:
-        queue.Finish(item.uid, ItemState::UserInputNeeded, result.problem, result.text);
+        queue.Finish(item.uid, ItemState::UserInputNeeded, result.problem, result.text, result.sshError);
         break;
     case CItemResult::Kind::Skipped:
         queue.Finish(item.uid, ItemState::Skipped);
@@ -677,7 +684,7 @@ void CWorker::StopAfterLoginProblem(CItemResult& failure)
 {
     if (host_.Settings().interactive)
     {
-        host_.PauseForLoginProblem(failure.text);
+        host_.PauseForLoginProblem(failure.text, failure.sshError);
         failure = Returned();
         return;
     }
@@ -713,7 +720,7 @@ bool CWorker::EnsureConnected(CItemResult& failure)
             failure = Returned();
             return false;
         }
-        failure = Failure(Problem::ConnectionLost, ToWide(error.message));
+        failure = FailureOfError(Problem::ConnectionLost, error);
         // network trouble may pass; a refused host key, a failed login or a bad key file will not
         failure.connectionLost = error.kind == SshErrorKind::ConnectFailed || error.kind == SshErrorKind::Timeout;
         if (IsLoginProblem(error.kind))
@@ -728,7 +735,7 @@ CWorker::CItemResult CWorker::FromSessionError(Problem fallback)
     const CSshError& error = session_.LastError();
     if (error.kind == SshErrorKind::Cancelled)
         return Returned();
-    CItemResult result = Failure(ProblemFromSshError(error, fallback), ToWide(error.message));
+    CItemResult result = FailureOfError(ProblemFromSshError(error, fallback), error);
     if (!session_.IsConnected())
     {
         result.problem = Problem::ConnectionLost;

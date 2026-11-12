@@ -191,6 +191,7 @@ private:
         int64_t mtime = 0; // Unix seconds
         bool isLink = false; // a symbolic link (isDir then tells what it points to)
         uint32_t mode = 0;   // st_mode bits from the listing (for a link: of the link itself); 0 = not reported
+        bool modeKnown = false; // the mode above was reported by the server (or read by a Stat)
     };
     struct CDownloadOptions // what the Copy/Move dialog chose, kept for the CopyOrMoveFromFS call with mode 3
     {
@@ -262,7 +263,9 @@ private:
     void BuildContextMenu(CGUIMenuPopupAbstract* menu, int type, int panel) const;
     void RunContextCommand(const wchar_t* fsName, HWND parent, int command, int type, int panel, int selectedFiles,
                            int selectedDirs);
-    void NotifyFolderChanged(); // the current folder changed: refresh panels showing it, drop the F3 copies
+    // the current folder changed: refresh panels showing it, drop the F3 copies. includingSubdirs: folders below it may
+    // have changed too (a command line can do anything)
+    void NotifyFolderChanged(bool includingSubdirs = false);
 
     // ---- fs/fs_info.cpp
     void UpdateSecurityIcon(int panel);

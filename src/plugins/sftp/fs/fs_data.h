@@ -12,6 +12,7 @@ struct CSftpFileData
 {
     std::string rawName;
     uint32_t mode = 0; // st_mode bits as the server sent them
+    bool modeKnown = false; // the server reported the mode
     std::wstring permissions; // "drwxr-xr-x", formatted once when the listing is built
     std::wstring owner;       // numeric user id as text (SFTP v3), may be empty
     std::wstring group;

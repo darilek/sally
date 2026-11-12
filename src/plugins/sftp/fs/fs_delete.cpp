@@ -120,6 +120,6 @@ bool CPluginFSInterface::StartDeleteOperation(const std::vector<CSelectedItem>& 
     launch.source = FullFsPath(curRaw_);
     launch.hostName = HostTextOf(params.site);
     launch.changedPaths.push_back(launch.source); // the panel refreshes when a run of the operation ends
-    std::vector<CQueueItem> roots = COperation::BuildDeleteRoots(sources, settings, codec_);
+    std::vector<CQueueItem> roots = COperation::BuildDeleteRoots(sources);
     return OperationsRegistry.Launch(std::move(settings), std::move(params), std::move(roots), launch);
 }

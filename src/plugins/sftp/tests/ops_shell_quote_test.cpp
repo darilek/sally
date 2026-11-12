@@ -40,6 +40,15 @@ TEST(ShellQuote, ATrailingCommentCannotSwallowTheClosingBrace)
     EXPECT_EQ(BuildRemoteCommand("/d", "ls # note"), "cd -- '/d' && { ls # note\n}");
 }
 
+TEST(ShellQuote, ATrailingBackslashCannotJoinTheClosingBrace)
+{
+    // one backslash: a space after it makes an escaped space instead of a line continuation
+    EXPECT_EQ(BuildRemoteCommand("/d", "echo a\\"), "cd -- '/d' && { echo a\\ \n}");
+    // two backslashes are an escaped backslash already
+    EXPECT_EQ(BuildRemoteCommand("/d", "echo a\\\\"), "cd -- '/d' && { echo a\\\\\n}");
+    EXPECT_EQ(BuildRemoteCommand("/d", "echo a\\\\\\"), "cd -- '/d' && { echo a\\\\\\ \n}");
+}
+
 TEST(ShellQuote, DirectoryIsQuotedButTheCommandIsNot)
 {
     EXPECT_EQ(BuildRemoteCommand("/a b/it's", "echo \"$X\" | wc -l; exit 3"),

@@ -30,6 +30,8 @@ int ProblemStringId(Problem problem)
         return IDS_OP_PROBLEM_DELETE_FAILED;
     case Problem::ChmodFailed:
         return IDS_OP_PROBLEM_CHMOD_FAILED;
+    case Problem::PermissionsUnknown:
+        return IDS_OP_PROBLEM_PERMS_UNKNOWN;
     case Problem::SymlinkLoop:
         return IDS_OP_PROBLEM_SYMLINK_LOOP;
     case Problem::LocalIoError:

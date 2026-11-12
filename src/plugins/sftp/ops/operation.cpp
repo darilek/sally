@@ -59,8 +59,7 @@ std::vector<CQueueItem> COperation::BuildDownloadRoots(const std::vector<CRemote
     return items;
 }
 
-std::vector<CQueueItem> COperation::BuildDeleteRoots(const std::vector<CRemoteSource>& sources,
-                                                     const COperationSettings& settings, const CNameCodec& codec)
+std::vector<CQueueItem> COperation::BuildDeleteRoots(const std::vector<CRemoteSource>& sources)
 {
     std::vector<CQueueItem> items;
     for (const CRemoteSource& source : sources)
@@ -71,7 +70,8 @@ std::vector<CQueueItem> COperation::BuildDeleteRoots(const std::vector<CRemoteSo
         CQueueItem item;
         item.remotePath = path;
         // A directory is explored first (its content is deleted, then the directory itself); a file or a link is deleted
-        // at once. A link to a directory is explored too: the worker sees that it is a link and removes only the link.
+        // at once. The FS passes a link with isDir == false; if a caller passes a link as a directory anyway, the worker
+        // sees that it is a link and removes only the link.
         item.type = source.isDir ? ItemType::ExploreRemote : ItemType::DeleteRemoteFile;
         items.push_back(std::move(item));
     }
@@ -79,7 +79,7 @@ std::vector<CQueueItem> COperation::BuildDeleteRoots(const std::vector<CRemoteSo
 }
 
 std::vector<CQueueItem> COperation::BuildChmodRoots(const std::vector<CRemoteSource>& sources,
-                                                    const COperationSettings& settings, const CNameCodec& codec)
+                                                    const COperationSettings& settings)
 {
     std::vector<CQueueItem> items;
     for (const CRemoteSource& source : sources)
@@ -586,8 +586,8 @@ COperationStats COperation::Statistics() const
     stats.bytesDone = summary.totals.bytesDone;
     stats.filesTotal = summary.totals.filesTotal;
     stats.filesDone = summary.totals.filesDone;
+    // Delete and chmod have no bytes: the items are what counts
     if (settings_.direction == TransferDirection::Delete || settings_.direction == TransferDirection::Chmod)
-        // no bytes: the items are what counts
     {
         stats.filesTotal = summary.totals.deleteTotal;
         stats.filesDone = summary.totals.deleteDone;

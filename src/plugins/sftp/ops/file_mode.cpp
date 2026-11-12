@@ -92,3 +92,32 @@ uint32_t ApplyModeChange(uint32_t mode, const CModeChange& change)
 {
     return ((mode | change.setBits) & ~change.clearBits) & kModeAll;
 }
+
+CModeState StateOfItemModes(const std::vector<CItemMode>& items)
+{
+    std::vector<uint32_t> modes;
+    for (const CItemMode& item : items)
+    {
+        if (!item.known)
+        {
+            CModeState unknown;
+            unknown.mixed = kModeAll;
+            return unknown;
+        }
+        modes.push_back(PermissionBitsOf(item.mode));
+    }
+    return StateOfModes(modes);
+}
+
+bool ApplyToItemMode(const CItemMode& item, const CModeChange& change, uint32_t& result)
+{
+    if (item.known)
+    {
+        result = ApplyModeChange(PermissionBitsOf(item.mode), change);
+        return true;
+    }
+    if (((change.setBits | change.clearBits) & kModeAll) != kModeAll)
+        return false;
+    result = ApplyModeChange(0, change);
+    return true;
+}

@@ -267,6 +267,7 @@ CPluginInterfaceForFS::ConvertPathToExternal(const wchar_t* fsName, int fsNameIn
 //
 
 int PendingDisconnectPanel = -1; // main thread only
+CPluginFSInterfaceAbstract* PendingDisconnectFs = NULL; // the FS the context menu was opened in
 
 DWORD WINAPI
 CPluginInterfaceForMenuExt::GetMenuItemState(int id, DWORD eventMask)
@@ -294,10 +295,15 @@ CPluginInterfaceForMenuExt::ExecuteMenuItem(CSalamanderForOperationsAbstract* sa
             // the FS of the panel the context menu was opened in, otherwise of the active panel; only when it is ours
             // (otherwise NULL)
             const int panel = PendingDisconnectPanel >= 0 ? PendingDisconnectPanel : PANEL_SOURCE;
-            PendingDisconnectPanel = -1;
+            CPluginFSInterfaceAbstract* const expected = PendingDisconnectFs;
+            const bool fromContextMenu = PendingDisconnectPanel >= 0;
+            PendingDisconnectPanel = -1; // reset whether the command runs or is ignored
+            PendingDisconnectFs = NULL;
             CPluginFSInterfaceAbstract* fs = SalamanderGeneral->GetPanelPluginFS(panel);
             if (fs == NULL)
                 break;
+            if (fromContextMenu && fs != expected)
+                break; // the panel shows another FS now than when the menu was used: ignore the command
             CPluginFSInterface* object = static_cast<CPluginFSInterface*>(fs);
             object->SetDisconnectRequested(true); // the user asked for it: no "keep the connection?" question
             SalamanderGeneral->DisconnectFSFromPanel(parent, panel);

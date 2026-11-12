@@ -64,3 +64,17 @@ CModeChange ChangeOfState(const CModeState& state);
 
 // (mode | setBits) & ~clearBits, permission bits only.
 uint32_t ApplyModeChange(uint32_t mode, const CModeChange& change);
+
+// The mode of one item, which the server may not have reported (permissions == 0 alone cannot tell).
+struct CItemMode
+{
+    uint32_t mode = 0; // only meaningful when 'known'
+    bool known = false;
+};
+
+// Like StateOfModes, but one unknown mode makes every bit "mixed": nothing is claimed about the items.
+CModeState StateOfItemModes(const std::vector<CItemMode>& items);
+
+// The mode an item gets. A known mode: ApplyModeChange. An unknown mode can only be set when the change decides all 12
+// bits (then the old mode does not matter); false otherwise, 'result' is not changed.
+bool ApplyToItemMode(const CItemMode& item, const CModeChange& change, uint32_t& result);

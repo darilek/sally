@@ -77,18 +77,21 @@ BOOL CPluginFSInterface::DoChangeAttributes(HWND parent, int panel, int selected
     if (!ResolveCurrentModes(parent, items))
         return FALSE; // cancelled with ESC while the modes were read
 
-    std::vector<uint32_t> modes;
+    std::vector<CItemMode> modes;
     bool anyDirectory = false;
     for (const CSelectedItem& item : items)
     {
-        modes.push_back(PermissionBitsOf(item.mode));
+        CItemMode itemMode;
+        itemMode.mode = item.mode;
+        itemMode.known = item.modeKnown;
+        modes.push_back(itemMode);
         anyDirectory = anyDirectory || IsRealDirectory(item.isDir, item.isLink);
     }
     CChmodDialogInput input;
     input.name = codec_.Decode(items[0].rawName);
     input.itemCount = static_cast<int>(items.size());
     input.anyDirectory = anyDirectory;
-    input.state = StateOfModes(modes);
+    input.state = StateOfItemModes(modes);
     CChmodChoice choice;
     if (!ShowChmodDialog(parent, input, choice))
         return FALSE;
@@ -110,13 +113,14 @@ bool CPluginFSInterface::ResolveCurrentModes(HWND parent, std::vector<CSelectedI
 {
     for (CSelectedItem& item : items)
     {
-        if (!item.isLink && item.mode != 0)
+        if (!item.isLink && item.modeKnown)
             continue;
         std::shared_ptr<CPanelRequest> request = session_->Stat(JoinRemotePath(curRaw_, item.rawName));
         if (!WaitForNameRequest(parent, request, LangStr(IDS_WAIT_CHMOD)))
             return false;
-        if (request->Ok())
-            item.mode = request->Attributes().permissions;
+        // a link whose target is unknown is not "known" any more: the mode of the link itself says nothing
+        item.modeKnown = request->Ok() && request->Attributes().hasPermissions;
+        item.mode = item.modeKnown ? request->Attributes().permissions : 0;
     }
     return true;
 }
@@ -124,7 +128,17 @@ bool CPluginFSInterface::ResolveCurrentModes(HWND parent, std::vector<CSelectedI
 // Changes one item on the panel session and waits for it. True: done.
 bool CPluginFSInterface::ChmodOneOnSession(HWND parent, const CSelectedItem& item, const CModeChange& change)
 {
-    const uint32_t mode = ApplyModeChange(PermissionBitsOf(item.mode), change);
+    CItemMode old;
+    old.mode = item.mode;
+    old.known = item.modeKnown;
+    uint32_t mode = 0;
+    if (!ApplyToItemMode(old, change, mode))
+    {
+        ShowMessage(parent, SPLFormatStringOwned(LangStr(IDS_ERR_CHMOD_UNKNOWN).c_str(), codec_.Decode(item.rawName).c_str()));
+        return false;
+    }
+    if (old.known && mode == PermissionBitsOf(old.mode))
+        return true; // nothing would change: nothing is sent
     std::shared_ptr<CPanelRequest> request = session_->Chmod(JoinRemotePath(curRaw_, item.rawName), mode);
     if (!WaitForNameRequest(parent, request, LangStr(IDS_WAIT_CHMOD)))
     {
@@ -166,6 +180,6 @@ bool CPluginFSInterface::StartChmodOperation(const std::vector<CSelectedItem>& i
     launch.source = FullFsPath(curRaw_);
     launch.hostName = HostTextOf(params.site);
     launch.changedPaths.push_back(launch.source); // the panel refreshes when a run of the operation ends
-    std::vector<CQueueItem> roots = COperation::BuildChmodRoots(sources, settings, codec_);
+    std::vector<CQueueItem> roots = COperation::BuildChmodRoots(sources, settings);
     return OperationsRegistry.Launch(std::move(settings), std::move(params), std::move(roots), launch);
 }

@@ -139,6 +139,7 @@ bool CPluginFSInterface::DoQuickRename(HWND parent, CFileData& file, CSalamander
     }
     WriteNewName(newName, typed); // the name to focus after the refresh
     SalamanderGeneral->PostRefreshPanelFS(this);
+    NotifyFolderChanged(); // extra: a second panel or detached FS on this folder, and the F3 copies
     return true;
 }
 
@@ -197,5 +198,6 @@ bool CPluginFSInterface::DoCreateDir(HWND parent, CSalamanderStringBuffer* newNa
     }
     WriteNewName(newName, typed); // the directory to focus after the refresh
     SalamanderGeneral->PostRefreshPanelFS(this);
+    NotifyFolderChanged(); // extra: a second panel or detached FS on this folder
     return true;
 }

@@ -408,12 +408,17 @@ bool CPanelSession::DoConnect(CPanelRequest& req)
     {
         // A successful connect means the host key was trusted (known_hosts match, AcceptOnce or AcceptAndSave), so the
         // session's key is the one workers must see, whichever way it was accepted.
+        // read from the session before the lock is taken (no lock held across session calls)
+        const auto serverInfo = session_->ServerInfo();
+        const auto methods = session_->NegotiatedMethods();
+        const auto keyType = session_->HostKeyType();
+        const auto keyFingerprint = session_->HostKeyFingerprint();
         std::lock_guard<std::mutex> lock(mutex_);
-        hostKeyType_ = session_->HostKeyType();
-        hostKeyFingerprint_ = session_->HostKeyFingerprint();
+        hostKeyType_ = keyType;
+        hostKeyFingerprint_ = keyFingerprint;
         info_.valid = true;
-        info_.server = session_->ServerInfo();
-        info_.methods = session_->NegotiatedMethods();
+        info_.server = serverInfo;
+        info_.methods = methods;
         info_.hostKeyType = hostKeyType_;
         info_.hostKeyFingerprint = hostKeyFingerprint_;
         info_.trust = !hostKeyAsked_ ? HostKeyTrust::Known
@@ -601,6 +606,17 @@ void CPanelSession::DownloadFile(CPanelRequest& req)
     {
         const FILETIME time = UnixTimeToFileTime(req.mtime_);
         SetFileTime(partial.Handle(), nullptr, nullptr, &time); // best effort: a good copy with another time is fine
+    }
+    bool cancelled;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        cancelled = req.cancelled_ || closing_;
+    }
+    if (cancelled)
+    {
+        // the user gave up: no final-named file is left behind (the .part file is deleted when 'partial' goes away)
+        SetError(req, SshErrorKind::Cancelled, "Cancelled");
+        return;
     }
     if (!partial.Commit(req.localPath_))
         SetError(req, SshErrorKind::Io, "The local file could not be renamed (Win32 error " + std::to_string(GetLastError()) + ")");

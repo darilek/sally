@@ -1161,6 +1161,25 @@ TEST_F(PanelSessionTest, DownloadToFileWritesTheFileWithTheServerTime)
     DeleteFileW(local.c_str());
 }
 
+TEST_F(PanelSessionTest, DownloadToFileReplacesAnExistingFinalFile)
+{
+    CPanelSession s(nullptr);
+    CPolicy policy;
+    ASSERT_TRUE(ConnectOk(s, TestSite(), policy));
+    const std::wstring local = TempLocalPath("dl_replace");
+    {
+        std::ofstream old(local, std::ios::binary | std::ios::trunc);
+        old << "an old and much longer content of the cached copy";
+    }
+
+    auto req = s.DownloadToFile("fixtures/small/hello.txt", local, 0);
+    ASSERT_TRUE(Pump(s, *req, policy));
+    ASSERT_TRUE(req->Ok()) << req->Error().message;
+    EXPECT_EQ(ReadWholeFile(local), "hello\n");
+    EXPECT_FALSE(FileExistsW(local + L".part"));
+    DeleteFileW(local.c_str());
+}
+
 TEST_F(PanelSessionTest, DownloadToFileOfOneMebibyteMatchesTheServer)
 {
     CPanelSession s(nullptr);

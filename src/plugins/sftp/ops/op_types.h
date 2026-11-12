@@ -26,6 +26,7 @@ enum class Problem
     DirCreateFailed,
     DeleteFailed,
     ChmodFailed,
+    PermissionsUnknown, // the server does not report the current permissions, so a partial change cannot be applied
     SymlinkLoop,
     LocalIoError,     // a local file could not be opened, read or written
     DiskFull,

@@ -81,6 +81,7 @@ void FillEntry(const LIBSSH2_SFTP_ATTRIBUTES& a, CSftpEntry& e)
     if ((a.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) != 0)
     {
         e.permissions = static_cast<uint32_t>(a.permissions);
+        e.hasPermissions = true;
         const unsigned long type = a.permissions & LIBSSH2_SFTP_S_IFMT;
         e.isDir = type == LIBSSH2_SFTP_S_IFDIR;
         e.isLink = type == LIBSSH2_SFTP_S_IFLNK;
@@ -262,7 +263,7 @@ bool CSshSession::ListDir(const std::string& path, std::vector<CSftpEntry>& out)
     {
         CSftpEntry& e = out[i];
         const std::string full = JoinPath(path, e.rawName);
-        if (e.permissions == 0)
+        if (!e.hasPermissions)
         {
             LIBSSH2_SFTP_ATTRIBUTES attrs = {};
             if (IsCancelled())

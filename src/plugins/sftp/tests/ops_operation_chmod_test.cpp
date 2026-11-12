@@ -30,7 +30,7 @@ CRemoteSource Source(const std::string& path, bool isDir)
 TEST(ChmodRoots, WithoutRecursionEverySourceGetsTheChange)
 {
     const std::vector<CQueueItem> roots = COperation::BuildChmodRoots(
-        {Source("/d/dir/", true), Source("/d/file", false)}, ChmodSettings(false, true, true), CNameCodec::Auto());
+        {Source("/d/dir/", true), Source("/d/file", false)}, ChmodSettings(false, true, true));
     ASSERT_EQ(roots.size(), 2u);
     EXPECT_EQ(roots[0].type, ItemType::SetAttrs);
     EXPECT_EQ(roots[0].remotePath, "/d/dir"); // no trailing slash
@@ -40,7 +40,7 @@ TEST(ChmodRoots, WithoutRecursionEverySourceGetsTheChange)
 TEST(ChmodRoots, RecursionExploresDirectoriesAndChangesFiles)
 {
     const std::vector<CQueueItem> roots = COperation::BuildChmodRoots(
-        {Source("/d/dir", true), Source("/d/file", false)}, ChmodSettings(true, true, true), CNameCodec::Auto());
+        {Source("/d/dir", true), Source("/d/file", false)}, ChmodSettings(true, true, true));
     ASSERT_EQ(roots.size(), 2u);
     EXPECT_EQ(roots[0].type, ItemType::ExploreRemote);
     EXPECT_EQ(roots[1].type, ItemType::SetAttrs);
@@ -49,7 +49,7 @@ TEST(ChmodRoots, RecursionExploresDirectoriesAndChangesFiles)
 TEST(ChmodRoots, RecursiveDirectoriesOnlyLeavesSelectedFilesOut)
 {
     const std::vector<CQueueItem> roots = COperation::BuildChmodRoots(
-        {Source("/d/dir", true), Source("/d/file", false)}, ChmodSettings(true, false, true), CNameCodec::Auto());
+        {Source("/d/dir", true), Source("/d/file", false)}, ChmodSettings(true, false, true));
     ASSERT_EQ(roots.size(), 1u);
     EXPECT_EQ(roots[0].type, ItemType::ExploreRemote);
 }
@@ -208,6 +208,22 @@ TEST_F(OperationChmodTest, ALinkInsideTheTreeIsSkippedAndItsTargetKeepsItsMode)
     EXPECT_EQ(ModeOf(Path("outside.txt")), 0644u);
     EXPECT_EQ(ModeOf(Path("tree/a.txt")), 0700u); // the rest of the tree did change
     EXPECT_EQ(op->Statistics().filesTotal, 7);     // links are not items at all
+}
+
+TEST_F(OperationChmodTest, ARootLinkToADirectoryIsSkippedEvenWhenListedAsADirectory)
+{
+    ASSERT_TRUE(admin_.Mkdir(Path("keep")));
+    PutRemoteFile(Path("keep/precious.txt"), "precious");
+    ASSERT_TRUE(admin_.Chmod(Path("keep"), 0755));
+    ASSERT_TRUE(admin_.Chmod(Path("keep/precious.txt"), 0644));
+    ASSERT_TRUE(admin_.Symlink("keep", Path("dirlink"))) << admin_.LastError().message;
+
+    auto op = MakeChmod({RemoteSrc(Path("dirlink"), true)}, Exactly(0700), true); // listed as a directory
+    CTestObserver observer;
+    ASSERT_TRUE(RunOk(*op, observer));
+    EXPECT_EQ(op->State(), OperationState::Finished) << Describe(*op);
+    EXPECT_EQ(ModeOf(Path("keep")), 0755u);
+    EXPECT_EQ(ModeOf(Path("keep/precious.txt")), 0644u);
 }
 
 TEST_F(OperationChmodTest, ASelectedLinkChangesWhatItPointsTo)

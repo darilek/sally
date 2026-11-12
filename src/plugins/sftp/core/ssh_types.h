@@ -62,6 +62,7 @@ struct CSftpEntry
     int64_t mtime = 0;        // Unix time, seconds
     int64_t atime = 0;        // Unix time, seconds (0 = not reported)
     uint32_t permissions = 0; // st_mode bits
+    bool hasPermissions = false; // the server reported the permissions (0 alone can also be a real mode)
     std::string owner;        // may be empty (numeric ids or not reported)
     std::string group;
     bool isDir = false;

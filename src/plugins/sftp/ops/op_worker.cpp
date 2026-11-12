@@ -805,6 +805,8 @@ CWorker::CItemResult CWorker::ExploreForChmod(const CQueueItem& item)
 {
     if (item.depth > kMaxExploreDepth)
         return Failure(Problem::SymlinkLoop, std::wstring());
+    if (IsRemoteLink(item.remotePath))
+        return Done(); // a root that is a link: chmod would change its target, so it is skipped, never walked into
     std::vector<CSftpEntry> entries;
     if (!session_.ListDir(item.remotePath, entries))
     {
@@ -1372,9 +1374,14 @@ CWorker::CItemResult CWorker::SetAttrs(const CQueueItem& item)
             return Done(); // already gone
         return FromSessionError(Problem::ChmodFailed);
     }
-    const uint32_t oldMode = PermissionBitsOf(current.permissions);
-    const uint32_t newMode = ApplyModeChange(oldMode, host_.Settings().modeChange);
-    if (newMode == oldMode)
+    CItemMode old;
+    old.mode = PermissionBitsOf(current.permissions);
+    old.known = current.hasPermissions;
+    uint32_t newMode = 0;
+    // an unknown mode is never computed from 0: only a change that decides every bit can be applied to it
+    if (!ApplyToItemMode(old, host_.Settings().modeChange, newMode))
+        return Failure(Problem::PermissionsUnknown, std::wstring());
+    if (old.known && newMode == old.mode)
         return Done();
     if (session_.Chmod(item.remotePath, newMode))
         return Done();

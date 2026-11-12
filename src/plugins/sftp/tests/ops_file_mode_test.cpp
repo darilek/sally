@@ -152,3 +152,47 @@ TEST(FileMode, UntouchedSpecialBitsArePreservedByTheGridOnly)
     EXPECT_EQ(ApplyModeChange(04644, change), 04755u);
     EXPECT_EQ(ApplyModeChange(0644, change), 0755u);
 }
+
+TEST(FileMode, AnUnknownItemModeMakesEveryBitMixed)
+{
+    CItemMode known;
+    known.mode = 0644;
+    known.known = true;
+    const CItemMode unknown; // known == false
+    const CModeState one = StateOfItemModes({known});
+    EXPECT_EQ(one.checked, 0644u);
+    EXPECT_EQ(one.mixed, 0u);
+
+    const CModeState state = StateOfItemModes({known, unknown});
+    EXPECT_EQ(state.checked, 0u);
+    EXPECT_EQ(state.mixed, kModeAll);
+    EXPECT_EQ(StateOfItemModes({unknown}).mixed, kModeAll);
+}
+
+TEST(FileMode, AChangeOfSomeBitsIsRefusedForAnUnknownMode)
+{
+    CModeChange change;
+    change.setBits = 0004;
+    const CItemMode unknown;
+    uint32_t result = 0xABCD;
+    EXPECT_FALSE(ApplyToItemMode(unknown, change, result));
+    EXPECT_EQ(result, 0xABCDu); // not touched
+
+    CItemMode known;
+    known.mode = 0640;
+    known.known = true;
+    ASSERT_TRUE(ApplyToItemMode(known, change, result));
+    EXPECT_EQ(result, 0644u);
+}
+
+TEST(FileMode, AChangeOfEveryBitIsAppliedToAnUnknownMode)
+{
+    const CItemMode unknown;
+    uint32_t result = 0;
+    ASSERT_TRUE(ApplyToItemMode(unknown, ChangeOfState(StateOfMode(0600)), result));
+    EXPECT_EQ(result, 0600u);
+    // a state with one mixed bit does not decide everything
+    CModeState partial = StateOfMode(0600);
+    partial.mixed = 04000;
+    EXPECT_FALSE(ApplyToItemMode(unknown, ChangeOfState(partial), result));
+}

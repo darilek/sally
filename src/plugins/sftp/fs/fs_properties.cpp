@@ -73,7 +73,7 @@ void CPluginFSInterface::DoShowProperties(HWND parent, int panel, int selectedFi
             s.isDir = item.isDir;
             s.isLink = item.isLink;
             s.size = item.size;
-            s.mode = item.mode;
+            s.mode = item.modeKnown ? item.mode : 0; // the summary takes 0 as "not reported"
             summaryItems.push_back(s);
         }
         input.summary = SummarizeSelection(summaryItems);
@@ -109,7 +109,7 @@ bool CPluginFSInterface::ReadOneItemProperties(HWND parent, const CSelectedItem&
     input.atime = attributes.atime;
     input.owner = utf8.Decode(attributes.owner);
     input.group = utf8.Decode(attributes.group);
-    input.mode = attributes.permissions;
+    input.mode = attributes.hasPermissions ? attributes.permissions : 0;
     if (!input.isLink)
         return true;
 
@@ -127,7 +127,7 @@ bool CPluginFSInterface::ReadOneItemProperties(HWND parent, const CSelectedItem&
     std::shared_ptr<CPanelRequest> followed = session_->Stat(path);
     if (!WaitForNameRequest(parent, followed, LangStr(IDS_WAIT_PROPERTIES)))
         return false;
-    if (followed->Ok())
+    if (followed->Ok() && followed->Attributes().hasPermissions)
         input.mode = followed->Attributes().permissions;
     return true;
 }

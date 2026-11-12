@@ -224,6 +224,7 @@ void CPluginFSInterface::RunContextCommand(const wchar_t* fsName, HWND parent, i
         // Closing the FS inside its own method would leave Sally with a dead object: the command runs later, when Sally
         // is idle and no FS method is on the stack.
         PendingDisconnectPanel = panel;
+        PendingDisconnectFs = this;
         SalamanderGeneral->PostMenuExtCommand(SftpCmdDisconnect, TRUE);
         break;
     }
@@ -266,7 +267,7 @@ CPluginFSInterface::ContextMenu(const wchar_t* fsName, HWND parent, int menuX, i
 
 // Tells Sally that the current folder changed: this panel refreshes through AcceptChangeOnPathNotification (which also
 // refreshes a second panel or a detached FS showing the same folder) and the F3 copies in the disk cache are dropped.
-void CPluginFSInterface::NotifyFolderChanged()
+void CPluginFSInterface::NotifyFolderChanged(bool includingSubdirs)
 {
-    SalamanderGeneral->PostChangeOnPathNotification(FullFsPath(curRaw_).c_str(), FALSE);
+    SalamanderGeneral->PostChangeOnPathNotification(FullFsPath(curRaw_).c_str(), includingSubdirs ? TRUE : FALSE);
 }

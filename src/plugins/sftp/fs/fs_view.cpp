@@ -51,6 +51,46 @@ std::wstring CacheFileName(const std::wstring& displayName)
         name = L"file";
     return name;
 }
+
+// Calls FreeFileNameInCache when it goes out of scope, with the values set so far. Until told otherwise a new copy is
+// not complete and is removed at once (what an exception in the middle of the download needs).
+class CCacheNameGuard
+{
+public:
+    CCacheNameGuard(CSalamanderForViewFileOnFSAbstract* salamander, const std::wstring& uniqueName, bool fileExists)
+        : salamander_(salamander), uniqueName_(uniqueName), fileExists_(fileExists), removeAsSoonAsPossible_(!fileExists)
+    {
+    }
+    ~CCacheNameGuard()
+    {
+        salamander_->FreeFileNameInCache(uniqueName_.c_str(), fileExists_ ? TRUE : FALSE, newOk_ ? TRUE : FALSE,
+                                         newSize_, viewerLock_, viewerLockOwner_, removeAsSoonAsPossible_ ? TRUE : FALSE);
+    }
+    CCacheNameGuard(const CCacheNameGuard&) = delete;
+    CCacheNameGuard& operator=(const CCacheNameGuard&) = delete;
+
+    void SetNewCopy(bool ok, const CQuadWord& size)
+    {
+        newOk_ = ok;
+        newSize_ = size;
+    }
+    void SetViewerLock(HANDLE lock, BOOL owner)
+    {
+        viewerLock_ = lock;
+        viewerLockOwner_ = owner;
+    }
+    void SetRemoveAsSoonAsPossible(bool remove) { removeAsSoonAsPossible_ = remove; }
+
+private:
+    CSalamanderForViewFileOnFSAbstract* salamander_;
+    std::wstring uniqueName_;
+    bool fileExists_;
+    bool newOk_ = false;
+    CQuadWord newSize_ = CQuadWord(0, 0);
+    HANDLE viewerLock_ = NULL;
+    BOOL viewerLockOwner_ = FALSE;
+    bool removeAsSoonAsPossible_;
+};
 } // namespace
 
 void WINAPI
@@ -92,24 +132,27 @@ void CPluginFSInterface::DoViewFile(HWND parent, CSalamanderForViewFileOnFSAbstr
     if (copyPath == NULL)
         return; // Sally has reported the problem; FreeFileNameInCache is not wanted when Alloc failed
 
+    // The pair of AllocFileNameInCache: its destructor runs on every way out, also when an exception is thrown below.
+    CCacheNameGuard guard(salamander, uniqueName, fileExists != FALSE);
+
     CQuadWord newSize(0, 0);
     bool newOk = false; // a copy made now is complete
     if (!fileExists)
         newOk = DownloadCopy(parent, remotePath, copyPath, displayName, site_.preserveTime ? mtime : 0, newSize);
+    guard.SetNewCopy(newOk, newSize);
 
-    HANDLE viewerLock = NULL;
-    BOOL viewerLockOwner = FALSE;
-    if ((fileExists || newOk) && !salamander->OpenViewer(parent, copyPath, &viewerLock, &viewerLockOwner))
+    if (fileExists || newOk)
     {
-        viewerLock = NULL; // the viewer did not open: no binding to the cache
-        viewerLockOwner = FALSE;
+        HANDLE viewerLock = NULL;
+        BOOL viewerLockOwner = FALSE;
+        if (salamander->OpenViewer(parent, copyPath, &viewerLock, &viewerLockOwner))
+            guard.SetViewerLock(viewerLock, viewerLockOwner);
+        // else: the viewer did not open: no binding to the cache
     }
 
-    // Always the pair of AllocFileNameInCache. A failed copy is removed at once. The size and time of a link are those of
-    // the link, not of its target, so a link's copy is kept only while its viewer is open.
-    const BOOL removeAsSoonAsPossible = !fileExists && (!newOk || isLink);
-    salamander->FreeFileNameInCache(uniqueName.c_str(), fileExists, newOk, newSize, viewerLock, viewerLockOwner,
-                                    removeAsSoonAsPossible);
+    // A failed copy is removed at once. The size and time of a link are those of the link, not of its target, so a
+    // link's copy is kept only while its viewer is open.
+    guard.SetRemoveAsSoonAsPossible(!fileExists && (!newOk || isLink));
 }
 
 // Downloads the remote file into 'copyPath' on the panel session and waits for it. True: the complete file is there.

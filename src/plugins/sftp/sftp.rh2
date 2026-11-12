@@ -263,4 +263,8 @@
 #define IDS_CTX_COPY_CUR_URL               339
 #define IDS_CTX_SERVER_INFO                340
 
+// Chmod when the server does not report the current permissions
+#define IDS_OP_PROBLEM_PERMS_UNKNOWN       341
+#define IDS_ERR_CHMOD_UNKNOWN              342
+
 #endif // __SFTP_RH2

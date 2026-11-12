@@ -311,4 +311,6 @@ STRINGTABLE
  IDS_CTX_COPY_CUR_PATH, "Copy Current &Path"
  IDS_CTX_COPY_CUR_URL, "Copy Current &URL"
  IDS_CTX_SERVER_INFO, "&Server Information..."
+ IDS_OP_PROBLEM_PERMS_UNKNOWN, "The server does not report the current permissions, so only a complete setting can be applied"
+ IDS_ERR_CHMOD_UNKNOWN, "The attributes of ""%ls"" were not changed: the server does not report the current permissions. Set all permission bits explicitly (for example by typing the octal value)."
 }

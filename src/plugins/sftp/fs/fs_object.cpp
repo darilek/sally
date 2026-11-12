@@ -323,6 +323,8 @@ CPluginFSInterface::CListResult CPluginFSInterface::RunList(const std::string& r
         result.resolvedPath = request->ResolvedPath();
         if (request->HasVfs())
             StoreFreeSpace(request->Vfs());
+        else
+            freeKnown_ = false; // the number of the previous folder must not stay
         return result;
     }
     result.error = request->Error();
@@ -665,6 +667,7 @@ bool CPluginFSInterface::AddListing(CSalamanderDirectoryAbstract* dir, CPluginDa
         std::unique_ptr<CSftpFileData> pluginItem(new CSftpFileData);
         pluginItem->rawName = e.rawName;
         pluginItem->mode = e.permissions;
+        pluginItem->modeKnown = e.hasPermissions;
         pluginItem->permissions = FormatPermissions(e.permissions, e.isDir, e.isLink);
         pluginItem->owner = utf8.Decode(e.owner);
         pluginItem->group = utf8.Decode(e.group);

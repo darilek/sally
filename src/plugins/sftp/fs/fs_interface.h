@@ -65,3 +65,7 @@ public:
 const int SftpCmdConnect = 1;
 const int SftpCmdDisconnect = 2;
 const int SftpCmdOperations = 3;
+
+// The panel whose FS the Disconnect command closes: set by the context menu (which posts the command), -1 = the active
+// panel (the plugin menu). The command resets it.
+extern int PendingDisconnectPanel;

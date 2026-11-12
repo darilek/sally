@@ -128,13 +128,13 @@ bool CPluginFSInterface::ChmodOneOnSession(HWND parent, const CSelectedItem& ite
     std::shared_ptr<CPanelRequest> request = session_->Chmod(JoinRemotePath(curRaw_, item.rawName), mode);
     if (!WaitForNameRequest(parent, request, LangStr(IDS_WAIT_CHMOD)))
     {
-        SalamanderGeneral->PostRefreshPanelFS(this); // ESC: the server may have done it anyway
+        NotifyFolderChanged(); // ESC: the server may have done it anyway
         return false;
     }
     if (!request->Ok())
         ShowMessage(parent, SPLFormatStringOwned(LangStr(IDS_ERR_CHMOD_ITEM).c_str(), codec_.Decode(item.rawName).c_str(),
                                                  DescribeError(request->Error()).c_str()));
-    SalamanderGeneral->PostRefreshPanelFS(this); // also after a failure: the listing may have changed
+    NotifyFolderChanged(); // also after a failure: the listing may have changed
     return request->Ok();
 }
 

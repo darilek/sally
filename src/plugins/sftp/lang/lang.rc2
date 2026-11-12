@@ -303,4 +303,12 @@ STRINGTABLE
  // arguments: the server as host:port, the command text (cut to about 300 characters)
  IDS_EXEC_CONFIRM, "You are about to run a command on the server %ls (not on this computer):\n\n%ls\n\nIt runs with the rights of the logged-in user, like in an SSH terminal. Run it?"
  IDS_ERR_EXEC_ENCODING, "The command contains characters that the encoding used for this server cannot represent."
+ IDS_CTX_COPY_PATH, "Copy &Path"
+ IDS_CTX_COPY_URL, "Copy &URL"
+ IDS_CTX_PROPERTIES, "P&roperties"
+ IDS_CTX_ATTRIBUTES, "Change &Attributes..."
+ IDS_CTX_REFRESH, "&Refresh"
+ IDS_CTX_COPY_CUR_PATH, "Copy Current &Path"
+ IDS_CTX_COPY_CUR_URL, "Copy Current &URL"
+ IDS_CTX_SERVER_INFO, "&Server Information..."
 }

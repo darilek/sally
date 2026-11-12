@@ -80,9 +80,9 @@ public:
     virtual void WINAPI ShowProperties(const wchar_t* fsName, HWND parent, int panel, int selectedFiles,
                                        int selectedDirs);
 
-    // ---- not available yet (the services are not advertised; Salamander does not call these)
-    virtual BOOL WINAPI GetNextDirectoryLineHotPath(const wchar_t* text, int pathLen, int& offset) { return FALSE; }
-    virtual BOOL WINAPI CompleteDirectoryLineHotPath(CSalamanderStringBuffer* path) { return FALSE; }
+    // ---- directory line hot paths, context menu, Shift+F3 (fs/fs_menu.cpp)
+    virtual BOOL WINAPI GetNextDirectoryLineHotPath(const wchar_t* text, int pathLen, int& offset);
+    virtual BOOL WINAPI CompleteDirectoryLineHotPath(CSalamanderStringBuffer* path);
     // ---- F2 and F7 (fs/fs_namespace.cpp)
     virtual BOOL WINAPI QuickRename(const wchar_t* fsName, int mode, HWND parent, CFileData& file, BOOL isDir,
                                     CSalamanderStringBuffer* newName, BOOL& cancel);
@@ -100,10 +100,10 @@ public:
     virtual BOOL WINAPI ChangeAttributes(const wchar_t* fsName, HWND parent, int panel, int selectedFiles,
                                          int selectedDirs);
     virtual void WINAPI ContextMenu(const wchar_t* fsName, HWND parent, int menuX, int menuY, int type, int panel,
-                                    int selectedFiles, int selectedDirs) {}
+                                    int selectedFiles, int selectedDirs);
     virtual BOOL WINAPI HandleMenuMsg(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT* plResult) { return FALSE; }
     virtual BOOL WINAPI OpenFindDialog(const wchar_t* fsName, int panel) { return FALSE; }
-    virtual void WINAPI OpenActiveFolder(const wchar_t* fsName, HWND parent) {}
+    virtual void WINAPI OpenActiveFolder(const wchar_t* fsName, HWND parent) {} // Shift+F3: not offered (the FTP plugin has none)
     virtual BOOL WINAPI GetNoItemsInPanelText(CSalamanderStringBuffer* textBuf) { return FALSE; }
 
     // ---- used by CPluginInterfaceForFS (not part of the SDK interface)
@@ -254,6 +254,15 @@ private:
     void DoViewFile(HWND parent, CSalamanderForViewFileOnFSAbstract* salamander, CFileData& file);
     bool DownloadCopy(HWND parent, const std::string& remotePath, const wchar_t* copyPath, const std::wstring& displayName,
                       int64_t mtime, CQuadWord& size);
+
+    // ---- fs/fs_menu.cpp
+    std::wstring UrlOf(const std::string& rawPath) const; // "sftp://user@host:port/path"
+    void CopyItemsToClipboard(HWND parent, int panel, int selectedFiles, int selectedDirs, bool asUrl);
+    void CopyCurrentToClipboard(HWND parent, bool asUrl);
+    void BuildContextMenu(CGUIMenuPopupAbstract* menu, int type, int panel) const;
+    void RunContextCommand(const wchar_t* fsName, HWND parent, int command, int type, int panel, int selectedFiles,
+                           int selectedDirs);
+    void NotifyFolderChanged(); // the current folder changed: refresh panels showing it, drop the F3 copies
 
     // ---- fs/fs_info.cpp
     void UpdateSecurityIcon(int panel);

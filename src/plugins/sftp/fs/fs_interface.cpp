@@ -266,6 +266,8 @@ CPluginInterfaceForFS::ConvertPathToExternal(const wchar_t* fsName, int fsNameIn
 // CPluginInterfaceForMenuExt
 //
 
+int PendingDisconnectPanel = -1; // main thread only
+
 DWORD WINAPI
 CPluginInterfaceForMenuExt::GetMenuItemState(int id, DWORD eventMask)
 {
@@ -289,14 +291,17 @@ CPluginInterfaceForMenuExt::ExecuteMenuItem(CSalamanderForOperationsAbstract* sa
 
         case SftpCmdDisconnect:
         {
-            // the FS of the active panel, only when it is ours (otherwise NULL)
-            CPluginFSInterfaceAbstract* fs = SalamanderGeneral->GetPanelPluginFS(PANEL_SOURCE);
+            // the FS of the panel the context menu was opened in, otherwise of the active panel; only when it is ours
+            // (otherwise NULL)
+            const int panel = PendingDisconnectPanel >= 0 ? PendingDisconnectPanel : PANEL_SOURCE;
+            PendingDisconnectPanel = -1;
+            CPluginFSInterfaceAbstract* fs = SalamanderGeneral->GetPanelPluginFS(panel);
             if (fs == NULL)
                 break;
             CPluginFSInterface* object = static_cast<CPluginFSInterface*>(fs);
             object->SetDisconnectRequested(true); // the user asked for it: no "keep the connection?" question
-            SalamanderGeneral->DisconnectFSFromPanel(parent, PANEL_SOURCE);
-            if (SalamanderGeneral->GetPanelPluginFS(PANEL_SOURCE) == fs) // still there: the disconnect did not happen
+            SalamanderGeneral->DisconnectFSFromPanel(parent, panel);
+            if (SalamanderGeneral->GetPanelPluginFS(panel) == fs) // still there: the disconnect did not happen
                 object->SetDisconnectRequested(false);
             break;
         }

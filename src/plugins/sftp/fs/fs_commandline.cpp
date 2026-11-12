@@ -126,7 +126,7 @@ BOOL CPluginFSInterface::DoExecuteCommandLine(HWND parent, CSalamanderStringBuff
         return FALSE;
     if (waited != WaitResult::Done || request->Cancelled() || !request->IsDone())
     {
-        SalamanderGeneral->PostRefreshPanelFS(this); // the command may have changed files before it was stopped
+        NotifyFolderChanged(); // the command may have changed files before it was stopped
         return FALSE;
     }
     if (!request->Ok())
@@ -142,7 +142,7 @@ BOOL CPluginFSInterface::DoExecuteCommandLine(HWND parent, CSalamanderStringBuff
     sally::plugin_abi::WriteStringBuffer(*command, std::wstring()); // the command is done: clear the line
     selFrom = 0;
     selTo = 0;
-    SalamanderGeneral->PostRefreshPanelFS(this); // the command may have changed files
+    NotifyFolderChanged(); // the command may have changed files
     ShowCommandResult(parent, *request);
     return TRUE;
 }

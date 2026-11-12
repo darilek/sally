@@ -253,4 +253,14 @@
 #define IDS_ERR_EXEC_ENCODING              331
 #define IDS_EXEC_CONFIRM                   332
 
+// Context menu and Shift+F3 (fs/fs_menu.cpp)
+#define IDS_CTX_COPY_PATH                  333
+#define IDS_CTX_COPY_URL                   334
+#define IDS_CTX_PROPERTIES                 335
+#define IDS_CTX_ATTRIBUTES                 336
+#define IDS_CTX_REFRESH                    337
+#define IDS_CTX_COPY_CUR_PATH              338
+#define IDS_CTX_COPY_CUR_URL               339
+#define IDS_CTX_SERVER_INFO                340
+
 #endif // __SFTP_RH2

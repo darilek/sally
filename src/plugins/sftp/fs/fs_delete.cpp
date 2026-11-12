@@ -93,7 +93,7 @@ bool CPluginFSInterface::DeleteOneOnSession(HWND parent, const CSelectedItem& it
     if (!gone)
         ShowMessage(parent, SPLFormatStringOwned(LangStr(IDS_ERR_DELETE_ITEM).c_str(), codec_.Decode(item.rawName).c_str(),
                                                  DescribeError(request->Error()).c_str()));
-    SalamanderGeneral->PostRefreshPanelFS(this); // also after a failure: the listing may have changed
+    NotifyFolderChanged(); // also after a failure: the listing may have changed
     return gone;
 }
 

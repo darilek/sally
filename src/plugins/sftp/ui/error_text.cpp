@@ -114,8 +114,6 @@ int StringIdOfMsg(SshMsg msg)
         return IDS_ERRMSG_REPLACE_DIR_NOT_EMPTY;
     case SshMsg::ReplaceDirUnreadable:
         return IDS_ERRMSG_REPLACE_DIR_UNREADABLE;
-    case SshMsg::ReplacedItemLeft:
-        return IDS_ERRMSG_REPLACED_ITEM_LEFT;
     case SshMsg::LocalSetPosition:
         return IDS_ERRMSG_LOCAL_SET_POSITION;
     case SshMsg::LocalWrite:
@@ -201,26 +199,12 @@ int StringIdOfReason(ErrorReason reason)
     }
 }
 
-// The arguments of the pattern. For an SFTP action sentence %2 is the reason: from the status of the server or the
-// error kind, else the text of the SSH library (args[1]), else the generic "operation failed".
+// The arguments of the pattern; the choices are made in ComposeErrorArgs (ops/text_util), here only the texts are loaded.
 std::vector<std::string> ArgsOfError(const CSshError& error)
 {
-    std::vector<std::string> args = error.args;
-    if (!IsSftpActionMsg(error.msgId))
-        return args;
     const int reasonId = StringIdOfReason(ReasonOfError(error));
     const std::wstring reason = reasonId != 0 ? OptionalLangStr(reasonId) : std::wstring();
-    if (!reason.empty())
-    {
-        args.resize(1); // the path; a libssh2 text is not needed when the reason is known
-        args.push_back(CNameCodec::Utf8().Encode(reason));
-    }
-    else if (args.size() < 2) // no reason phrase and no library text: the generic one
-    {
-        args.resize(1);
-        args.push_back(CNameCodec::Utf8().Encode(LangStr(IDS_ERRMSG_REASON_FAILED)));
-    }
-    return args;
+    return ComposeErrorArgs(error, reason, LangStr(IDS_ERRMSG_REASON_FAILED));
 }
 } // namespace
 
@@ -232,7 +216,8 @@ std::wstring LangStrForMsg(SshMsg msg)
 
 std::wstring DescribeError(const CSshError& error)
 {
-    const CSshErrorLabels labels = {LangStr(IDS_ERR_UNKNOWN), LangStr(IDS_ERR_CODE), LangStr(IDS_ERR_SFTP_STATUS)};
+    const CSshErrorLabels labels = {LangStr(IDS_ERR_UNKNOWN), LangStr(IDS_ERRMSG_SUFFIX_CODE),
+                                    LangStr(IDS_ERRMSG_SUFFIX_CODE_STATUS)};
     std::wstring translated;
     if (error.msgId != SshMsg::None)
     {

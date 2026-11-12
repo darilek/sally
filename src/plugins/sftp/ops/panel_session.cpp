@@ -265,7 +265,7 @@ void CPanelSession::Finish(CPanelRequest& req, SshErrorKind kind, const std::str
 
 // Never throws (it is also used in catch blocks): when the message cannot be copied, the kind alone is reported.
 void CPanelSession::SetError(CPanelRequest& req, SshErrorKind kind, const std::string& message, SshMsg msgId,
-                             const std::string& arg1) noexcept
+                             std::vector<std::string> args) noexcept
 {
     req.error_ = CSshError();
     req.error_.kind = kind;
@@ -273,8 +273,7 @@ void CPanelSession::SetError(CPanelRequest& req, SshErrorKind kind, const std::s
     {
         req.error_.message = message;
         req.error_.msgId = msgId;
-        if (msgId == SshMsg::LocalFileCreateFailed || msgId == SshMsg::LocalFileRenameFailed)
-            req.error_.args.push_back(arg1);
+        req.error_.args = std::move(args);
     }
     catch (...)
     {
@@ -441,7 +440,7 @@ bool CPanelSession::EnsureConnected(CPanelRequest& req)
         return true;
     if (!hasSite_)
     {
-        SetError(req, SshErrorKind::ConnectFailed, "Not connected", SshMsg::NotConnected);
+        SetError(req, SshErrorKind::ConnectFailed, "Not connected", SshMsg::NotConnected, {});
         return false;
     }
     return DoConnect(req);
@@ -596,7 +595,7 @@ void CPanelSession::DownloadFile(CPanelRequest& req)
     {
         const std::string code = std::to_string(GetLastError());
         SetError(req, SshErrorKind::Io, "The local file could not be created (Win32 error " + code + ")",
-                 SshMsg::LocalFileCreateFailed, code);
+                 SshMsg::LocalFileCreateFailed, {code});
         return;
     }
     downloading_ = &req;
@@ -628,7 +627,7 @@ void CPanelSession::DownloadFile(CPanelRequest& req)
     {
         const std::string code = std::to_string(GetLastError());
         SetError(req, SshErrorKind::Io, "The local file could not be renamed (Win32 error " + code + ")",
-                 SshMsg::LocalFileRenameFailed, code);
+                 SshMsg::LocalFileRenameFailed, {code});
     }
 }
 

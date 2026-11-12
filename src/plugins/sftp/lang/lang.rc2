@@ -106,10 +106,8 @@ STRINGTABLE
  IDS_SITES_READONLY,         "The saved sites were written by a newer version of the SFTP plugin. They are not loaded and will not be changed by this version, so New, Edit, Delete, Rename and Duplicate are unavailable. Install the newer plugin version to manage them."
  // key passphrase prompt (argument: key file)
  IDS_PROMPT_PASSPHRASE,      "Passphrase for %ls:"
- // pieces of an error text: "message (code N, SFTP status M)"; "Unknown error" when there is no message
+ // shown when an error has no message at all (the suffix patterns are IDS_ERRMSG_SUFFIX_CODE*)
  IDS_ERR_UNKNOWN,            "Unknown error"
- IDS_ERR_CODE,               "code"
- IDS_ERR_SFTP_STATUS,        "SFTP status"
  // site edit: transfer settings
  IDS_SITE_ERR_WORKERS_RANGE, "The number of workers must be a number from 1 to 8."
  IDS_SITE_ERR_UPLOADPERM_INVALID, "Enter the upload permissions as one to four octal digits from 0 to 7777, for example 644."
@@ -314,15 +312,15 @@ STRINGTABLE
  IDS_OP_PROBLEM_PERMS_UNKNOWN, "The server does not report the current permissions, so only a complete setting can be applied"
  IDS_ERR_CHMOD_UNKNOWN, "The attributes of ""%ls"" were not changed: the server does not report the current permissions. Set all permission bits explicitly (for example by typing the octal value)."
  // texts of core errors: %1, %2 are filled in by FormatErrorMessage and may be reordered; %% is a literal percent sign
- // arguments: %1 host name, %2 system error text
- IDS_ERRMSG_RESOLVE_FAILED, "Cannot resolve host '%1' (%2)"
+ // arguments: %1 host name, %2 Winsock error number
+ IDS_ERRMSG_RESOLVE_FAILED, "Cannot resolve host '%1' (Winsock error %2)"
  // arguments: %1 host name, %2 time limit in seconds
  IDS_ERRMSG_RESOLVE_TIMEOUT, "Resolving host '%1' timed out after %2 s"
  // arguments: %1 host and port (host:port), %2 time limit in seconds
  IDS_ERRMSG_CONNECT_TIMEOUT, "Connecting to %1 timed out after %2 s"
  IDS_ERRMSG_SESSION_NOT_OPEN, "The SSH session is not open"
- // arguments: %1 host and port (host:port), %2 system error text
- IDS_ERRMSG_CONNECT_FAILED, "Cannot connect to %1 (%2)"
+ // arguments: %1 host and port (host:port), %2 Winsock error number
+ IDS_ERRMSG_CONNECT_FAILED, "Cannot connect to %1 (Winsock error %2)"
  IDS_ERRMSG_NO_HOST_GIVEN, "No host name given"
  IDS_ERRMSG_NO_HOST_KEY, "The server sent no host key"
  // arguments: %1 host name
@@ -413,8 +411,6 @@ STRINGTABLE
  IDS_ERRMSG_REPLACE_DIR_NOT_EMPTY, "Cannot replace '%1': it is a directory that is not empty"
  // arguments: %1 path of the target
  IDS_ERRMSG_REPLACE_DIR_UNREADABLE, "Cannot replace '%1': it is a directory whose content cannot be read"
- // arguments: %1 path of the replaced item that could not be deleted
- IDS_ERRMSG_REPLACED_ITEM_LEFT, "Renamed, but the replaced item is left as '%1'"
  // arguments: %1 Windows error number
  IDS_ERRMSG_LOCAL_SET_POSITION, "Cannot set the position in the local file (Windows error %1)"
  // arguments: %1 Windows error number
@@ -425,21 +421,21 @@ STRINGTABLE
  IDS_ERRMSG_LOCAL_READ_TIME, "Cannot read the time of the local file (Windows error %1)"
  // arguments: %1 Windows error number
  IDS_ERRMSG_LOCAL_READ, "Cannot read the local file (Windows error %1)"
- // arguments: %1 text of the SSH library (English)
+ // arguments: %1 text of the SSH library (English); after a timeout the reason "no answer from the server" instead
  IDS_ERRMSG_HANDSHAKE_FAILED, "SSH handshake failed: %1"
- // arguments: %1 text of the SSH library (English)
+ // arguments: %1 text of the SSH library (English); after a timeout the reason "no answer from the server" instead
  IDS_ERRMSG_SFTP_SUBSYSTEM_FAILED, "Cannot start the SFTP subsystem: %1"
- // arguments: %1 text of the SSH library (English)
+ // arguments: %1 text of the SSH library (English); after a timeout the reason "no answer from the server" instead
  IDS_ERRMSG_AUTH_INTERRUPTED, "Authentication interrupted: %1"
- // arguments: %1 text of the SSH library (English)
+ // arguments: %1 text of the SSH library (English); after a timeout the reason "no answer from the server" instead
  IDS_ERRMSG_AUTH_METHODS_QUERY_FAILED, "Cannot query the authentication methods: %1"
- // arguments: %1 text of the SSH library (English)
+ // arguments: %1 text of the SSH library (English); after a timeout the reason "no answer from the server" instead
  IDS_ERRMSG_EXEC_CHANNEL_FAILED, "Cannot open a channel for the command: %1"
- // arguments: %1 text of the SSH library (English)
+ // arguments: %1 text of the SSH library (English); after a timeout the reason "no answer from the server" instead
  IDS_ERRMSG_EXEC_START_FAILED, "The server did not start the command: %1"
- // arguments: %1 text of the SSH library (English)
+ // arguments: %1 text of the SSH library (English); after a timeout the reason "no answer from the server" instead
  IDS_ERRMSG_EXEC_READ_FAILED, "Reading the output of the command failed: %1"
- // arguments: %1 text of the SSH library (English)
+ // arguments: %1 text of the SSH library (English); after a timeout the reason "no answer from the server" instead
  IDS_ERRMSG_EXEC_FINISH_FAILED, "The command did not finish cleanly: %1"
  // arguments: %1 time limit in seconds
  IDS_ERRMSG_NO_ANSWER_TIMEOUT, "No answer within %1 s"
@@ -453,4 +449,8 @@ STRINGTABLE
  IDS_ERRMSG_LOCAL_FILE_CREATE_FAILED, "The local file could not be created (Windows error %1)"
  // arguments: %1 Windows error number
  IDS_ERRMSG_LOCAL_FILE_RENAME_FAILED, "The local file could not be renamed (Windows error %1)"
+ // suffix after an error text that has a libssh2 code; arguments: %1 libssh2 error code
+ IDS_ERRMSG_SUFFIX_CODE, "(code %1)"
+ // the same with an SFTP status; arguments: %1 libssh2 error code, %2 SFTP status code of the server
+ IDS_ERRMSG_SUFFIX_CODE_STATUS, "(code %1, SFTP status %2)"
 }

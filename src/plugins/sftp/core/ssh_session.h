@@ -160,7 +160,8 @@ private:
     bool Fail(SshErrorKind kind, SshMsg msgId, std::vector<std::string> args, const std::string& message,
               int libssh2Code = 0);
     // Error of the failed libssh2 call. msgId + args describe 'what' in the user's language; the English text of
-    // libssh2 is appended to args (when msgId != None and libssh2 has a text). A timeout becomes NoAnswerTimeout.
+    // libssh2 is appended to args (when msgId != None and libssh2 has a text). On a timeout no libssh2 text is
+    // added and msgId stays (the UI shows its own "no answer" reason); without msgId the error gets NoAnswerTimeout.
     bool FailFromSession(const std::string& what, int code, SshMsg msgId = SshMsg::None,
                          std::vector<std::string> args = std::vector<std::string>());
     bool IsCancelled() const { return cancelled_.load(); }

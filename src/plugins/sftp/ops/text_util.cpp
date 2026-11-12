@@ -81,10 +81,11 @@ std::wstring DescribeSshError(const CSshError& error, const CSshErrorLabels& lab
         text = labels.unknown;
     if (error.libssh2Code != 0)
     {
-        text += L" (" + labels.code + L" " + std::to_wstring(error.libssh2Code);
+        const std::string code = std::to_string(error.libssh2Code);
         if (error.sftpStatus != 0)
-            text += L", " + labels.sftpStatus + L" " + std::to_wstring(error.sftpStatus);
-        text += L")";
+            text += L" " + FormatErrorMessage(labels.sftpStatusPattern, {code, std::to_string(error.sftpStatus)});
+        else
+            text += L" " + FormatErrorMessage(labels.codePattern, {code});
     }
     return text;
 }
@@ -107,12 +108,34 @@ bool IsSftpActionMsg(SshMsg msg)
     }
 }
 
+bool IsLibssh2StepMsg(SshMsg msg)
+{
+    switch (msg)
+    {
+    case SshMsg::HandshakeFailed:
+    case SshMsg::SftpSubsystemFailed:
+    case SshMsg::AuthInterrupted:
+    case SshMsg::AuthMethodsQueryFailed:
+    case SshMsg::ExecChannelFailed:
+    case SshMsg::ExecStartFailed:
+    case SshMsg::ExecReadFailed:
+    case SshMsg::ExecFinishFailed:
+        return true;
+    default:
+        return false;
+    }
+}
+
 ErrorReason ReasonOfError(const CSshError& error)
 {
     if (error.kind == SshErrorKind::NotEmpty) // set after a generic FAILURE when the directory has entries
         return ErrorReason::DirNotEmpty;
     if (error.sftpStatus == 0)
-        return error.kind == SshErrorKind::Timeout ? ErrorReason::NoAnswer : ErrorReason::None;
+    {
+        if (error.kind == SshErrorKind::Timeout)
+            return ErrorReason::NoAnswer;
+        return error.kind == SshErrorKind::ConnectFailed ? ErrorReason::ConnectionLost : ErrorReason::None;
+    }
     switch (error.sftpStatus)
     {
     case LIBSSH2_FX_NO_SUCH_FILE:
@@ -139,6 +162,29 @@ ErrorReason ReasonOfError(const CSshError& error)
     default:
         return ErrorReason::Failed;
     }
+}
+
+std::vector<std::string> ComposeErrorArgs(const CSshError& error, const std::wstring& reasonText,
+                                          const std::wstring& failedText)
+{
+    const CNameCodec utf8 = CNameCodec::Utf8();
+    if (IsLibssh2StepMsg(error.msgId) && error.kind == SshErrorKind::Timeout)
+        return {utf8.Encode(reasonText.empty() ? failedText : reasonText)};
+
+    std::vector<std::string> args = error.args;
+    if (!IsSftpActionMsg(error.msgId))
+        return args;
+    if (!reasonText.empty())
+    {
+        args.resize(1); // the path; a libssh2 text is not needed when the reason is known
+        args.push_back(utf8.Encode(reasonText));
+    }
+    else if (args.size() < 2) // no reason phrase and no library text: the generic one
+    {
+        args.resize(1);
+        args.push_back(utf8.Encode(failedText));
+    }
+    return args;
 }
 
 std::wstring KnownHostsOwnPath()

@@ -16,6 +16,8 @@ bool PpkIsEncrypted(const CSecret& fileBytes);
 // opensshKey. The MAC is checked before the decrypted data is used. publicKeyBlob (optional) receives the SSH wire
 // public key blob. Errors: KeyFileError (damaged file, wrong passphrase), Unsupported (key type, format version,
 // cipher or KDF). On failure opensshKey is empty. Every intermediate secret is wiped on every path.
+// err.msgId is one of the Ppk* ids; its %1 (the key file) is NOT set here: err.args holds only the further arguments
+// (e.g. the encryption name). The caller (AuthPuttyKey in ssh_auth.cpp) puts the key file in front.
 bool ConvertPpk(const CSecret& fileBytes, const CSecret& passphrase, CSecret& opensshKey, std::string* publicKeyBlob,
                 CSshError& err);
 

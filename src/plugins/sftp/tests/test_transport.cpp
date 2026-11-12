@@ -410,6 +410,8 @@ TEST_F(TransportTest, HandshakeTimeoutAgainstSilentServer)
     EXPECT_FALSE(s.OpenTransport(site));
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - start).count();
     EXPECT_EQ(s.LastError().kind, SshErrorKind::Timeout) << s.LastError().message;
+    EXPECT_EQ(s.LastError().msgId, SshMsg::HandshakeFailed); // the step stays; the UI adds the "no answer" reason
+    EXPECT_TRUE(s.LastError().args.empty());
     EXPECT_GE(ms, 800);
     EXPECT_LT(ms, 5000);
     EXPECT_EQ(cb.calls, 0);

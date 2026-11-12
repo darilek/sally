@@ -82,8 +82,6 @@
 #define IDS_SITES_READONLY       169
 #define IDS_PROMPT_PASSPHRASE    170
 #define IDS_ERR_UNKNOWN          171
-#define IDS_ERR_CODE             172
-#define IDS_ERR_SFTP_STATUS      173
 #define IDS_SITE_ERR_WORKERS_RANGE 174
 #define IDS_SITE_ERR_UPLOADPERM_INVALID 175
 // operation window (ui/operation_window.cpp, ui/problem_text.cpp)
@@ -267,7 +265,7 @@
 #define IDS_OP_PROBLEM_PERMS_UNKNOWN       341
 #define IDS_ERR_CHMOD_UNKNOWN              342
 
-// Translatable texts of core errors (SshMsg in core/ssh_types.h, mapped in fs/fs_messages.cpp); patterns with %1, %2
+// Translatable texts of core errors (SshMsg in core/ssh_types.h, mapped in ui/error_text.cpp); patterns with %1, %2
 #define IDS_ERRMSG_RESOLVE_FAILED          343
 #define IDS_ERRMSG_RESOLVE_TIMEOUT         344
 #define IDS_ERRMSG_CONNECT_TIMEOUT         345
@@ -329,26 +327,28 @@
 #define IDS_ERRMSG_ALREADY_EXISTS                 401
 #define IDS_ERRMSG_REPLACE_DIR_NOT_EMPTY          402
 #define IDS_ERRMSG_REPLACE_DIR_UNREADABLE         403
-#define IDS_ERRMSG_REPLACED_ITEM_LEFT             404
-#define IDS_ERRMSG_LOCAL_SET_POSITION             405
-#define IDS_ERRMSG_LOCAL_WRITE                    406
-#define IDS_ERRMSG_LOCAL_GET_SIZE                 407
-#define IDS_ERRMSG_LOCAL_READ_TIME                408
-#define IDS_ERRMSG_LOCAL_READ                     409
-#define IDS_ERRMSG_HANDSHAKE_FAILED               410
-#define IDS_ERRMSG_SFTP_SUBSYSTEM_FAILED          411
-#define IDS_ERRMSG_AUTH_INTERRUPTED               412
-#define IDS_ERRMSG_AUTH_METHODS_QUERY_FAILED      413
-#define IDS_ERRMSG_EXEC_CHANNEL_FAILED            414
-#define IDS_ERRMSG_EXEC_START_FAILED              415
-#define IDS_ERRMSG_EXEC_READ_FAILED               416
-#define IDS_ERRMSG_EXEC_FINISH_FAILED             417
-#define IDS_ERRMSG_NO_ANSWER_TIMEOUT              418
-#define IDS_ERRMSG_EXEC_IDLE_TIMEOUT              419
-#define IDS_ERRMSG_INVALID_SERVER_DATA            420
-#define IDS_ERRMSG_CANCELLED                      421
-#define IDS_ERRMSG_NOT_CONNECTED                  422
-#define IDS_ERRMSG_LOCAL_FILE_CREATE_FAILED       423
-#define IDS_ERRMSG_LOCAL_FILE_RENAME_FAILED       424
+#define IDS_ERRMSG_LOCAL_SET_POSITION             404
+#define IDS_ERRMSG_LOCAL_WRITE                    405
+#define IDS_ERRMSG_LOCAL_GET_SIZE                 406
+#define IDS_ERRMSG_LOCAL_READ_TIME                407
+#define IDS_ERRMSG_LOCAL_READ                     408
+#define IDS_ERRMSG_HANDSHAKE_FAILED               409
+#define IDS_ERRMSG_SFTP_SUBSYSTEM_FAILED          410
+#define IDS_ERRMSG_AUTH_INTERRUPTED               411
+#define IDS_ERRMSG_AUTH_METHODS_QUERY_FAILED      412
+#define IDS_ERRMSG_EXEC_CHANNEL_FAILED            413
+#define IDS_ERRMSG_EXEC_START_FAILED              414
+#define IDS_ERRMSG_EXEC_READ_FAILED               415
+#define IDS_ERRMSG_EXEC_FINISH_FAILED             416
+#define IDS_ERRMSG_NO_ANSWER_TIMEOUT              417
+#define IDS_ERRMSG_EXEC_IDLE_TIMEOUT              418
+#define IDS_ERRMSG_INVALID_SERVER_DATA            419
+#define IDS_ERRMSG_CANCELLED                      420
+#define IDS_ERRMSG_NOT_CONNECTED                  421
+#define IDS_ERRMSG_LOCAL_FILE_CREATE_FAILED       422
+#define IDS_ERRMSG_LOCAL_FILE_RENAME_FAILED       423
+// suffixes of a shown error text (DescribeSshError): "(code %1)" and "(code %1, SFTP status %2)"
+#define IDS_ERRMSG_SUFFIX_CODE                    424
+#define IDS_ERRMSG_SUFFIX_CODE_STATUS             425
 
 #endif // __SFTP_RH2

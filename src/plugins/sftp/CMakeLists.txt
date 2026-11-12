@@ -205,6 +205,7 @@ set_target_properties(sftp_ops PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$
 file(GLOB _SFTP_TEST_SOURCES CONFIGURE_DEPENDS "${SAL_PLUGINS}/sftp/tests/*.cpp")
 add_executable(sftp_tests ${_SFTP_TEST_SOURCES})
 target_link_libraries(sftp_tests PRIVATE sftp_ops sftp_core GTest::gtest GTest::gtest_main)
-target_compile_definitions(sftp_tests PRIVATE SFTP_TEST_DIR_DEFAULT="${SAL_PLUGINS}/sftp/tests/docker/out")
+target_compile_definitions(sftp_tests PRIVATE SFTP_TEST_DIR_DEFAULT="${SAL_PLUGINS}/sftp/tests/docker/out"
+                                                SFTP_SOURCE_DIR="${SAL_PLUGINS}/sftp")
 set_target_properties(sftp_tests PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 gtest_discover_tests(sftp_tests DISCOVERY_MODE PRE_TEST)

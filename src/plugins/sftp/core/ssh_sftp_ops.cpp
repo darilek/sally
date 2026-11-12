@@ -141,12 +141,7 @@ bool CSshSession::FailSftp(SshMsg msgId, const std::string& what, const std::str
     const std::string subject = what + " '" + Display(path) + "'";
     if (code != LIBSSH2_ERROR_SFTP_PROTOCOL)
     {
-        FailFromSession(subject, code, msgId, {Display(path)});
-        if (error_.msgId == SshMsg::NoAnswerTimeout) // a timeout keeps the action sentence; the reason says "no answer"
-        {
-            error_.msgId = msgId;
-            error_.args = {Display(path)};
-        }
+        FailFromSession(subject, code, msgId, {Display(path)}); // a timeout keeps the sentence; the reason says "no answer"
         return false;
     }
 
@@ -562,8 +557,7 @@ bool CSshSession::RenameAside(const std::string& from, const std::string& to)
         if (!removed)
         {
             error_.message = "Renamed, but the replaced item is left as '" + Display(aside) + "'";
-            error_.msgId = SshMsg::ReplacedItemLeft;
-            error_.args = {Display(aside)};
+            // English only (msgId None): this is a warning on a successful rename, never shown as an error
         }
         return true;
     }
@@ -616,7 +610,10 @@ bool CSshSession::Symlink(const std::string& target, const std::string& linkPath
                                            static_cast<unsigned int>(linkPath.size()), LIBSSH2_SFTP_SYMLINK);
         },
         timeoutMs_);
-    return rc == 0 || FailSftp(SshMsg::SftpCreate, "Cannot create the link", linkPath, rc);
+    if (rc == 0)
+        return true;
+    FailSftp(SshMsg::SftpCreate, "Cannot create the link", linkPath, rc);
+    return FailExistsIfPresent(linkPath); // an existing name is "already exists", not a generic failure
 }
 
 bool CSshSession::Chmod(const std::string& path, uint32_t mode)

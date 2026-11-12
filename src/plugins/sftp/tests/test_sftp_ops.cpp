@@ -718,6 +718,18 @@ TEST_F(OpsTest, MkdirExistingIsAlreadyExistsWithPath)
     EXPECT_EQ(session_->LastError().message, "'" + dir_ + "' already exists");
 }
 
+TEST_F(OpsTest, SymlinkOntoExistingNameIsAlreadyExistsWithPath)
+{
+    ASSERT_TRUE(session_->Mkdir(dir_ + "/real"));
+    ASSERT_TRUE(session_->Symlink("real", dir_ + "/link")) << session_->LastError().message;
+    EXPECT_FALSE(session_->Symlink("real", dir_ + "/link"));
+    EXPECT_EQ(session_->LastError().kind, SshErrorKind::Exists) << session_->LastError().message;
+    EXPECT_EQ(session_->LastError().msgId, SshMsg::AlreadyExists);
+    ASSERT_EQ(session_->LastError().args.size(), 1u);
+    EXPECT_EQ(session_->LastError().args[0], dir_ + "/link");
+    ASSERT_TRUE(session_->Remove(dir_ + "/link"));
+}
+
 TEST_F(OpsTest, RmdirNonEmptyKeepsTheDeleteIdAndTheNotEmptyKind)
 {
     ASSERT_TRUE(session_->Mkdir(In("full")));

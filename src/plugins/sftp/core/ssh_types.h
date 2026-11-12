@@ -31,17 +31,17 @@ enum class SshErrorKind
 };
 
 // Identifies an error text so the UI layer can show it in the user's language. core/ only knows the ids; the texts
-// (patterns with %1, %2, ...) live in the plugin's string table and are looked up in fs/. The English text stays in
+// (patterns with %1, %2, ...) live in the plugin's string table and are looked up in ui/error_text.cpp. The English text stays in
 // CSshError::message as the log text and as the fallback for ids without a table entry.
 // Each id lists its arguments (CSshError::args, UTF-8).
 enum class SshMsg
 {
     None,           // no id: only the English message is available
-    ResolveFailed,  // %1 host, %2 system error text
+    ResolveFailed,  // %1 host, %2 Winsock error number (the pattern says "Winsock error %2")
     ResolveTimeout, // %1 host, %2 time limit in seconds (plain number)
     ConnectTimeout, // %1 host:port, %2 time limit in seconds (plain number)
     SessionNotOpen, // no arguments
-    ConnectFailed,  // %1 host:port, %2 system error text
+    ConnectFailed,  // %1 host:port, %2 Winsock error number
     NoHostGiven,    // no arguments
     NoHostKey,      // no arguments
     KnownHostsUnchecked, // %1 host
@@ -66,7 +66,7 @@ enum class SshMsg
     KeyFileOpenFailed,  // %1 key file, %2 Windows error number
     KeyFileBadSize,     // %1 key file
     KeyFileReadFailed,  // %1 key file, %2 Windows error number
-    // .ppk problems; %1 is the key file (added by the authentication code), further arguments as listed
+    // .ppk problems; %1 is the key file (not set by ConvertPpk: added by the authentication code), further arguments as listed
     PpkDecryptFailed,          // %1 key file
     PpkUnsupportedEncryption,  // %1 key file, %2 encryption name
     PpkUnsupportedKdf,         // %1 key file, %2 key derivation name
@@ -74,7 +74,7 @@ enum class SshMsg
     PpkUnsupportedOldFormat,   // %1 key file
     PpkNotPuttyFile,           // %1 key file
     PpkDamaged,                // %1 key file (all other "invalid / truncated / incomplete" cases)
-    // SFTP actions: "Cannot <do something with> '%1': %2". %1 is the remote path (UTF-8, as shown). fs/ composes %2 (the
+    // SFTP actions: "Cannot <do something with> '%1': %2". %1 is the remote path (UTF-8, as shown). ui/error_text composes %2 (the
     // reason) from CSshError::sftpStatus (or the timeout kind); for a failure of the connection itself, args[1] is the
     // English text of libssh2 and is used instead.
     SftpList,        // list a directory, read a directory
@@ -92,13 +92,13 @@ enum class SshMsg
     AlreadyExists,        // %1 path
     ReplaceDirNotEmpty,   // %1 path of the target
     ReplaceDirUnreadable, // %1 path of the target
-    ReplacedItemLeft,     // %1 path of the replaced item that could not be deleted
     LocalSetPosition,     // %1 Windows error number (local file errors of a transfer)
     LocalWrite,           // %1 Windows error number
     LocalGetSize,         // %1 Windows error number
     LocalReadTime,        // %1 Windows error number
     LocalRead,            // %1 Windows error number
-    HandshakeFailed,      // %1 English text of libssh2
+    // "<step>: %1": %1 is the English text of libssh2, after a timeout the localized "no answer" reason
+    HandshakeFailed,      // %1 see above
     SftpSubsystemFailed,  // %1 English text of libssh2
     AuthInterrupted,      // %1 English text of libssh2
     AuthMethodsQueryFailed, // %1 English text of libssh2
@@ -111,7 +111,8 @@ enum class SshMsg
     InvalidServerData,    // %1 directory path (invalid entry name or too many entries)
     NotConnected,         // no arguments (a panel request without a connection)
     LocalFileCreateFailed, // %1 Windows error number (the .part file of a panel download)
-    LocalFileRenameFailed // %1 Windows error number (the .part file could not get its final name)
+    LocalFileRenameFailed, // %1 Windows error number (the .part file could not get its final name)
+    Count_                // not an id: the number of ids (tests check that each one has a text)
 };
 
 struct CSshError

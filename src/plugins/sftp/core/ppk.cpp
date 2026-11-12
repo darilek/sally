@@ -678,6 +678,8 @@ bool PpkIsEncrypted(const CSecret& fileBytes)
     return ParseFile(fileBytes, file, ignored) && file.Encrypted();
 }
 
+// The Ppk* ids set in err.msgId have the key file as %1, but err.args does not contain it (this function does not know
+// the file's path): the caller prepends it.
 bool ConvertPpk(const CSecret& fileBytes, const CSecret& passphrase, CSecret& opensshKey, std::string* publicKeyBlob,
                 CSshError& err)
 {

@@ -17,9 +17,10 @@ namespace
 {
 constexpr int kSliceMs = 100; // how often a waiting connect looks at the cancel flag
 
-std::string WsaMessage(int code)
+// English text for the log; the translated texts get only the number ("(Winsock error %2)" is in their pattern).
+std::string WsaMessage(const std::string& code)
 {
-    return "Winsock error " + std::to_string(code);
+    return "Winsock error " + code;
 }
 
 std::wstring Widen(const std::string& utf8)
@@ -185,8 +186,13 @@ bool CSshSession::FailFromSession(const std::string& what, int code, SshMsg msgI
     if (code == LIBSSH2_ERROR_TIMEOUT)
     {
         message += ": no answer within " + Msec(timeoutMs_);
-        msgId = SshMsg::NoAnswerTimeout;
-        args = {Seconds(timeoutMs_)};
+        // The caller's id (the step that timed out) stays: the UI layer shows "step: no answer from the server". Only a
+        // call without an id gets the generic "No answer within N s".
+        if (msgId == SshMsg::None)
+        {
+            msgId = SshMsg::NoAnswerTimeout;
+            args = {Seconds(timeoutMs_)};
+        }
     }
     else
     {
@@ -284,7 +290,7 @@ SOCKET CSshSession::ConnectAddress(const ADDRINFOEXW* ai, int timeoutMs, std::st
     SOCKET s = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
     if (s == INVALID_SOCKET)
     {
-        why = WsaMessage(WSAGetLastError());
+        why = std::to_string(WSAGetLastError());
         return INVALID_SOCKET;
     }
     SetSocket(s);
@@ -303,7 +309,7 @@ SOCKET CSshSession::ConnectAddress(const ADDRINFOEXW* ai, int timeoutMs, std::st
         int err = WSAGetLastError();
         if (err != WSAEWOULDBLOCK)
         {
-            why = WsaMessage(err);
+            why = std::to_string(err);
             CloseSocket();
             return INVALID_SOCKET;
         }
@@ -330,7 +336,7 @@ SOCKET CSshSession::ConnectAddress(const ADDRINFOEXW* ai, int timeoutMs, std::st
             int n = select(0, nullptr, &writable, &failed, &slice);
             if (n == SOCKET_ERROR)
             {
-                why = WsaMessage(WSAGetLastError());
+                why = std::to_string(WSAGetLastError());
                 CloseSocket();
                 return INVALID_SOCKET;
             }
@@ -341,7 +347,7 @@ SOCKET CSshSession::ConnectAddress(const ADDRINFOEXW* ai, int timeoutMs, std::st
             getsockopt(s, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&soError), &len);
             if (FD_ISSET(s, &failed) || soError != 0)
             {
-                why = WsaMessage(soError != 0 ? soError : WSAECONNREFUSED);
+                why = std::to_string(soError != 0 ? soError : WSAECONNREFUSED);
                 CloseSocket();
                 return INVALID_SOCKET;
             }
@@ -407,9 +413,9 @@ bool CSshSession::ResolveHost(const CSshSite& site, int timeoutMs, ADDRINFOEXW*&
     {
         if (result != nullptr)
             FreeAddrInfoExW(result);
-        const std::string system = WsaMessage(rc);
-        return Fail(SshErrorKind::ConnectFailed, SshMsg::ResolveFailed, {site.host, system},
-                    "Cannot resolve host '" + site.host + "' (" + system + ")");
+        const std::string code = std::to_string(rc);
+        return Fail(SshErrorKind::ConnectFailed, SshMsg::ResolveFailed, {site.host, code},
+                    "Cannot resolve host '" + site.host + "' (" + WsaMessage(code) + ")");
     }
     list = result;
     return true;
@@ -442,8 +448,9 @@ bool CSshSession::ConnectSocket(const CSshSite& site)
                     "Connecting to " + hostPort + " timed out after " + Msec(timeoutMs));
     }
     const std::string hostPort = site.host + ":" + std::to_string(site.port);
+    // 'why' is a Winsock error number here: a timeout ("timeout") was handled above, a cancel replaces the error
     return Fail(SshErrorKind::ConnectFailed, SshMsg::ConnectFailed, {hostPort, why},
-                "Cannot connect to " + hostPort + " (" + why + ")");
+                "Cannot connect to " + hostPort + " (" + WsaMessage(why) + ")");
 }
 
 bool CSshSession::CreateSession(const CSshSite& site)

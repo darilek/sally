@@ -13,19 +13,19 @@ std::wstring AppDataSallyDir();
 // Creates the folder and any missing parents. True when the folder exists afterwards (also when it already did).
 bool EnsureDirectory(const std::wstring& path);
 
-// The words DescribeSshError needs, supplied by the caller (fs/ loads them from the string table; ops/ has no texts).
+// The words DescribeSshError needs, supplied by the caller (ui/ loads them from the string table; ops/ has no texts).
 struct CSshErrorLabels
 {
-    std::wstring unknown;    // used when the error has no message, e.g. "Unknown error"
-    std::wstring code;       // "code"
-    std::wstring sftpStatus; // "SFTP status"
+    std::wstring unknown;           // used when the error has no message, e.g. "Unknown error"
+    std::wstring codePattern;       // suffix with a libssh2 code: "(code %1)"
+    std::wstring sftpStatusPattern; // suffix with a code and an SFTP status: "(code %1, SFTP status %2)"
 };
 
 // "message (code N, SFTP status M)" as wide text for a message box or log; never empty (unless the labels are).
 // Invalid UTF-8 in the message becomes U+FFFD.
 std::wstring DescribeSshError(const CSshError& error, const CSshErrorLabels& labels);
-// Same, but 'translatedText' (when not empty) replaces error.message as the main text. fs/ passes the string-table
-// text of error.msgId, already formatted with FormatErrorMessage.
+// Same, but 'translatedText' (when not empty) replaces error.message as the main text. ui/error_text.cpp passes the
+// string-table text of error.msgId, already formatted with FormatErrorMessage.
 std::wstring DescribeSshError(const CSshError& error, const CSshErrorLabels& labels, const std::wstring& translatedText);
 
 // Fills a string-table pattern: %1..%9 become the UTF-8 arguments (decoded; invalid bytes become U+FFFD), "%%" is a
@@ -33,7 +33,7 @@ std::wstring DescribeSshError(const CSshError& error, const CSshErrorLabels& lab
 // any other '%' stays as written. Never throws for bad input.
 std::wstring FormatErrorMessage(const std::wstring& pattern, const std::vector<std::string>& args);
 
-// The reason part of an SFTP action sentence ("Cannot delete '%1': <reason>"). fs/ maps each value to a string-table
+// The reason part of an SFTP action sentence ("Cannot delete '%1': <reason>"). ui/error_text.cpp maps each value to a string-table
 // text; the choice itself needs no Sally and lives here so that it can be tested.
 enum class ErrorReason
 {
@@ -54,9 +54,22 @@ enum class ErrorReason
 // True for the ids whose pattern is "Cannot ... '%1': %2" (SftpList .. SftpChangeAttrs): %2 is the reason.
 bool IsSftpActionMsg(SshMsg msg);
 
+// True for the ids whose pattern is "<step>: %1" with %1 the English text of libssh2 (HandshakeFailed ..
+// ExecFinishFailed). After a timeout %1 is the localized "no answer" reason instead.
+bool IsLibssh2StepMsg(SshMsg msg);
+
 // The reason of a failed SFTP action from the status the server answered with (error.sftpStatus), or from the error
-// kind (not empty, timeout). None when the failure has neither, e.g. a lost connection with only a libssh2 text.
+// kind (not empty, timeout, connection failure). None when the failure has neither.
 ErrorReason ReasonOfError(const CSshError& error);
+
+// The arguments (%1, %2, ...) for the pattern of error.msgId. 'reasonText' is the localized text of
+// ReasonOfError(error) (empty when None or the table has no entry), 'failedText' the generic "operation failed".
+//  - "<step>: %1" ids after a timeout: %1 = the reason text (or failedText);
+//  - SFTP action ids: %1 = the path (the first argument only), %2 = the reason text; without one the libssh2 text
+//    (second argument) is kept, and without that failedText;
+//  - every other id: error.args unchanged.
+std::vector<std::string> ComposeErrorArgs(const CSshError& error, const std::wstring& reasonText,
+                                          const std::wstring& failedText);
 
 // Sally's own known_hosts file: AppDataSallyDir() + "\known_hosts"; empty when AppDataSallyDir() is empty.
 std::wstring KnownHostsOwnPath();

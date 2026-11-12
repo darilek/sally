@@ -48,7 +48,7 @@ TEST(TextUtil, EnsureDirectoryCreatesNestedAndIsIdempotent)
 
 TEST(TextUtil, DescribeSshErrorIsNotEmpty)
 {
-    const CSshErrorLabels labels = {L"Unknown error", L"code", L"SFTP status"};
+    const CSshErrorLabels labels = {L"Unknown error", L"(code %1)", L"(code %1, SFTP status %2)"};
     CSshError error;
     EXPECT_EQ(DescribeSshError(error, labels), L"Unknown error");
 
@@ -58,11 +58,12 @@ TEST(TextUtil, DescribeSshErrorIsNotEmpty)
     std::wstring text = DescribeSshError(error, labels);
     EXPECT_NE(text.find(L"Connection refused"), std::wstring::npos);
     EXPECT_NE(text.find(L"-43"), std::wstring::npos);
-    EXPECT_NE(text.find(L"code"), std::wstring::npos);
+    EXPECT_EQ(text, L"Connection refused (code -43)");
 
     error.sftpStatus = 2;
-    text = DescribeSshError(error, {L"?", L"Kod", L"Stav SFTP"}); // the caller's words are used
-    EXPECT_EQ(text, L"Connection refused (Kod -43, Stav SFTP 2)");
+    EXPECT_EQ(DescribeSshError(error, labels), L"Connection refused (code -43, SFTP status 2)");
+    text = DescribeSshError(error, {L"?", L"(Kod %1)", L"(Stav SFTP %2, kod %1)"}); // the caller's patterns are used
+    EXPECT_EQ(text, L"Connection refused (Stav SFTP 2, kod -43)");
 }
 
 TEST(TextUtil, FormatHostPort)
@@ -112,7 +113,7 @@ TEST(TextUtil, ClassifyTargetMask)
 
 TEST(FormatErrorMessage, FillsArguments)
 {
-    EXPECT_EQ(FormatErrorMessage(L"Cannot resolve host '%1' (%2)", {"example.com", "Winsock error 11001"}),
+    EXPECT_EQ(FormatErrorMessage(L"Cannot resolve host '%1' (Winsock error %2)", {"example.com", "11001"}),
               L"Cannot resolve host 'example.com' (Winsock error 11001)");
     EXPECT_EQ(FormatErrorMessage(L"no arguments", {}), L"no arguments");
     EXPECT_EQ(FormatErrorMessage(L"", {"x"}), L"");
@@ -145,7 +146,7 @@ TEST(FormatErrorMessage, InvalidUtf8ArgumentBecomesReplacementCharacter)
 
 TEST(TextUtil, DescribeSshErrorUsesTranslatedTextWhenGiven)
 {
-    const CSshErrorLabels labels = {L"Unknown error", L"code", L"SFTP status"};
+    const CSshErrorLabels labels = {L"Unknown error", L"(code %1)", L"(code %1, SFTP status %2)"};
     CSshError error;
     error.message = "English text";
     error.libssh2Code = -5;
@@ -192,7 +193,8 @@ TEST(ErrorReason, OtherStatusesAreTheGenericFailure)
 TEST(ErrorReason, WithoutAStatusTheKindDecides)
 {
     EXPECT_EQ(ReasonOfStatus(0, SshErrorKind::Timeout), ErrorReason::NoAnswer);
-    EXPECT_EQ(ReasonOfStatus(0, SshErrorKind::ConnectFailed), ErrorReason::None); // the libssh2 text is shown instead
+    EXPECT_EQ(ReasonOfStatus(0, SshErrorKind::ConnectFailed), ErrorReason::ConnectionLost);
+    EXPECT_EQ(ReasonOfStatus(0, SshErrorKind::Other), ErrorReason::None);
     // a generic FAILURE that was found to be a non-empty directory
     EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_FAILURE, SshErrorKind::NotEmpty), ErrorReason::DirNotEmpty);
 }
@@ -204,4 +206,79 @@ TEST(ErrorReason, OnlyTheActionIdsTakeAReason)
     EXPECT_FALSE(IsSftpActionMsg(SshMsg::None));
     EXPECT_FALSE(IsSftpActionMsg(SshMsg::AlreadyExists));
     EXPECT_FALSE(IsSftpActionMsg(SshMsg::SftpNotOpen));
+}
+
+// ---- Arguments of the error patterns ---------------------------------------------------------------------------------
+
+namespace
+{
+CSshError ActionError(const std::vector<std::string>& args, SshErrorKind kind, unsigned long status = 0)
+{
+    CSshError error;
+    error.kind = kind;
+    error.sftpStatus = status;
+    error.msgId = SshMsg::SftpDelete;
+    error.args = args;
+    return error;
+}
+} // namespace
+
+TEST(ComposeErrorArgs, PlainIdsKeepTheirArguments)
+{
+    CSshError error;
+    error.msgId = SshMsg::ResolveFailed;
+    error.args = {"host", "11001"};
+    EXPECT_EQ(ComposeErrorArgs(error, L"reason", L"failed"), error.args);
+}
+
+TEST(ComposeErrorArgs, ActionTakesThePathAndTheStatusReason)
+{
+    // the libssh2 text (second argument) is dropped when the reason is known
+    const CSshError error = ActionError({"/a/b", "libssh2 text"}, SshErrorKind::NotFound, LIBSSH2_FX_NO_SUCH_FILE);
+    EXPECT_EQ(ComposeErrorArgs(error, L"no such file", L"failed"), (std::vector<std::string>{"/a/b", "no such file"}));
+}
+
+TEST(ComposeErrorArgs, ActionWithoutAReasonKeepsTheLibssh2Text)
+{
+    const CSshError error = ActionError({"/a/b", "Socket error"}, SshErrorKind::Other);
+    EXPECT_EQ(ComposeErrorArgs(error, L"", L"failed"), (std::vector<std::string>{"/a/b", "Socket error"}));
+}
+
+TEST(ComposeErrorArgs, ActionFallsBackToTheGenericTextWhenNothingElseIsKnown)
+{
+    const CSshError error = ActionError({"/a/b"}, SshErrorKind::Other);
+    EXPECT_EQ(ComposeErrorArgs(error, L"", L"operation failed"), (std::vector<std::string>{"/a/b", "operation failed"}));
+}
+
+TEST(ComposeErrorArgs, ActionWithOnlyThePathAndAKnownReason)
+{
+    const CSshError error = ActionError({"/a/b"}, SshErrorKind::Timeout);
+    EXPECT_EQ(ComposeErrorArgs(error, L"no answer", L"failed"), (std::vector<std::string>{"/a/b", "no answer"}));
+}
+
+TEST(ComposeErrorArgs, StepAfterATimeoutGetsTheReasonInsteadOfTheLibssh2Text)
+{
+    CSshError error;
+    error.kind = SshErrorKind::Timeout;
+    error.msgId = SshMsg::HandshakeFailed;
+    EXPECT_EQ(ComposeErrorArgs(error, L"no answer from the server", L"failed"),
+              (std::vector<std::string>{"no answer from the server"}));
+    EXPECT_EQ(ComposeErrorArgs(error, L"", L"operation failed"), (std::vector<std::string>{"operation failed"}));
+}
+
+TEST(ComposeErrorArgs, StepWithAConnectionErrorKeepsTheLibssh2Text)
+{
+    CSshError error;
+    error.kind = SshErrorKind::ConnectFailed;
+    error.msgId = SshMsg::SftpSubsystemFailed;
+    error.args = {"Unable to send channel-open request"};
+    EXPECT_EQ(ComposeErrorArgs(error, L"connection lost", L"failed"), error.args);
+}
+
+TEST(ErrorReason, LibSsh2StepIds)
+{
+    EXPECT_TRUE(IsLibssh2StepMsg(SshMsg::HandshakeFailed));
+    EXPECT_TRUE(IsLibssh2StepMsg(SshMsg::ExecFinishFailed));
+    EXPECT_FALSE(IsLibssh2StepMsg(SshMsg::NoAnswerTimeout));
+    EXPECT_FALSE(IsLibssh2StepMsg(SshMsg::SftpList));
 }

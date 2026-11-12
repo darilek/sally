@@ -159,6 +159,16 @@ int StringIdOfMsg(SshMsg msg)
     }
 }
 
+// The string of the table, or an empty string when the id has no entry or the entry is empty.
+// Not LangStr/SPLLoadStr: those return the text "ERROR LOADING STRING" for a missing entry, which would hide the
+// English fallback. LoadStringW with length 0 only returns the length of the read-only resource string (0 = none).
+std::wstring OptionalLangStr(int id)
+{
+    const wchar_t* text = NULL;
+    const int length = LoadStringW(HLanguage, id, reinterpret_cast<LPWSTR>(&text), 0);
+    return length > 0 ? std::wstring(text, length) : std::wstring();
+}
+
 // String-table id of the reason phrase of an SFTP action sentence; 0 for ErrorReason::None.
 int StringIdOfReason(ErrorReason reason)
 {
@@ -199,12 +209,13 @@ std::vector<std::string> ArgsOfError(const CSshError& error)
     if (!IsSftpActionMsg(error.msgId))
         return args;
     const int reasonId = StringIdOfReason(ReasonOfError(error));
-    if (reasonId != 0)
+    const std::wstring reason = reasonId != 0 ? OptionalLangStr(reasonId) : std::wstring();
+    if (!reason.empty())
     {
         args.resize(1); // the path; a libssh2 text is not needed when the reason is known
-        args.push_back(CNameCodec::Utf8().Encode(LangStr(reasonId)));
+        args.push_back(CNameCodec::Utf8().Encode(reason));
     }
-    else if (args.size() < 2)
+    else if (args.size() < 2) // no reason phrase and no library text: the generic one
     {
         args.resize(1);
         args.push_back(CNameCodec::Utf8().Encode(LangStr(IDS_ERRMSG_REASON_FAILED)));
@@ -213,14 +224,10 @@ std::vector<std::string> ArgsOfError(const CSshError& error)
 }
 } // namespace
 
-// The pattern of a core error from the string table; empty when the id has no entry or the entry is empty.
 std::wstring LangStrForMsg(SshMsg msg)
 {
     const int id = StringIdOfMsg(msg);
-    std::wstring pattern;
-    if (id == 0 || !SPLLoadStrOwned(SalamanderGeneral, HLanguage, id, pattern)) // not LangStr: that returns an error text
-        return std::wstring();
-    return pattern;
+    return id == 0 ? std::wstring() : OptionalLangStr(id);
 }
 
 std::wstring DescribeError(const CSshError& error)

@@ -50,7 +50,8 @@ private:
 
 // Pixel values are written for 96 DPI (100%) and scaled with the DPI of the DC. GetDeviceCaps(LOGPIXELSX) is used
 // instead of GetDpiForWindow because the plugins target Windows 7 (WINVER 0x0601), where that API does not exist;
-// for a DC of a per-monitor DPI aware window it returns the DPI of the monitor the window is on.
+// it returns the system DPI, not the per-monitor one, which is right because Sally's manifest declares system DPI
+// awareness only.
 int Scale(HDC dc, int px)
 {
     return MulDiv(px, GetDeviceCaps(dc, LOGPIXELSX), 96);
@@ -413,7 +414,7 @@ void PaintCheckRadio(HWND button, HDC dc, const PluginDarkModeColors& colors)
         if (SUCCEEDED(GetThemePartSize(theme, dc, part, state, NULL, TS_TRUE, &themed)) && themed.cx > 0 && themed.cy > 0)
             glyph = themed;
     }
-    RECT glyphRect = {client.left + Scale(dc, 2),client.top + (client.bottom - client.top - glyph.cy) / 2, 0, 0};
+    RECT glyphRect = {client.left + Scale(dc, 2), client.top + (client.bottom - client.top - glyph.cy) / 2, 0, 0};
     glyphRect.right = glyphRect.left + glyph.cx;
     glyphRect.bottom = glyphRect.top + glyph.cy;
     if (theme != NULL)

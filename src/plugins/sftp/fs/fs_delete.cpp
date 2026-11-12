@@ -25,10 +25,6 @@
 #include "text_util.h"
 #include "wait_for_request.h"
 
-namespace
-{
-} // namespace
-
 BOOL WINAPI
 CPluginFSInterface::Delete(const wchar_t* fsName, int mode, HWND parent, int panel, int selectedFiles, int selectedDirs,
                            BOOL& cancelOrError)

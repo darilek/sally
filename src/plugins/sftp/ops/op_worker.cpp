@@ -1147,9 +1147,6 @@ CWorker::CItemResult CWorker::Download(const CQueueItem& item)
             offset = decision.resumeOffset;
         }
     }
-    if (target != item.localPath)
-        queue.Retarget(item.uid, target, std::string()); // a retry (pause, lost connection) continues this very file
-
     DWORD error = 0;
     HANDLE file = OpenLocalTarget(target, offset == 0, error);
     if (file == INVALID_HANDLE_VALUE)
@@ -1157,7 +1154,7 @@ CWorker::CItemResult CWorker::Download(const CQueueItem& item)
     CHandleGuard guard(file);
     queue.SetOwnsPartial(item.uid);
     // The user's answer (Overwrite, Resume) is used up now: the file is ours, so a retry after a pause or a lost
-    // connection continues it (Decide) instead of starting again.
+    // connection continues it (Decide) instead of starting again. Also records a renamed target.
     queue.Retarget(item.uid, target, std::string());
 
     BeginTransfer(item.uid, offset);
@@ -1263,6 +1260,11 @@ CWorker::CItemResult CWorker::Upload(const CQueueItem& item)
     }
 
     queue.SetOwnsPartial(item.uid);
+    // Without safe upload the target itself is our partial file: use up the user's answer (Overwrite) so a retry after
+    // a pause continues it (Decide). With safe upload the real target still exists, so the answer must stay; the own
+    // .filepart is continued through ownsPartial.
+    if (!settings.safeUpload)
+        queue.Retarget(item.uid, std::wstring(), target);
     BeginTransfer(item.uid, startAt);
     uint64_t transferred = 0;
     bool ok = session_.Upload(file, writeTo, startAt, startAt > 0, &transferred);

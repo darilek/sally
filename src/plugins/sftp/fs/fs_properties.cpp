@@ -19,10 +19,6 @@
 #include "text_util.h"
 #include "wait_for_request.h"
 
-namespace
-{
-} // namespace
-
 void WINAPI
 CPluginFSInterface::ShowProperties(const wchar_t* fsName, HWND parent, int panel, int selectedFiles, int selectedDirs)
 {

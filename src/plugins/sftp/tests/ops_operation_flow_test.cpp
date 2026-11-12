@@ -244,6 +244,44 @@ TEST_F(OperationFlowTest, PausedUploadContinuesItsOwnFilepartWhateverThePolicy)
     EXPECT_FALSE(RemoteExists(remoteDir_ + "/up.bin.filepart"));
 }
 
+// The same for an upload without safe upload: the target itself is the partial file.
+TEST_F(OperationFlowTest, PauseAfterASolveOverwriteContinuesTheOwnPartialUploadWithoutSafeUpload)
+{
+    safeUpload_ = false;
+    const std::string source = PatternBytes(24 << 20, 15);
+    WriteAll(local_ / "src" / "up.bin", source);
+    PutRemoteFile(remoteDir_ + "/up.bin", "OLD"); // policy Ask: the item is parked first
+    sftptest::CStallProxy proxy(sftptest::kPort);
+    proxy.StallAfter(8 << 20);
+    port_ = proxy.Port();
+
+    auto op = MakeUpload({LocalSrc(local_ / "src" / "up.bin", false)}, remoteDir_, false, 1);
+    CTestObserver observer;
+    op->SetObserver(&observer);
+    ASSERT_TRUE(op->Start());
+    ASSERT_TRUE(WaitUntil([&] { return StateOfFirstItem(*op) == ItemState::UserInputNeeded; }, 30000));
+    const std::vector<CQueueItem> parked = op->Queue().Items(false);
+    ASSERT_EQ(parked.size(), 1u);
+    EXPECT_EQ(op->Solve(parked[0].uid, SolveAction::Overwrite), 1);
+    ASSERT_TRUE(WaitUntil([&] { return proxy.IsStalled(); }, 60000));
+    Sleep(300);
+
+    op->Pause();
+    ASSERT_TRUE(WaitUntil([&] { return StateOfFirstItem(*op) == ItemState::Waiting; }, 20000));
+    CSftpEntry part;
+    ASSERT_TRUE(admin_.Stat(remoteDir_ + "/up.bin", part));
+    ASSERT_GT(part.size, 3u);
+    ASSERT_LT(part.size, source.size());
+    // the same bytes with a wrong first one: only a real continuation keeps it
+    PutRemoteFile(remoteDir_ + "/up.bin", "Z" + source.substr(1, part.size - 1));
+    proxy.StallAfter(0);
+    proxy.Stall(false);
+    op->Resume();
+    ASSERT_TRUE(op->WaitFinished(60000));
+    EXPECT_EQ(op->State(), OperationState::Finished) << Describe(*op);
+    EXPECT_TRUE(GetRemoteFile(remoteDir_ + "/up.bin") == "Z" + source.substr(1)); // continued, not uploaded again
+}
+
 TEST_F(OperationFlowTest, AnOperationPausedBeforeItsWorkersStartedTakesNothingUntilResume)
 {
     const DWORD handlesBefore = HandleCount();

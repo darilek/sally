@@ -169,8 +169,9 @@ public:
 
     // Worker bookkeeping for a transfer item (all return false for an unknown uid):
     // - SetOwnsPartial: the operation is about to write the target (see CQueueItem::ownsPartial).
-    // - Retarget: the item now goes to another name (a rename was decided). Empty paths are left alone. The user's
-    //   forced action and new name are used up, so a later retry does not decide again.
+    // - Retarget: the item now goes to another name (a rename was decided), or the operation now owns the target
+    //   it writes. Empty paths are left alone. The user's forced action and new name are used up, so a later retry
+    //   does not decide again.
     // - SetTargetInfo: size and time of the existing target, kept for the solve dialog.
     bool SetOwnsPartial(uint64_t uid);
     bool Retarget(uint64_t uid, const std::wstring& localPath, const std::string& remotePath);

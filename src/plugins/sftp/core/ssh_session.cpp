@@ -44,6 +44,12 @@ std::string Msec(int ms)
 {
     return std::to_string(ms / 1000) + " s";
 }
+
+// The same time limit as a plain number for a translated text ("... %1 s"): the unit is in the pattern.
+std::string Seconds(int ms)
+{
+    return std::to_string(ms / 1000);
+}
 } // namespace
 
 CSshSession::CSshSession(ISshCallbacks* cb, CKnownHosts* hosts) : cb_(cb), hosts_(hosts)
@@ -117,9 +123,10 @@ bool CSshSession::Fail(SshErrorKind kind, const std::string& message, int libssh
     return false;
 }
 
-bool CSshSession::Fail(SshErrorKind kind, SshMsg msgId, std::vector<std::string> args, const std::string& message)
+bool CSshSession::Fail(SshErrorKind kind, SshMsg msgId, std::vector<std::string> args, const std::string& message,
+                       int libssh2Code)
 {
-    Fail(kind, message);
+    Fail(kind, message, libssh2Code);
     if (!IsCancelled()) // a cancel replaces the error; the id would no longer match the message
     {
         error_.msgId = msgId;
@@ -170,7 +177,7 @@ bool CSshSession::FailBroken()
 }
 
 // Error of the libssh2 call that failed with code: kind from the code, text from libssh2.
-bool CSshSession::FailFromSession(const std::string& what, int code)
+bool CSshSession::FailFromSession(const std::string& what, int code, SshMsg msgId, std::vector<std::string> args)
 {
     if (code == kBrokenCode)
         return FailBroken();
@@ -178,6 +185,8 @@ bool CSshSession::FailFromSession(const std::string& what, int code)
     if (code == LIBSSH2_ERROR_TIMEOUT)
     {
         message += ": no answer within " + Msec(timeoutMs_);
+        msgId = SshMsg::NoAnswerTimeout;
+        args = {Seconds(timeoutMs_)};
     }
     else
     {
@@ -185,9 +194,16 @@ bool CSshSession::FailFromSession(const std::string& what, int code)
         int len = 0;
         libssh2_session_last_error(session_, &text, &len, 0);
         if (text != nullptr && *text != 0)
+        {
             message += ": " + std::string(text);
+            if (msgId != SshMsg::None)
+                args.push_back(text);
+        }
+        else if (args.empty())
+            msgId = SshMsg::None; // the sentence needs the libssh2 text, and there is none
     }
-    return Fail(code == LIBSSH2_ERROR_TIMEOUT ? SshErrorKind::Timeout : SshErrorKind::ConnectFailed, message, code);
+    return Fail(code == LIBSSH2_ERROR_TIMEOUT ? SshErrorKind::Timeout : SshErrorKind::ConnectFailed, msgId, args,
+                message, code);
 }
 
 // Waits until the socket is ready in the direction libssh2 is blocked on, in slices so a cancel is noticed.
@@ -384,7 +400,7 @@ bool CSshSession::ResolveHost(const CSshSite& site, int timeoutMs, ADDRINFOEXW*&
             FreeAddrInfoExW(result); // it completed before the cancel took effect; we do not use it
         if (cancelled)
             return Fail(SshErrorKind::Cancelled, std::string());
-        return Fail(SshErrorKind::Timeout, SshMsg::ResolveTimeout, {site.host, Msec(timeoutMs)},
+        return Fail(SshErrorKind::Timeout, SshMsg::ResolveTimeout, {site.host, Seconds(timeoutMs)},
                     "Resolving host '" + site.host + "' timed out after " + Msec(timeoutMs));
     }
     if (rc != 0 || result == nullptr)
@@ -422,7 +438,7 @@ bool CSshSession::ConnectSocket(const CSshSite& site)
     if (timedOut)
     {
         const std::string hostPort = site.host + ":" + std::to_string(site.port);
-        return Fail(SshErrorKind::Timeout, SshMsg::ConnectTimeout, {hostPort, Msec(timeoutMs)},
+        return Fail(SshErrorKind::Timeout, SshMsg::ConnectTimeout, {hostPort, Seconds(timeoutMs)},
                     "Connecting to " + hostPort + " timed out after " + Msec(timeoutMs));
     }
     const std::string hostPort = site.host + ":" + std::to_string(site.port);
@@ -471,7 +487,7 @@ bool CSshSession::Handshake()
 {
     int rc = Run([this] { return libssh2_session_handshake(session_, socket_); }, timeoutMs_);
     if (rc != 0)
-        return FailFromSession("SSH handshake failed", rc);
+        return FailFromSession("SSH handshake failed", rc, SshMsg::HandshakeFailed);
     return true;
 }
 
@@ -577,7 +593,7 @@ bool CSshSession::OpenSftp()
         return false;
     }
     default:
-        return FailFromSession("Cannot start the SFTP subsystem", code);
+        return FailFromSession("Cannot start the SFTP subsystem", code, SshMsg::SftpSubsystemFailed);
     }
 }
 

@@ -38,8 +38,8 @@ enum class SshMsg
 {
     None,           // no id: only the English message is available
     ResolveFailed,  // %1 host, %2 system error text
-    ResolveTimeout, // %1 host, %2 timeout (e.g. "30 s")
-    ConnectTimeout, // %1 host:port, %2 timeout (e.g. "30 s")
+    ResolveTimeout, // %1 host, %2 time limit in seconds (plain number)
+    ConnectTimeout, // %1 host:port, %2 time limit in seconds (plain number)
     SessionNotOpen, // no arguments
     ConnectFailed,  // %1 host:port, %2 system error text
     NoHostGiven,    // no arguments
@@ -73,7 +73,42 @@ enum class SshMsg
     PpkUnsupportedKeyType,     // %1 key file, %2 key type name
     PpkUnsupportedOldFormat,   // %1 key file
     PpkNotPuttyFile,           // %1 key file
-    PpkDamaged                 // %1 key file (all other "invalid / truncated / incomplete" cases)
+    PpkDamaged,                // %1 key file (all other "invalid / truncated / incomplete" cases)
+    // SFTP actions: "Cannot <do something with> '%1': %2". %1 is the remote path (UTF-8, as shown). fs/ composes %2 (the
+    // reason) from CSshError::sftpStatus (or the timeout kind); for a failure of the connection itself, args[1] is the
+    // English text of libssh2 and is used instead.
+    SftpList,        // list a directory, read a directory
+    SftpReadInfo,    // attributes of an entry, size, resolve a path, read a link, free space
+    SftpReadFile,    // open for download, read
+    SftpWriteFile,   // open for upload, write, finish writing
+    SftpCreate,      // create a directory or a link
+    SftpDelete,      // delete a file or a directory
+    SftpRename,      // rename or move; %1 is the source path
+    SftpChangeAttrs, // permissions, time
+    // Other complete sentences
+    SftpNotOpen,          // no arguments
+    ResumeFailed,         // %1 remote path
+    ServerAcceptedNoData, // %1 remote path
+    AlreadyExists,        // %1 path
+    ReplaceDirNotEmpty,   // %1 path of the target
+    ReplaceDirUnreadable, // %1 path of the target
+    ReplacedItemLeft,     // %1 path of the replaced item that could not be deleted
+    LocalSetPosition,     // %1 Windows error number (local file errors of a transfer)
+    LocalWrite,           // %1 Windows error number
+    LocalGetSize,         // %1 Windows error number
+    LocalReadTime,        // %1 Windows error number
+    LocalRead,            // %1 Windows error number
+    HandshakeFailed,      // %1 English text of libssh2
+    SftpSubsystemFailed,  // %1 English text of libssh2
+    AuthInterrupted,      // %1 English text of libssh2
+    AuthMethodsQueryFailed, // %1 English text of libssh2
+    ExecChannelFailed,    // %1 English text of libssh2
+    ExecStartFailed,      // %1 English text of libssh2
+    ExecReadFailed,       // %1 English text of libssh2
+    ExecFinishFailed,     // %1 English text of libssh2
+    NoAnswerTimeout,      // %1 time limit in seconds (plain number)
+    ExecIdleTimeout,      // %1 idle limit in seconds (plain number)
+    InvalidServerData     // %1 directory path (invalid entry name or too many entries)
 };
 
 struct CSshError

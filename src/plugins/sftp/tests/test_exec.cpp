@@ -145,6 +145,9 @@ TEST_F(ExecTest, IdleTimeoutEndsAQuietCommandAndBreaksTheSession)
     CExecResult result;
     EXPECT_FALSE(session_->Exec("sleep 30", options, result));
     EXPECT_EQ(session_->LastError().kind, SshErrorKind::Timeout);
+    EXPECT_EQ(session_->LastError().msgId, SshMsg::ExecIdleTimeout);
+    ASSERT_EQ(session_->LastError().args.size(), 1u);
+    EXPECT_EQ(session_->LastError().args[0], "1"); // plain number, the unit is in the pattern
     EXPECT_FALSE(session_->IsConnected());
 }
 

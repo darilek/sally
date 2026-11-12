@@ -87,9 +87,11 @@ void CSshSession::SetTransferBufferSize(size_t bytes)
     transferBufferSize_ = (std::min)((std::max)(bytes, kMinBufferSize), kMaxBufferSize);
 }
 
-bool CSshSession::FailLocal(const char* what, DWORD winError)
+// The English message ends in "(Windows error N)": the operations layer recognises disk full by it.
+bool CSshSession::FailLocal(SshMsg msgId, const char* what, DWORD winError)
 {
-    return Fail(SshErrorKind::Io, std::string(what) + " (Windows error " + std::to_string(winError) + ")");
+    return Fail(SshErrorKind::Io, msgId, {std::to_string(winError)},
+                std::string(what) + " (Windows error " + std::to_string(winError) + ")");
 }
 
 bool CSshSession::Download(const std::string& remotePath, HANDLE localFile, uint64_t startOffset,
@@ -112,7 +114,7 @@ bool CSshSession::Download(const std::string& remotePath, HANDLE localFile, uint
         },
         timeoutMs_, code);
     if (h == nullptr)
-        return FailSftp("Cannot open", remotePath, code);
+        return FailSftp(SshMsg::SftpReadFile, "Cannot open", remotePath, code);
 
     const bool ok = DownloadLoop(h, remotePath, localFile, startOffset, &done, totalSize);
     const CSshError error = error_;
@@ -130,17 +132,18 @@ bool CSshSession::DownloadLoop(LIBSSH2_SFTP_HANDLE* h, const std::string& remote
     LIBSSH2_SFTP_ATTRIBUTES attrs = {};
     int rc = Run([&] { return libssh2_sftp_fstat_ex(h, &attrs, 0); }, timeoutMs_);
     if (rc != 0)
-        return FailSftp("Cannot get the size of", remotePath, rc);
+        return FailSftp(SshMsg::SftpReadInfo, "Cannot get the size of", remotePath, rc);
     const uint64_t total = (attrs.flags & LIBSSH2_SFTP_ATTR_SIZE) != 0 ? attrs.filesize : 0;
     if (totalSize != nullptr)
         *totalSize = total;
     // A resume needs a known size: a server that reports none (or a file of 0 bytes) cannot be resumed at an offset
     if (startOffset > 0 && ((attrs.flags & LIBSSH2_SFTP_ATTR_SIZE) == 0 || startOffset > total))
-        return Fail(SshErrorKind::Io, "Cannot resume '" + Display(remotePath) +
-                                          "': the start offset is beyond the end of the remote file or its size is unknown");
+        return Fail(SshErrorKind::Io, SshMsg::ResumeFailed, {Display(remotePath)},
+                    "Cannot resume '" + Display(remotePath) +
+                        "': the start offset is beyond the end of the remote file or its size is unknown");
 
     if (!SetLocalPosition(localFile, startOffset))
-        return FailLocal("Cannot set the position in the local file", GetLastError());
+        return FailLocal(SshMsg::LocalSetPosition, "Cannot set the position in the local file", GetLastError());
     libssh2_sftp_seek64(h, startOffset);
 
     std::vector<char> buf(transferBufferSize_);
@@ -155,11 +158,11 @@ bool CSshSession::DownloadLoop(LIBSSH2_SFTP_HANDLE* h, const std::string& remote
         if (got == 0)
             break; // end of file
         if (got < 0)
-            return FailSftp("Cannot read", remotePath, got);
+            return FailSftp(SshMsg::SftpReadFile, "Cannot read", remotePath, got);
 
         DWORD winError = 0;
         if (!WriteAll(localFile, buf.data(), static_cast<size_t>(got), winError))
-            return FailLocal("Cannot write the local file", winError);
+            return FailLocal(SshMsg::LocalWrite, "Cannot write the local file", winError);
         position += static_cast<uint64_t>(got);
         *done = position - startOffset;
         if (!progress.Tick(position))
@@ -181,7 +184,7 @@ bool CSshSession::Upload(HANDLE localFile, const std::string& remotePath, uint64
     // The local file is checked before the remote one is opened: opening with TRUNC destroys the remote data.
     LARGE_INTEGER localSize;
     if (!GetFileSizeEx(localFile, &localSize))
-        return FailLocal("Cannot get the size of the local file", GetLastError());
+        return FailLocal(SshMsg::LocalGetSize, "Cannot get the size of the local file", GetLastError());
     if (startOffset > static_cast<uint64_t>(localSize.QuadPart))
         return Fail(SshErrorKind::Io, "The start offset is beyond the end of the local file");
 
@@ -202,7 +205,7 @@ bool CSshSession::Upload(HANDLE localFile, const std::string& remotePath, uint64
         },
         timeoutMs_, code);
     if (h == nullptr)
-        return FailSftp("Cannot open", remotePath, code);
+        return FailSftp(SshMsg::SftpWriteFile, "Cannot open", remotePath, code);
 
     bool ok = UploadLoop(h, remotePath, localFile, startOffset, &done);
     if (bytesTransferred != nullptr)
@@ -218,7 +221,7 @@ bool CSshSession::Upload(HANDLE localFile, const std::string& remotePath, uint64
         {
             if (rc == kBrokenCode)
                 CloseSftpHandle(h); // Run did not call libssh2
-            ok = FailSftp("Cannot finish writing", remotePath, rc);
+            ok = FailSftp(SshMsg::SftpWriteFile, "Cannot finish writing", remotePath, rc);
         }
     }
     else
@@ -232,7 +235,7 @@ bool CSshSession::Upload(HANDLE localFile, const std::string& remotePath, uint64
     {
         FILETIME written;
         if (!GetFileTime(localFile, nullptr, nullptr, &written))
-            return FailLocal("Cannot read the time of the local file", GetLastError());
+            return FailLocal(SshMsg::LocalReadTime, "Cannot read the time of the local file", GetLastError());
         const int64_t mtime = UnixTimeOfFileTime(written);
         ok = SetTimes(remotePath, mtime, mtime);
     }
@@ -244,7 +247,7 @@ bool CSshSession::UploadLoop(LIBSSH2_SFTP_HANDLE* h, const std::string& remotePa
 {
     LARGE_INTEGER size;
     if (!GetFileSizeEx(localFile, &size))
-        return FailLocal("Cannot get the size of the local file", GetLastError());
+        return FailLocal(SshMsg::LocalGetSize, "Cannot get the size of the local file", GetLastError());
     const uint64_t total = static_cast<uint64_t>(size.QuadPart);
     if (startOffset > total)
         return Fail(SshErrorKind::Io, "The start offset is beyond the end of the local file");
@@ -254,14 +257,14 @@ bool CSshSession::UploadLoop(LIBSSH2_SFTP_HANDLE* h, const std::string& remotePa
         LIBSSH2_SFTP_ATTRIBUTES attrs = {};
         int rc = Run([&] { return libssh2_sftp_fstat_ex(h, &attrs, 0); }, timeoutMs_);
         if (rc != 0)
-            return FailSftp("Cannot get the size of", remotePath, rc);
+            return FailSftp(SshMsg::SftpReadInfo, "Cannot get the size of", remotePath, rc);
         if ((attrs.flags & LIBSSH2_SFTP_ATTR_SIZE) == 0 || attrs.filesize < startOffset)
-            return Fail(SshErrorKind::Io, "Cannot resume '" + Display(remotePath) +
-                                              "': remote file is shorter than the resume offset");
+            return Fail(SshErrorKind::Io, SshMsg::ResumeFailed, {Display(remotePath)},
+                        "Cannot resume '" + Display(remotePath) + "': remote file is shorter than the resume offset");
     }
 
     if (!SetLocalPosition(localFile, startOffset))
-        return FailLocal("Cannot set the position in the local file", GetLastError());
+        return FailLocal(SshMsg::LocalSetPosition, "Cannot set the position in the local file", GetLastError());
     libssh2_sftp_seek64(h, startOffset);
 
     std::vector<char> buf(transferBufferSize_);
@@ -273,7 +276,7 @@ bool CSshSession::UploadLoop(LIBSSH2_SFTP_HANDLE* h, const std::string& remotePa
             return Fail(SshErrorKind::Cancelled, std::string());
         DWORD got = 0;
         if (!ReadFile(localFile, buf.data(), static_cast<DWORD>(buf.size()), &got, nullptr))
-            return FailLocal("Cannot read the local file", GetLastError());
+            return FailLocal(SshMsg::LocalRead, "Cannot read the local file", GetLastError());
         if (got == 0)
             break; // end of file
 
@@ -285,9 +288,10 @@ bool CSshSession::UploadLoop(LIBSSH2_SFTP_HANDLE* h, const std::string& remotePa
             const int rc = Run(
                 [&] { return static_cast<int>(libssh2_sftp_write(h, buf.data() + sent, got - sent)); }, timeoutMs_);
             if (rc < 0)
-                return FailSftp("Cannot write", remotePath, rc);
+                return FailSftp(SshMsg::SftpWriteFile, "Cannot write", remotePath, rc);
             if (rc == 0)
-                return Fail(SshErrorKind::Io, "The server accepted no data for '" + Display(remotePath) + "'");
+                return Fail(SshErrorKind::Io, SshMsg::ServerAcceptedNoData, {Display(remotePath)},
+                            "The server accepted no data for '" + Display(remotePath) + "'");
             sent += static_cast<size_t>(rc);
             position += static_cast<uint64_t>(rc);
             *done = position - startOffset;

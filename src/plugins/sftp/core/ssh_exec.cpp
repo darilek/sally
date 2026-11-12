@@ -83,7 +83,7 @@ bool CSshSession::Exec(const std::string& command, const CExecOptions& options, 
     LIBSSH2_CHANNEL* channel =
         RunPtr([&] { return libssh2_channel_open_session(session_); }, timeoutMs_, code);
     if (channel == nullptr)
-        return FailExec("Cannot open a channel for the command", code);
+        return FailExec(SshMsg::ExecChannelFailed, "Cannot open a channel for the command", code);
 
     const bool ok = ExecOnChannel(channel, command, options, out);
     const CSshError error = error_;
@@ -105,14 +105,15 @@ bool CSshSession::ExecOnChannel(LIBSSH2_CHANNEL* channel, const std::string& com
         },
         timeoutMs_);
     if (rc != 0)
-        return FailExec("The server did not start the command", rc);
+        return FailExec(SshMsg::ExecStartFailed, "The server did not start the command", rc);
 
     const int readTimeoutMs =
         options.idleTimeoutSeconds > 0 ? (std::min)(options.idleTimeoutSeconds, INT_MAX / 1000) * 1000 : kNoTimeoutMs;
     std::vector<char> buffer(kChunkBytes);
     rc = Run([&] { return ReadPass(channel, options.maxOutputBytes, out, buffer, cancelled_); }, readTimeoutMs);
     if (rc != 0)
-        return FailExecWaiting("Reading the output of the command failed", rc, options.idleTimeoutSeconds);
+        return FailExecWaiting(SshMsg::ExecReadFailed, "Reading the output of the command failed", rc,
+                               options.idleTimeoutSeconds);
 
     // The exit status and signal arrive just before the channel closes. The wait is "until the command ends" for
     // commands that close their output early and keep running.
@@ -120,7 +121,8 @@ bool CSshSession::ExecOnChannel(LIBSSH2_CHANNEL* channel, const std::string& com
     if (rc == 0)
         rc = Run([&] { return libssh2_channel_wait_closed(channel); }, readTimeoutMs);
     if (rc != 0)
-        return FailExecWaiting("The command did not finish cleanly", rc, options.idleTimeoutSeconds);
+        return FailExecWaiting(SshMsg::ExecFinishFailed, "The command did not finish cleanly", rc,
+                               options.idleTimeoutSeconds);
 
     out.exitStatus = libssh2_channel_get_exit_status(channel);
     char* signal = nullptr;
@@ -135,19 +137,23 @@ bool CSshSession::ExecOnChannel(LIBSSH2_CHANNEL* channel, const std::string& com
 }
 
 // FailExec for a step that waits for the command: its timeout is the caller's idle timeout, not the site's.
-bool CSshSession::FailExecWaiting(const std::string& what, int code, int idleTimeoutSeconds)
+bool CSshSession::FailExecWaiting(SshMsg msgId, const std::string& what, int code, int idleTimeoutSeconds)
 {
-    FailExec(what, code);
-    if (code == LIBSSH2_ERROR_TIMEOUT)
+    FailExec(msgId, what, code);
+    if (code == LIBSSH2_ERROR_TIMEOUT && error_.kind == SshErrorKind::Timeout) // not after a cancel
+    {
         error_.message = what + ": no output for " + std::to_string(idleTimeoutSeconds) + " s";
+        error_.msgId = SshMsg::ExecIdleTimeout;
+        error_.args = {std::to_string(idleTimeoutSeconds)};
+    }
     return false;
 }
 
 // A refusal of the channel or of the exec request is "the server does not allow commands" (kind Unsupported), not a
 // connection problem: the connection is fine and the SFTP part keeps working.
-bool CSshSession::FailExec(const std::string& what, int code)
+bool CSshSession::FailExec(SshMsg msgId, const std::string& what, int code)
 {
-    FailFromSession(what, code);
+    FailFromSession(what, code, msgId);
     const bool refused = code == LIBSSH2_ERROR_CHANNEL_REQUEST_DENIED || code == LIBSSH2_ERROR_CHANNEL_FAILURE ||
                          code == LIBSSH2_ERROR_CHANNEL_OUTOFORDER;
     if (refused && error_.kind != SshErrorKind::Cancelled)

@@ -129,20 +129,30 @@ bool CSshSession::BeginSftp()
     if (broken_)
         return FailBroken();
     if (sftp_ == nullptr || session_ == nullptr)
-        return Fail(SshErrorKind::Other, "The SFTP session is not open");
+        return Fail(SshErrorKind::Other, SshMsg::SftpNotOpen, {}, "The SFTP session is not open");
     return true;
 }
 
 // Error of the failed SFTP call "what" on path: the server's status for an SFTP error, the transport error otherwise.
-bool CSshSession::FailSftp(const std::string& what, const std::string& path, int code)
+// msgId is the action sentence ("Cannot list '%1': %2") with the path as its first argument; the reason (%2) is chosen
+// from sftpStatus by the UI layer, or is the libssh2 text (second argument) when the connection itself failed.
+bool CSshSession::FailSftp(SshMsg msgId, const std::string& what, const std::string& path, int code)
 {
     const std::string subject = what + " '" + Display(path) + "'";
     if (code != LIBSSH2_ERROR_SFTP_PROTOCOL)
-        return FailFromSession(subject, code);
+    {
+        FailFromSession(subject, code, msgId, {Display(path)});
+        if (error_.msgId == SshMsg::NoAnswerTimeout) // a timeout keeps the action sentence; the reason says "no answer"
+        {
+            error_.msgId = msgId;
+            error_.args = {Display(path)};
+        }
+        return false;
+    }
 
     const unsigned long status = libssh2_sftp_last_error(sftp_);
-    Fail(KindFromStatus(status), subject + ": " + StatusText(status) + " (SFTP status " + std::to_string(status) + ")",
-         code);
+    Fail(KindFromStatus(status), msgId, {Display(path)},
+         subject + ": " + StatusText(status) + " (SFTP status " + std::to_string(status) + ")", code);
     error_.sftpStatus = status;
     return false;
 }
@@ -159,6 +169,8 @@ bool CSshSession::FailExistsIfPresent(const std::string& path)
     {
         error_.kind = SshErrorKind::Exists;
         error_.message = "'" + Display(path) + "' already exists";
+        error_.msgId = SshMsg::AlreadyExists;
+        error_.args = {Display(path)};
     }
     return false;
 }
@@ -213,7 +225,7 @@ bool CSshSession::ListDir(const std::string& path, std::vector<CSftpEntry>& out)
         },
         timeoutMs_, code);
     if (dir == nullptr)
-        return FailSftp("Cannot list", path, code);
+        return FailSftp(SshMsg::SftpList, "Cannot list", path, code);
 
     std::vector<char> name(kMaxNameBytes);
     bool ok = true;
@@ -233,7 +245,7 @@ bool CSshSession::ListDir(const std::string& path, std::vector<CSftpEntry>& out)
             break;
         if (rc < 0)
         {
-            ok = FailSftp("Cannot read the directory", path, rc);
+            ok = FailSftp(SshMsg::SftpList, "Cannot read the directory", path, rc);
             break;
         }
         CSftpEntry e;
@@ -242,14 +254,16 @@ bool CSshSession::ListDir(const std::string& path, std::vector<CSftpEntry>& out)
             continue;
         if (!IsValidRemoteEntryName(e.rawName))
         {
-            ok = Fail(SshErrorKind::Protocol, "The server sent an invalid entry name in '" + Display(path) + "': '" +
-                                                  Display(e.rawName) + "' (contains '/' or a NUL byte)");
+            ok = Fail(SshErrorKind::Protocol, SshMsg::InvalidServerData, {Display(path)},
+                      "The server sent an invalid entry name in '" + Display(path) + "': '" + Display(e.rawName) +
+                          "' (contains '/' or a NUL byte)");
             break;
         }
         if (out.size() >= kMaxListEntries)
         {
-            ok = Fail(SshErrorKind::Protocol, "The directory '" + Display(path) + "' has more than " +
-                                                  std::to_string(kMaxListEntries) + " entries");
+            ok = Fail(SshErrorKind::Protocol, SshMsg::InvalidServerData, {Display(path)},
+                      "The directory '" + Display(path) + "' has more than " + std::to_string(kMaxListEntries) +
+                          " entries");
             break;
         }
         FillEntry(attrs, e);
@@ -274,14 +288,14 @@ bool CSshSession::ListDir(const std::string& path, std::vector<CSftpEntry>& out)
                 if (rc == 0)
                     FillEntry(attrs, e);
                 else if (IsConnectionLevel(rc))
-                    ok = FailSftp("Cannot get the attributes of", full, rc);
+                    ok = FailSftp(SshMsg::SftpReadInfo, "Cannot get the attributes of", full, rc);
             }
         }
         if (ok && e.isLink)
         {
             const int rc = IsDirectory(full, e.linkTargetIsDir);
             if (IsConnectionLevel(rc))
-                ok = FailSftp("Cannot get the attributes of", full, rc);
+                ok = FailSftp(SshMsg::SftpReadInfo, "Cannot get the attributes of", full, rc);
         }
         if (ok && IsCancelled())
             ok = Fail(SshErrorKind::Cancelled, std::string());
@@ -299,13 +313,13 @@ bool CSshSession::StatCommon(const std::string& path, int statType, const char* 
     LIBSSH2_SFTP_ATTRIBUTES attrs = {};
     int rc = StatRaw(path, statType, attrs);
     if (rc != 0)
-        return FailSftp(what, path, rc);
+        return FailSftp(SshMsg::SftpReadInfo, what, path, rc);
     FillEntry(attrs, out);
     if (out.isLink)
     {
         rc = IsDirectory(path, out.linkTargetIsDir);
         if (IsConnectionLevel(rc))
-            return FailSftp(what, path, rc);
+            return FailSftp(SshMsg::SftpReadInfo, what, path, rc);
     }
     return true;
 }
@@ -334,7 +348,7 @@ bool CSshSession::RealPath(const std::string& path, std::string& out)
         },
         timeoutMs_);
     if (rc < 0)
-        return FailSftp("Cannot resolve the path", path, rc);
+        return FailSftp(SshMsg::SftpReadInfo, "Cannot resolve the path", path, rc);
     out.assign(buf.data(), static_cast<size_t>(rc));
     return true;
 }
@@ -353,7 +367,7 @@ bool CSshSession::ReadLink(const std::string& path, std::string& target)
         },
         timeoutMs_);
     if (rc < 0)
-        return FailSftp("Cannot read the link", path, rc);
+        return FailSftp(SshMsg::SftpReadInfo, "Cannot read the link", path, rc);
     target.assign(buf.data(), static_cast<size_t>(rc));
     return true;
 }
@@ -368,7 +382,7 @@ bool CSshSession::Mkdir(const std::string& path, int mode)
         timeoutMs_);
     if (rc == 0)
         return true;
-    FailSftp("Cannot create the directory", path, rc);
+    FailSftp(SshMsg::SftpCreate, "Cannot create the directory", path, rc);
     return FailExistsIfPresent(path);
 }
 
@@ -420,7 +434,7 @@ bool CSshSession::Rmdir(const std::string& path)
         timeoutMs_);
     if (rc == 0)
         return true;
-    FailSftp("Cannot remove the directory", path, rc);
+    FailSftp(SshMsg::SftpDelete, "Cannot remove the directory", path, rc);
     // OpenSSH answers FAILURE for a non-empty directory: look inside to tell
     if (error_.kind == SshErrorKind::Other && error_.sftpStatus == LIBSSH2_FX_FAILURE && DirEntryState(path) == 1)
     {
@@ -437,7 +451,7 @@ bool CSshSession::Remove(const std::string& path)
     int rc = Run(
         [&] { return libssh2_sftp_unlink_ex(sftp_, path.data(), static_cast<unsigned int>(path.size())); },
         timeoutMs_);
-    return rc == 0 || FailSftp("Cannot delete", path, rc);
+    return rc == 0 || FailSftp(SshMsg::SftpDelete, "Cannot delete", path, rc);
 }
 
 bool CSshSession::RenameRaw(const std::string& from, const std::string& to, bool overwrite)
@@ -451,7 +465,7 @@ bool CSshSession::RenameRaw(const std::string& from, const std::string& to, bool
                                           static_cast<unsigned int>(to.size()), flags);
         },
         timeoutMs_);
-    return rc == 0 || FailSftp("Cannot rename", from, rc);
+    return rc == 0 || FailSftp(SshMsg::SftpRename, "Cannot rename", from, rc);
 }
 
 // "." + name + ".sally-" + 16 random hex digits, in the folder of target (raw bytes; a long name is shortened).
@@ -498,7 +512,7 @@ bool CSshSession::RenameAside(const std::string& from, const std::string& to)
     LIBSSH2_SFTP_ATTRIBUTES source = {}, target = {};
     int rc = StatRaw(from, LIBSSH2_SFTP_LSTAT, source);
     if (rc != 0)
-        return FailSftp("Cannot rename", from, rc); // no source: nothing may be touched
+        return FailSftp(SshMsg::SftpRename, "Cannot rename", from, rc); // no source: nothing may be touched
     rc = StatRaw(to, LIBSSH2_SFTP_LSTAT, target);
     if (rc == LIBSSH2_ERROR_SFTP_PROTOCOL)
     {
@@ -513,7 +527,7 @@ bool CSshSession::RenameAside(const std::string& from, const std::string& to)
         }
     }
     if (rc != 0)
-        return FailSftp("Cannot get the attributes of", to, rc);
+        return FailSftp(SshMsg::SftpReadInfo, "Cannot get the attributes of", to, rc);
 
     std::string realFrom, realTo;
     if (RealPath(from, realFrom) && RealPath(to, realTo) && realFrom == realTo)
@@ -532,9 +546,10 @@ bool CSshSession::RenameAside(const std::string& from, const std::string& to)
         if (!stopped())
             return false;
         if (state != 0)
-            return Fail(SshErrorKind::Exists, "Cannot replace '" + Display(to) + "': it is " +
-                                                  (state == 1 ? "a directory that is not empty"
-                                                              : "a directory whose content cannot be read"));
+            return Fail(SshErrorKind::Exists, state == 1 ? SshMsg::ReplaceDirNotEmpty : SshMsg::ReplaceDirUnreadable,
+                        {Display(to)},
+                        "Cannot replace '" + Display(to) + "': it is " +
+                            (state == 1 ? "a directory that is not empty" : "a directory whose content cannot be read"));
     }
 
     const std::string aside = AsideName(to);
@@ -545,7 +560,11 @@ bool CSshSession::RenameAside(const std::string& from, const std::string& to)
         const bool removed = targetIsDir ? Rmdir(aside) : Remove(aside);
         error_ = CSshError();
         if (!removed)
+        {
             error_.message = "Renamed, but the replaced item is left as '" + Display(aside) + "'";
+            error_.msgId = SshMsg::ReplacedItemLeft;
+            error_.args = {Display(aside)};
+        }
         return true;
     }
 
@@ -559,6 +578,7 @@ bool CSshSession::RenameAside(const std::string& from, const std::string& to)
     }
     error_ = failure;
     error_.message += " (the previous target is left as '" + Display(aside) + "')";
+    error_.msgId = SshMsg::None; // the translated sentence would not mention the left-over: English only
     return false;
 }
 
@@ -596,7 +616,7 @@ bool CSshSession::Symlink(const std::string& target, const std::string& linkPath
                                            static_cast<unsigned int>(linkPath.size()), LIBSSH2_SFTP_SYMLINK);
         },
         timeoutMs_);
-    return rc == 0 || FailSftp("Cannot create the link", linkPath, rc);
+    return rc == 0 || FailSftp(SshMsg::SftpCreate, "Cannot create the link", linkPath, rc);
 }
 
 bool CSshSession::Chmod(const std::string& path, uint32_t mode)
@@ -607,7 +627,7 @@ bool CSshSession::Chmod(const std::string& path, uint32_t mode)
     attrs.flags = LIBSSH2_SFTP_ATTR_PERMISSIONS;
     attrs.permissions = mode & 07777;
     int rc = StatRaw(path, LIBSSH2_SFTP_SETSTAT, attrs);
-    return rc == 0 || FailSftp("Cannot change the permissions of", path, rc);
+    return rc == 0 || FailSftp(SshMsg::SftpChangeAttrs, "Cannot change the permissions of", path, rc);
 }
 
 bool CSshSession::Statvfs(const std::string& path, CSftpVfs& out)
@@ -618,7 +638,7 @@ bool CSshSession::Statvfs(const std::string& path, CSftpVfs& out)
     LIBSSH2_SFTP_STATVFS st = {};
     const int rc = Run([&] { return libssh2_sftp_statvfs(sftp_, path.data(), path.size(), &st); }, timeoutMs_);
     if (rc != 0)
-        return FailSftp("Cannot read the free space of", path, rc); // OP_UNSUPPORTED becomes kind Unsupported
+        return FailSftp(SshMsg::SftpReadInfo, "Cannot read the free space of", path, rc); // OP_UNSUPPORTED becomes kind Unsupported
     out.bytesTotal = st.f_blocks * st.f_frsize;
     out.bytesFree = st.f_bfree * st.f_frsize;
     out.bytesAvailableToUser = st.f_bavail * st.f_frsize;
@@ -641,5 +661,5 @@ bool CSshSession::SetTimes(const std::string& path, int64_t atime, int64_t mtime
     attrs.atime = static_cast<unsigned long>(atime);
     attrs.mtime = static_cast<unsigned long>(mtime);
     int rc = StatRaw(path, LIBSSH2_SFTP_SETSTAT, attrs);
-    return rc == 0 || FailSftp("Cannot set the time of", path, rc);
+    return rc == 0 || FailSftp(SshMsg::SftpChangeAttrs, "Cannot set the time of", path, rc);
 }

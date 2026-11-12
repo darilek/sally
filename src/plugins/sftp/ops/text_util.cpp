@@ -1,7 +1,12 @@
+#include <winsock2.h> // before any windows.h (text_util.h reaches it): libssh2.h needs winsock2
+
 #include "text_util.h"
 
 #include <windows.h>
 #include <shlobj.h>
+
+#include <libssh2.h>
+#include <libssh2_sftp.h>
 
 std::wstring AppDataSallyDir()
 {
@@ -82,6 +87,58 @@ std::wstring DescribeSshError(const CSshError& error, const CSshErrorLabels& lab
         text += L")";
     }
     return text;
+}
+
+bool IsSftpActionMsg(SshMsg msg)
+{
+    switch (msg)
+    {
+    case SshMsg::SftpList:
+    case SshMsg::SftpReadInfo:
+    case SshMsg::SftpReadFile:
+    case SshMsg::SftpWriteFile:
+    case SshMsg::SftpCreate:
+    case SshMsg::SftpDelete:
+    case SshMsg::SftpRename:
+    case SshMsg::SftpChangeAttrs:
+        return true;
+    default:
+        return false;
+    }
+}
+
+ErrorReason ReasonOfError(const CSshError& error)
+{
+    if (error.kind == SshErrorKind::NotEmpty) // set after a generic FAILURE when the directory has entries
+        return ErrorReason::DirNotEmpty;
+    if (error.sftpStatus == 0)
+        return error.kind == SshErrorKind::Timeout ? ErrorReason::NoAnswer : ErrorReason::None;
+    switch (error.sftpStatus)
+    {
+    case LIBSSH2_FX_NO_SUCH_FILE:
+    case LIBSSH2_FX_NO_SUCH_PATH:
+        return ErrorReason::NotFound;
+    case LIBSSH2_FX_PERMISSION_DENIED:
+        return ErrorReason::PermissionDenied;
+    case LIBSSH2_FX_FILE_ALREADY_EXISTS:
+        return ErrorReason::AlreadyExists;
+    case LIBSSH2_FX_DIR_NOT_EMPTY:
+        return ErrorReason::DirNotEmpty;
+    case LIBSSH2_FX_NOT_A_DIRECTORY:
+        return ErrorReason::NotADirectory;
+    case LIBSSH2_FX_NO_SPACE_ON_FILESYSTEM:
+    case LIBSSH2_FX_QUOTA_EXCEEDED:
+        return ErrorReason::NoSpace;
+    case LIBSSH2_FX_WRITE_PROTECT:
+        return ErrorReason::WriteProtected;
+    case LIBSSH2_FX_OP_UNSUPPORTED:
+        return ErrorReason::Unsupported;
+    case LIBSSH2_FX_NO_CONNECTION:
+    case LIBSSH2_FX_CONNECTION_LOST:
+        return ErrorReason::ConnectionLost;
+    default:
+        return ErrorReason::Failed;
+    }
 }
 
 std::wstring KnownHostsOwnPath()

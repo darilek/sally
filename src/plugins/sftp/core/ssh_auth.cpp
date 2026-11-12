@@ -300,7 +300,7 @@ bool CSshSession::AuthKeyboardInteractive(const CSshSite& site, CAuthState& stat
 bool CSshSession::FailAuth(const CSshSite& site, const std::string& offered, const CAuthState& state)
 {
     if (state.lostCode != 0)
-        return FailFromSession("Authentication interrupted", state.lostCode);
+        return FailFromSession("Authentication interrupted", state.lostCode, SshMsg::AuthInterrupted);
     if (state.declined)
         return Fail(SshErrorKind::AuthFailed, SshMsg::AuthCancelled, {}, "Authentication was cancelled");
     if (state.passwordExpired)
@@ -347,7 +347,8 @@ bool CSshSession::Authenticate(const CSshSite& site)
             authenticated_ = true;
             return true;
         }
-        return FailFromSession("Cannot query the authentication methods", code == kNullNoError ? 0 : code);
+        return FailFromSession("Cannot query the authentication methods", code == kNullNoError ? 0 : code,
+                               SshMsg::AuthMethodsQueryFailed);
     }
     const std::string offered = list;
     const std::vector<std::string> methods = SplitMethods(list);

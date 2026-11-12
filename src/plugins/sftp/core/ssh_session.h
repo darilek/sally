@@ -157,8 +157,12 @@ public:
 private:
     bool Fail(SshErrorKind kind, const std::string& message, int libssh2Code = 0);
     // Same, plus the id and arguments of the translatable text; 'message' is its English form (logs, fallback).
-    bool Fail(SshErrorKind kind, SshMsg msgId, std::vector<std::string> args, const std::string& message);
-    bool FailFromSession(const std::string& what, int code);
+    bool Fail(SshErrorKind kind, SshMsg msgId, std::vector<std::string> args, const std::string& message,
+              int libssh2Code = 0);
+    // Error of the failed libssh2 call. msgId + args describe 'what' in the user's language; the English text of
+    // libssh2 is appended to args (when msgId != None and libssh2 has a text). A timeout becomes NoAnswerTimeout.
+    bool FailFromSession(const std::string& what, int code, SshMsg msgId = SshMsg::None,
+                         std::vector<std::string> args = std::vector<std::string>());
     bool IsCancelled() const { return cancelled_.load(); }
 
     using Clock = std::chrono::steady_clock;
@@ -231,7 +235,7 @@ private:
 
     // SFTP helpers (ssh_sftp_ops.cpp)
     bool BeginSftp();
-    bool FailSftp(const std::string& what, const std::string& path, int code);
+    bool FailSftp(SshMsg msgId, const std::string& what, const std::string& path, int code);
     bool FailExistsIfPresent(const std::string& path);
     bool RenameRaw(const std::string& from, const std::string& to, bool overwrite);
     int DirEntryState(const std::string& path); // 1 has entries, 0 empty, -1 cannot tell
@@ -247,12 +251,12 @@ private:
     // remote command (ssh_exec.cpp)
     bool ExecOnChannel(LIBSSH2_CHANNEL* channel, const std::string& command, const CExecOptions& options,
                        CExecResult& out);
-    bool FailExec(const std::string& what, int code);
-    bool FailExecWaiting(const std::string& what, int code, int idleTimeoutSeconds);
+    bool FailExec(SshMsg msgId, const std::string& what, int code);
+    bool FailExecWaiting(SshMsg msgId, const std::string& what, int code, int idleTimeoutSeconds);
     void CloseChannel(LIBSSH2_CHANNEL* channel);
 
     // transfers (ssh_transfer.cpp)
-    bool FailLocal(const char* what, DWORD winError);
+    bool FailLocal(SshMsg msgId, const char* what, DWORD winError);
     bool DownloadLoop(LIBSSH2_SFTP_HANDLE* h, const std::string& remotePath, HANDLE localFile, uint64_t startOffset,
                       uint64_t* done, uint64_t* totalSize);
     bool UploadLoop(LIBSSH2_SFTP_HANDLE* h, const std::string& remotePath, HANDLE localFile, uint64_t startOffset,

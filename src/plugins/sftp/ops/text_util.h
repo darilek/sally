@@ -33,6 +33,31 @@ std::wstring DescribeSshError(const CSshError& error, const CSshErrorLabels& lab
 // any other '%' stays as written. Never throws for bad input.
 std::wstring FormatErrorMessage(const std::wstring& pattern, const std::vector<std::string>& args);
 
+// The reason part of an SFTP action sentence ("Cannot delete '%1': <reason>"). fs/ maps each value to a string-table
+// text; the choice itself needs no Sally and lives here so that it can be tested.
+enum class ErrorReason
+{
+    None, // no reason known: the caller falls back to the text of the SSH library
+    NotFound,
+    PermissionDenied,
+    AlreadyExists,
+    DirNotEmpty,
+    NotADirectory,
+    NoSpace, // no space on the file system or quota exceeded
+    WriteProtected,
+    Unsupported,
+    ConnectionLost,
+    NoAnswer, // timeout
+    Failed    // any other SFTP status ("operation failed")
+};
+
+// True for the ids whose pattern is "Cannot ... '%1': %2" (SftpList .. SftpChangeAttrs): %2 is the reason.
+bool IsSftpActionMsg(SshMsg msg);
+
+// The reason of a failed SFTP action from the status the server answered with (error.sftpStatus), or from the error
+// kind (not empty, timeout). None when the failure has neither, e.g. a lost connection with only a libssh2 text.
+ErrorReason ReasonOfError(const CSshError& error);
+
 // Sally's own known_hosts file: AppDataSallyDir() + "\known_hosts"; empty when AppDataSallyDir() is empty.
 std::wstring KnownHostsOwnPath();
 

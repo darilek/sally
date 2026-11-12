@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <winsock2.h> // before windows.h: libssh2 needs it
 #include <windows.h>
+
+#include <libssh2_sftp.h>
 
 #include "text_util.h"
 
@@ -148,4 +151,57 @@ TEST(TextUtil, DescribeSshErrorUsesTranslatedTextWhenGiven)
     error.libssh2Code = -5;
     EXPECT_EQ(DescribeSshError(error, labels, L"Prelozeny text"), L"Prelozeny text (code -5)");
     EXPECT_EQ(DescribeSshError(error, labels, L""), L"English text (code -5)"); // empty = fall back to message
+}
+
+// ---- Reasons of the SFTP action sentences ----------------------------------------------------------------------------
+
+namespace
+{
+ErrorReason ReasonOfStatus(unsigned long status, SshErrorKind kind = SshErrorKind::Other)
+{
+    CSshError error;
+    error.kind = kind;
+    error.sftpStatus = status;
+    return ReasonOfError(error);
+}
+} // namespace
+
+TEST(ErrorReason, StatusesMapToTheirReasons)
+{
+    EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_NO_SUCH_FILE), ErrorReason::NotFound);
+    EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_NO_SUCH_PATH), ErrorReason::NotFound);
+    EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_PERMISSION_DENIED), ErrorReason::PermissionDenied);
+    EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_FILE_ALREADY_EXISTS), ErrorReason::AlreadyExists);
+    EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_DIR_NOT_EMPTY), ErrorReason::DirNotEmpty);
+    EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_NOT_A_DIRECTORY), ErrorReason::NotADirectory);
+    EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_NO_SPACE_ON_FILESYSTEM), ErrorReason::NoSpace);
+    EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_QUOTA_EXCEEDED), ErrorReason::NoSpace);
+    EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_WRITE_PROTECT), ErrorReason::WriteProtected);
+    EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_OP_UNSUPPORTED), ErrorReason::Unsupported);
+    EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_CONNECTION_LOST), ErrorReason::ConnectionLost);
+    EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_NO_CONNECTION), ErrorReason::ConnectionLost);
+}
+
+TEST(ErrorReason, OtherStatusesAreTheGenericFailure)
+{
+    EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_FAILURE), ErrorReason::Failed);
+    EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_BAD_MESSAGE), ErrorReason::Failed);
+    EXPECT_EQ(ReasonOfStatus(12345), ErrorReason::Failed);
+}
+
+TEST(ErrorReason, WithoutAStatusTheKindDecides)
+{
+    EXPECT_EQ(ReasonOfStatus(0, SshErrorKind::Timeout), ErrorReason::NoAnswer);
+    EXPECT_EQ(ReasonOfStatus(0, SshErrorKind::ConnectFailed), ErrorReason::None); // the libssh2 text is shown instead
+    // a generic FAILURE that was found to be a non-empty directory
+    EXPECT_EQ(ReasonOfStatus(LIBSSH2_FX_FAILURE, SshErrorKind::NotEmpty), ErrorReason::DirNotEmpty);
+}
+
+TEST(ErrorReason, OnlyTheActionIdsTakeAReason)
+{
+    EXPECT_TRUE(IsSftpActionMsg(SshMsg::SftpList));
+    EXPECT_TRUE(IsSftpActionMsg(SshMsg::SftpChangeAttrs));
+    EXPECT_FALSE(IsSftpActionMsg(SshMsg::None));
+    EXPECT_FALSE(IsSftpActionMsg(SshMsg::AlreadyExists));
+    EXPECT_FALSE(IsSftpActionMsg(SshMsg::SftpNotOpen));
 }

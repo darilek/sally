@@ -86,9 +86,124 @@ int StringIdOfMsg(SshMsg msg)
         return IDS_ERRMSG_PPK_NOT_PUTTY_FILE;
     case SshMsg::PpkDamaged:
         return IDS_ERRMSG_PPK_DAMAGED;
+    case SshMsg::SftpList:
+        return IDS_ERRMSG_SFTP_LIST;
+    case SshMsg::SftpReadInfo:
+        return IDS_ERRMSG_SFTP_READ_INFO;
+    case SshMsg::SftpReadFile:
+        return IDS_ERRMSG_SFTP_READ_FILE;
+    case SshMsg::SftpWriteFile:
+        return IDS_ERRMSG_SFTP_WRITE_FILE;
+    case SshMsg::SftpCreate:
+        return IDS_ERRMSG_SFTP_CREATE;
+    case SshMsg::SftpDelete:
+        return IDS_ERRMSG_SFTP_DELETE;
+    case SshMsg::SftpRename:
+        return IDS_ERRMSG_SFTP_RENAME;
+    case SshMsg::SftpChangeAttrs:
+        return IDS_ERRMSG_SFTP_CHANGE_ATTRS;
+    case SshMsg::SftpNotOpen:
+        return IDS_ERRMSG_SFTP_NOT_OPEN;
+    case SshMsg::ResumeFailed:
+        return IDS_ERRMSG_RESUME_FAILED;
+    case SshMsg::ServerAcceptedNoData:
+        return IDS_ERRMSG_SERVER_ACCEPTED_NO_DATA;
+    case SshMsg::AlreadyExists:
+        return IDS_ERRMSG_ALREADY_EXISTS;
+    case SshMsg::ReplaceDirNotEmpty:
+        return IDS_ERRMSG_REPLACE_DIR_NOT_EMPTY;
+    case SshMsg::ReplaceDirUnreadable:
+        return IDS_ERRMSG_REPLACE_DIR_UNREADABLE;
+    case SshMsg::ReplacedItemLeft:
+        return IDS_ERRMSG_REPLACED_ITEM_LEFT;
+    case SshMsg::LocalSetPosition:
+        return IDS_ERRMSG_LOCAL_SET_POSITION;
+    case SshMsg::LocalWrite:
+        return IDS_ERRMSG_LOCAL_WRITE;
+    case SshMsg::LocalGetSize:
+        return IDS_ERRMSG_LOCAL_GET_SIZE;
+    case SshMsg::LocalReadTime:
+        return IDS_ERRMSG_LOCAL_READ_TIME;
+    case SshMsg::LocalRead:
+        return IDS_ERRMSG_LOCAL_READ;
+    case SshMsg::HandshakeFailed:
+        return IDS_ERRMSG_HANDSHAKE_FAILED;
+    case SshMsg::SftpSubsystemFailed:
+        return IDS_ERRMSG_SFTP_SUBSYSTEM_FAILED;
+    case SshMsg::AuthInterrupted:
+        return IDS_ERRMSG_AUTH_INTERRUPTED;
+    case SshMsg::AuthMethodsQueryFailed:
+        return IDS_ERRMSG_AUTH_METHODS_QUERY_FAILED;
+    case SshMsg::ExecChannelFailed:
+        return IDS_ERRMSG_EXEC_CHANNEL_FAILED;
+    case SshMsg::ExecStartFailed:
+        return IDS_ERRMSG_EXEC_START_FAILED;
+    case SshMsg::ExecReadFailed:
+        return IDS_ERRMSG_EXEC_READ_FAILED;
+    case SshMsg::ExecFinishFailed:
+        return IDS_ERRMSG_EXEC_FINISH_FAILED;
+    case SshMsg::NoAnswerTimeout:
+        return IDS_ERRMSG_NO_ANSWER_TIMEOUT;
+    case SshMsg::ExecIdleTimeout:
+        return IDS_ERRMSG_EXEC_IDLE_TIMEOUT;
+    case SshMsg::InvalidServerData:
+        return IDS_ERRMSG_INVALID_SERVER_DATA;
     default:
         return 0;
     }
+}
+
+// String-table id of the reason phrase of an SFTP action sentence; 0 for ErrorReason::None.
+int StringIdOfReason(ErrorReason reason)
+{
+    switch (reason)
+    {
+    case ErrorReason::NotFound:
+        return IDS_ERRMSG_REASON_NOT_FOUND;
+    case ErrorReason::PermissionDenied:
+        return IDS_ERRMSG_REASON_PERMISSION_DENIED;
+    case ErrorReason::AlreadyExists:
+        return IDS_ERRMSG_REASON_EXISTS;
+    case ErrorReason::DirNotEmpty:
+        return IDS_ERRMSG_REASON_DIR_NOT_EMPTY;
+    case ErrorReason::NotADirectory:
+        return IDS_ERRMSG_REASON_NOT_A_DIRECTORY;
+    case ErrorReason::NoSpace:
+        return IDS_ERRMSG_REASON_NO_SPACE;
+    case ErrorReason::WriteProtected:
+        return IDS_ERRMSG_REASON_WRITE_PROTECTED;
+    case ErrorReason::Unsupported:
+        return IDS_ERRMSG_REASON_UNSUPPORTED;
+    case ErrorReason::ConnectionLost:
+        return IDS_ERRMSG_REASON_CONNECTION_LOST;
+    case ErrorReason::NoAnswer:
+        return IDS_ERRMSG_REASON_NO_ANSWER;
+    case ErrorReason::Failed:
+        return IDS_ERRMSG_REASON_FAILED;
+    default:
+        return 0;
+    }
+}
+
+// The arguments of the pattern. For an SFTP action sentence %2 is the reason: from the status of the server or the
+// error kind, else the text of the SSH library (args[1]), else the generic "operation failed".
+std::vector<std::string> ArgsOfError(const CSshError& error)
+{
+    std::vector<std::string> args = error.args;
+    if (!IsSftpActionMsg(error.msgId))
+        return args;
+    const int reasonId = StringIdOfReason(ReasonOfError(error));
+    if (reasonId != 0)
+    {
+        args.resize(1); // the path; a libssh2 text is not needed when the reason is known
+        args.push_back(CNameCodec::Utf8().Encode(LangStr(reasonId)));
+    }
+    else if (args.size() < 2)
+    {
+        args.resize(1);
+        args.push_back(CNameCodec::Utf8().Encode(LangStr(IDS_ERRMSG_REASON_FAILED)));
+    }
+    return args;
 }
 } // namespace
 
@@ -110,8 +225,10 @@ std::wstring DescribeError(const CSshError& error)
     {
         const std::wstring pattern = LangStrForMsg(error.msgId);
         if (!pattern.empty())
-            translated = FormatErrorMessage(pattern, error.args);
+            translated = FormatErrorMessage(pattern, ArgsOfError(error));
     }
+    else if (error.kind == SshErrorKind::Cancelled) // the English messages of a cancel carry no id
+        translated = LangStr(IDS_ERRMSG_CANCELLED);
     return DescribeSshError(error, labels, translated); // empty translated text = the English message
 }
 

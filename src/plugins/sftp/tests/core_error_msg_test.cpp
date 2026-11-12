@@ -170,3 +170,58 @@ TEST(ErrorMsg, KnownHostsWithoutAFileAndWithAnUnwritableFile)
     }
     SshGlobalExit();
 }
+
+TEST(ErrorMsg, SftpCallOnASessionWithoutSftpIsSftpNotOpen)
+{
+    ASSERT_TRUE(SshGlobalInit());
+    {
+        CNoCallbacks cb;
+        CSshSession session(&cb, nullptr);
+        std::vector<CSftpEntry> list;
+        EXPECT_FALSE(session.ListDir("/", list));
+        EXPECT_EQ(session.LastError().msgId, SshMsg::SftpNotOpen);
+        EXPECT_TRUE(session.LastError().args.empty());
+        EXPECT_EQ(session.LastError().message, "The SFTP session is not open");
+    }
+    SshGlobalExit();
+}
+
+TEST(ErrorMsg, ACancelledSftpCallIsKindCancelledWithoutId)
+{
+    ASSERT_TRUE(SshGlobalInit());
+    {
+        CNoCallbacks cb;
+        CSshSession session(&cb, nullptr);
+        session.Cancel();
+        std::vector<CSftpEntry> list;
+        EXPECT_FALSE(session.ListDir("/", list));
+        EXPECT_EQ(session.LastError().kind, SshErrorKind::Cancelled);
+        EXPECT_EQ(session.LastError().msgId, SshMsg::None); // fs/ shows its "cancelled" text for the kind
+        EXPECT_EQ(session.LastError().message, "The operation was cancelled");
+    }
+    SshGlobalExit();
+}
+
+TEST(ErrorMsg, ConnectTimeoutArgumentsArePlainNumbers)
+{
+    ASSERT_TRUE(SshGlobalInit());
+    {
+        CNoCallbacks cb;
+        CSshSession session(&cb, nullptr);
+        CSshSite site;
+        site.host = "192.0.2.1"; // TEST-NET-1 (RFC 5737): nothing answers
+        site.timeoutSeconds = 1;
+        EXPECT_FALSE(session.Connect(site));
+        const CSshError& error = session.LastError();
+        if (error.msgId != SshMsg::ConnectTimeout) // a network that rejects at once gives another error: nothing to check
+        {
+            SshGlobalExit();
+            GTEST_SKIP() << "no timeout on this network: " << error.message;
+        }
+        ASSERT_EQ(error.args.size(), 2u);
+        EXPECT_EQ(error.args[0], "192.0.2.1:22");
+        EXPECT_EQ(error.args[1], "1"); // the unit "s" is in the pattern
+        EXPECT_EQ(error.message, "Connecting to 192.0.2.1:22 timed out after 1 s");
+    }
+    SshGlobalExit();
+}

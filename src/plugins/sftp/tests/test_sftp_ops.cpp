@@ -666,3 +666,84 @@ TEST(RemoteEntryName, Validator)
     EXPECT_FALSE(IsValidRemoteEntryName(std::string("a\0b", 3)));
     EXPECT_FALSE(IsValidRemoteEntryName(std::string(1, '\0')));
 }
+
+// ---- Error ids (SshMsg) of failed calls; the English text stays as it was --------------------------------------------
+
+TEST_F(OpsTest, ListMissingDirectoryIsSftpListWithPathAndStatus)
+{
+    std::vector<CSftpEntry> list;
+    const std::string path = In("no-such-dir");
+    EXPECT_FALSE(session_->ListDir(path, list));
+    const CSshError& error = session_->LastError();
+    EXPECT_EQ(error.msgId, SshMsg::SftpList);
+    ASSERT_EQ(error.args.size(), 1u); // a server status: the reason comes from sftpStatus
+    EXPECT_EQ(error.args[0], path);
+    EXPECT_EQ(error.sftpStatus, static_cast<unsigned long>(LIBSSH2_FX_NO_SUCH_FILE));
+    EXPECT_EQ(error.message.find("Cannot list '" + path + "': no such file"), 0u) << error.message;
+}
+
+TEST_F(OpsTest, StatDeleteRenameMkdirErrorsCarryTheirActionIds)
+{
+    const std::string missing = In("missing");
+    CSftpEntry entry;
+    EXPECT_FALSE(session_->Stat(missing, entry));
+    EXPECT_EQ(session_->LastError().msgId, SshMsg::SftpReadInfo);
+    ASSERT_EQ(session_->LastError().args.size(), 1u);
+    EXPECT_EQ(session_->LastError().args[0], missing);
+
+    EXPECT_FALSE(session_->Remove(missing));
+    EXPECT_EQ(session_->LastError().msgId, SshMsg::SftpDelete);
+    EXPECT_EQ(session_->LastError().args[0], missing);
+    EXPECT_EQ(session_->LastError().sftpStatus, static_cast<unsigned long>(LIBSSH2_FX_NO_SUCH_FILE));
+
+    EXPECT_FALSE(session_->Rename(missing, In("other"), false));
+    EXPECT_EQ(session_->LastError().msgId, SshMsg::SftpRename);
+    EXPECT_EQ(session_->LastError().args[0], missing); // the source path
+
+    EXPECT_FALSE(session_->Mkdir(In("no-parent/child")));
+    EXPECT_EQ(session_->LastError().msgId, SshMsg::SftpCreate);
+    EXPECT_EQ(session_->LastError().args[0], In("no-parent/child"));
+
+    EXPECT_FALSE(session_->Chmod(missing, 0644));
+    EXPECT_EQ(session_->LastError().msgId, SshMsg::SftpChangeAttrs);
+}
+
+TEST_F(OpsTest, MkdirExistingIsAlreadyExistsWithPath)
+{
+    EXPECT_FALSE(session_->Mkdir(dir_));
+    EXPECT_EQ(session_->LastError().kind, SshErrorKind::Exists);
+    EXPECT_EQ(session_->LastError().msgId, SshMsg::AlreadyExists);
+    ASSERT_EQ(session_->LastError().args.size(), 1u);
+    EXPECT_EQ(session_->LastError().args[0], dir_);
+    EXPECT_EQ(session_->LastError().message, "'" + dir_ + "' already exists");
+}
+
+TEST_F(OpsTest, RmdirNonEmptyKeepsTheDeleteIdAndTheNotEmptyKind)
+{
+    ASSERT_TRUE(session_->Mkdir(In("full")));
+    ASSERT_TRUE(session_->Mkdir(In("full/inner")));
+    EXPECT_FALSE(session_->Rmdir(In("full")));
+    EXPECT_EQ(session_->LastError().kind, SshErrorKind::NotEmpty); // fs/ derives the reason "directory not empty"
+    EXPECT_EQ(session_->LastError().msgId, SshMsg::SftpDelete);
+    EXPECT_EQ(session_->LastError().args[0], In("full"));
+}
+
+TEST_F(OpsTest, UploadWithAnInvalidLocalHandleIsLocalGetSizeWithTheWindowsError)
+{
+    EXPECT_FALSE(session_->Upload(INVALID_HANDLE_VALUE, In("x.bin"), 0, false, nullptr));
+    const CSshError& error = session_->LastError();
+    EXPECT_EQ(error.msgId, SshMsg::LocalGetSize);
+    ASSERT_EQ(error.args.size(), 1u);
+    EXPECT_EQ(error.args[0], std::to_string(ERROR_INVALID_HANDLE));
+    EXPECT_NE(error.message.find("(Windows error " + error.args[0] + ")"), std::string::npos); // the disk-full check reads this
+}
+
+TEST_F(OpsTest, DownloadingAMissingFileIsSftpReadFile)
+{
+    HANDLE local = CreateFileW(L"nul", GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    ASSERT_NE(local, INVALID_HANDLE_VALUE);
+    EXPECT_FALSE(session_->Download(In("missing.bin"), local, 0, nullptr, nullptr));
+    CloseHandle(local);
+    EXPECT_EQ(session_->LastError().msgId, SshMsg::SftpReadFile);
+    EXPECT_EQ(session_->LastError().args[0], In("missing.bin"));
+}

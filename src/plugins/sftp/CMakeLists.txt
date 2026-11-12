@@ -142,6 +142,7 @@ sal_add_plugin(NAME sftp
     "${SAL_PLUGINS}/sftp/fs/fs_interface.cpp"
     "${SAL_PLUGINS}/sftp/fs/site_config.cpp"
     "${SAL_PLUGINS}/sftp/fs/fs_object.cpp"
+    "${SAL_PLUGINS}/sftp/fs/fs_messages.cpp"
     "${SAL_PLUGINS}/sftp/fs/fs_data.cpp"
     "${SAL_PLUGINS}/sftp/fs/fs_transfer.cpp"
     "${SAL_PLUGINS}/sftp/fs/fs_namespace.cpp"

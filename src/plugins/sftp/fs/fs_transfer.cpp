@@ -9,6 +9,7 @@
 #include "fs_object.h"
 
 #include "fs_data.h"
+#include "fs_messages.h"
 #include "listing_format.h"
 #include "operation.h"
 #include "operations_registry.h"
@@ -22,25 +23,6 @@ namespace
 bool WriteBuffer(CSalamanderStringBuffer* buffer, const std::wstring& text)
 {
     return buffer != NULL && sally::plugin_abi::WriteStringBuffer(*buffer, text);
-}
-
-std::wstring DescribeError(const CSshError& error)
-{
-    const CSshErrorLabels labels = {LangStr(IDS_ERR_UNKNOWN), LangStr(IDS_ERR_CODE), LangStr(IDS_ERR_SFTP_STATUS)};
-    return DescribeSshError(error, labels);
-}
-
-// "host:port" as the operation window names the server.
-std::wstring HostTextOf(const CSite& site)
-{
-    const CNameCodec utf8 = CNameCodec::Utf8();
-    return utf8.Decode(FormatHostPort(utf8.Encode(site.host), site.port));
-}
-
-void ShowMessage(const std::wstring& text)
-{
-    SalamanderGeneral->SalMessageBox(SalamanderGeneral->GetMsgBoxParent(), text.c_str(),
-                                     LangStr(IDS_PLUGINNAME).c_str(), MB_OK | MB_ICONEXCLAMATION);
 }
 
 // A Windows path (drive or UNC): the only kind of target Sally lets a download use.

@@ -7,6 +7,7 @@
 
 #include "cancel_policy.h"
 #include "fs_data.h"
+#include "fs_messages.h"
 #include "listing_format.h"
 #include "../ui/prompt_dialog.h"
 #include "site_config.h"
@@ -23,13 +24,6 @@ bool WriteBuffer(CSalamanderStringBuffer* buffer, const std::wstring& text)
 std::string ToUtf8Path(const std::wstring& path)
 {
     return CNameCodec::Utf8().Encode(path);
-}
-
-// The error text with the words taken from the string table (the ops layer has no texts of its own).
-std::wstring DescribeError(const CSshError& error)
-{
-    const CSshErrorLabels labels = {LangStr(IDS_ERR_UNKNOWN), LangStr(IDS_ERR_CODE), LangStr(IDS_ERR_SFTP_STATUS)};
-    return DescribeSshError(error, labels);
 }
 
 // Whether the user is told about a path problem while the path is shortened (the rules of the "mode" parameter of

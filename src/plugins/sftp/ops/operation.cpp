@@ -589,8 +589,8 @@ COperationStats COperation::Statistics() const
     // Delete and chmod have no bytes: the items are what counts
     if (settings_.direction == TransferDirection::Delete || settings_.direction == TransferDirection::Chmod)
     {
-        stats.filesTotal = summary.totals.deleteTotal;
-        stats.filesDone = summary.totals.deleteDone;
+        stats.filesTotal = summary.totals.metaTotal;
+        stats.filesDone = summary.totals.metaDone;
     }
 
     const long long now = NowMs();

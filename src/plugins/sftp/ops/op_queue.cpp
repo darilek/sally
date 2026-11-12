@@ -377,9 +377,9 @@ CQueueSummary CQueue::Summary() const
         if (item.type == ItemType::DeleteRemoteFile || item.type == ItemType::DeleteRemoteDir ||
             item.type == ItemType::SetAttrs)
         {
-            ++summary.totals.deleteTotal;
+            ++summary.totals.metaTotal;
             if (item.state == ItemState::Done)
-                ++summary.totals.deleteDone;
+                ++summary.totals.metaDone;
         }
         if (!IsTransferType(item.type))
             continue;

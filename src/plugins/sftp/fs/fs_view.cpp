@@ -20,6 +20,7 @@
 
 #include "cache_name.h"
 #include "fs_data.h"
+#include "fs_messages.h"
 #include "listing_format.h"
 #include "progress_format.h"
 #include "text_util.h"
@@ -30,18 +31,6 @@ namespace
 const uint32_t ModeTypeMask = 0170000; // S_IFMT
 const uint32_t ModeLink = 0120000;     // S_IFLNK
 const uint32_t ModeDir = 0040000;      // S_IFDIR
-
-std::wstring DescribeError(const CSshError& error)
-{
-    const CSshErrorLabels labels = {LangStr(IDS_ERR_UNKNOWN), LangStr(IDS_ERR_CODE), LangStr(IDS_ERR_SFTP_STATUS)};
-    return DescribeSshError(error, labels);
-}
-
-void ShowMessage(HWND parent, const std::wstring& text)
-{
-    SalamanderGeneral->SalMessageBox(parent, text.c_str(), LangStr(IDS_PLUGINNAME).c_str(),
-                                     MB_OK | MB_ICONEXCLAMATION);
-}
 
 // The name of the copy in the cache: the file name Sally shows in the viewer title, made valid for Windows.
 std::wstring CacheFileName(const std::wstring& displayName)

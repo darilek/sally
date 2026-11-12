@@ -124,9 +124,9 @@ struct CQueueTotals
     int filesTotal = 0;
     int filesDone = 0;
     // Remote delete items (DeleteRemoteFile/Dir; a move creates them too) and chmod items (SetAttrs). A delete or chmod
-    // operation reports these as its items (the field names say 'delete' for historical reasons).
-    int deleteTotal = 0;
-    int deleteDone = 0;
+    // operation reports these as its items.
+    int metaTotal = 0;
+    int metaDone = 0;
 };
 
 // Everything the operation window shows, taken in one go under one lock so the numbers fit together.

@@ -17,6 +17,7 @@
 #include "fs_object.h"
 
 #include "fs_data.h"
+#include "fs_messages.h"
 #include "listing_format.h"
 #include "operation.h"
 #include "operations_registry.h"
@@ -26,24 +27,6 @@
 
 namespace
 {
-std::wstring DescribeError(const CSshError& error)
-{
-    const CSshErrorLabels labels = {LangStr(IDS_ERR_UNKNOWN), LangStr(IDS_ERR_CODE), LangStr(IDS_ERR_SFTP_STATUS)};
-    return DescribeSshError(error, labels);
-}
-
-void ShowMessage(HWND parent, const std::wstring& text)
-{
-    SalamanderGeneral->SalMessageBox(parent, text.c_str(), LangStr(IDS_PLUGINNAME).c_str(),
-                                     MB_OK | MB_ICONEXCLAMATION);
-}
-
-// "host:port" as the operation window names the server.
-std::wstring HostTextOf(const CSite& site)
-{
-    const CNameCodec utf8 = CNameCodec::Utf8();
-    return utf8.Decode(FormatHostPort(utf8.Encode(site.host), site.port));
-}
 } // namespace
 
 BOOL WINAPI

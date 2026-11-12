@@ -109,7 +109,8 @@ HostKeyCheck CheckOne(LIBSSH2_KNOWNHOSTS* hosts, const std::string& host, int po
     return FromRc(libssh2_knownhost_checkp(hosts, name.c_str(), -1, key, len, anyType, nullptr));
 }
 
-void SetIoError(CSshError* err, const std::string& message, int libssh2Code = 0)
+void SetIoError(CSshError* err, const std::string& message, int libssh2Code = 0, SshMsg msgId = SshMsg::None,
+                const std::vector<std::string>& args = std::vector<std::string>())
 {
     if (err == nullptr)
         return;
@@ -117,6 +118,8 @@ void SetIoError(CSshError* err, const std::string& message, int libssh2Code = 0)
     err->libssh2Code = libssh2Code;
     err->sftpStatus = 0;
     err->message = message;
+    err->msgId = msgId;
+    err->args = args;
 }
 
 // Serialises the collection into the text of one OpenSSH file.
@@ -145,7 +148,7 @@ bool Serialize(LIBSSH2_KNOWNHOSTS* hosts, std::string& text)
 }
 
 // Write to a temporary file next to the target, then replace the target: a crash never leaves half a file.
-bool WriteFileAtomic(const std::string& path, const std::string& text, std::string& error)
+bool WriteFileAtomic(const std::string& path, const std::string& text, CSshError& error)
 {
     std::filesystem::path target(ToWide(path));
     std::error_code ec;
@@ -160,13 +163,13 @@ bool WriteFileAtomic(const std::string& path, const std::string& text, std::stri
         out.flush();
         if (!out)
         {
-            error = "Cannot write the known_hosts file: " + path;
+            SetIoError(&error, "Cannot write the known_hosts file: " + path, 0, SshMsg::KnownHostsWriteFailed, {path});
             return false;
         }
     }
     if (!MoveFileExW(temp.c_str(), target.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
     {
-        error = "Cannot replace the known_hosts file: " + path;
+        SetIoError(&error, "Cannot replace the known_hosts file: " + path, 0, SshMsg::KnownHostsReplaceFailed, {path});
         DeleteFileW(temp.c_str());
         return false;
     }
@@ -284,7 +287,7 @@ bool CKnownHosts::AddOrReplace(LIBSSH2_SESSION* session, const std::string& host
 {
     if (ownPath_.empty())
     {
-        SetIoError(err, "No known_hosts file is configured");
+        SetIoError(err, "No known_hosts file is configured", 0, SshMsg::NoKnownHostsFile);
         return false;
     }
     CHostList list(session);
@@ -324,10 +327,11 @@ bool CKnownHosts::AddOrReplace(LIBSSH2_SESSION* session, const std::string& host
         SetIoError(err, "Cannot serialise the known_hosts list");
         return false;
     }
-    std::string error;
-    if (!WriteFileAtomic(ownPath_, text, error))
+    CSshError writeError;
+    if (!WriteFileAtomic(ownPath_, text, writeError))
     {
-        SetIoError(err, error);
+        if (err != nullptr)
+            *err = writeError;
         return false;
     }
     return true;

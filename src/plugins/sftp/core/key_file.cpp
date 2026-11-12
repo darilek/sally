@@ -3,6 +3,7 @@
 #include <windows.h>
 
 #include <cstring>
+#include <vector>
 
 namespace
 {
@@ -21,27 +22,42 @@ std::wstring ToWide(const std::string& utf8)
 }
 } // namespace
 
-bool ReadKeyFile(const std::string& utf8Path, CSecret& out, std::string& why)
+namespace
+{
+void SetKeyError(CSshError& error, SshMsg msgId, std::vector<std::string> args, const std::string& message)
+{
+    error = CSshError();
+    error.kind = SshErrorKind::KeyFileError;
+    error.message = message;
+    error.msgId = msgId;
+    error.args = std::move(args);
+}
+} // namespace
+
+bool ReadKeyFile(const std::string& utf8Path, CSecret& out, CSshError& error)
 {
     out.clear();
     const std::wstring path = ToWide(utf8Path);
     if (path.empty())
     {
-        why = "The key file path is empty or not valid text: " + utf8Path;
+        SetKeyError(error, SshMsg::KeyFilePathInvalid, {utf8Path},
+                    "The key file path is empty or not valid text: " + utf8Path);
         return false;
     }
     HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
                               FILE_ATTRIBUTE_NORMAL, nullptr);
     if (file == INVALID_HANDLE_VALUE)
     {
-        why = "Cannot open the key file '" + utf8Path + "' (Windows error " + std::to_string(GetLastError()) + ")";
+        const std::string winError = std::to_string(GetLastError());
+        SetKeyError(error, SshMsg::KeyFileOpenFailed, {utf8Path, winError},
+                    "Cannot open the key file '" + utf8Path + "' (Windows error " + winError + ")");
         return false;
     }
     LARGE_INTEGER size = {};
     bool ok = GetFileSizeEx(file, &size) && size.QuadPart > 0 && size.QuadPart <= kMaxKeyFileBytes;
     if (!ok)
     {
-        why = "The key file '" + utf8Path + "' is empty or too large";
+        SetKeyError(error, SshMsg::KeyFileBadSize, {utf8Path}, "The key file '" + utf8Path + "' is empty or too large");
     }
     else
     {
@@ -49,12 +65,25 @@ bool ReadKeyFile(const std::string& utf8Path, CSecret& out, std::string& why)
         DWORD read = 0;
         ok = ReadFile(file, out.data(), static_cast<DWORD>(size.QuadPart), &read, nullptr) && read == size.QuadPart;
         if (!ok)
-            why = "Cannot read the key file '" + utf8Path + "' (Windows error " + std::to_string(GetLastError()) + ")";
+        {
+            const std::string winError = std::to_string(GetLastError());
+            SetKeyError(error, SshMsg::KeyFileReadFailed, {utf8Path, winError},
+                        "Cannot read the key file '" + utf8Path + "' (Windows error " + winError + ")");
+        }
     }
     CloseHandle(file);
     if (!ok)
         out.clear();
     return ok;
+}
+
+bool ReadKeyFile(const std::string& utf8Path, CSecret& out, std::string& why)
+{
+    CSshError error;
+    if (ReadKeyFile(utf8Path, out, error))
+        return true;
+    why = error.message;
+    return false;
 }
 
 bool IsPuttyKey(const CSecret& key)

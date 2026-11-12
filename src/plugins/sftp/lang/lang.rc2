@@ -321,4 +321,43 @@ STRINGTABLE
  // arguments: %1 host and port (host:port), %2 time limit (e.g. 30 s)
  IDS_ERRMSG_CONNECT_TIMEOUT, "Connecting to %1 timed out after %2"
  IDS_ERRMSG_SESSION_NOT_OPEN, "The SSH session is not open"
+ // arguments: %1 host and port (host:port), %2 system error text
+ IDS_ERRMSG_CONNECT_FAILED, "Cannot connect to %1 (%2)"
+ IDS_ERRMSG_NO_HOST_GIVEN, "No host name given"
+ IDS_ERRMSG_NO_HOST_KEY, "The server sent no host key"
+ // arguments: %1 host name
+ IDS_ERRMSG_KNOWN_HOSTS_UNCHECKED, "The known_hosts data could not be checked; the host key of %1 was not verified"
+ // arguments: %1 host name, %2 key fingerprint
+ IDS_ERRMSG_HOSTKEY_CHANGED, "The host key of %1 has changed (%2) and was not accepted"
+ // arguments: %1 host name, %2 key fingerprint
+ IDS_ERRMSG_HOSTKEY_REJECTED, "The host key of %1 (%2) was not accepted"
+ IDS_ERRMSG_NO_KNOWN_HOSTS_FILE, "No known_hosts file is configured"
+ // arguments: %1 file path
+ IDS_ERRMSG_KNOWN_HOSTS_WRITE_FAILED, "Cannot write the known_hosts file: %1"
+ // arguments: %1 file path
+ IDS_ERRMSG_KNOWN_HOSTS_REPLACE_FAILED, "Cannot replace the known_hosts file: %1"
+ IDS_ERRMSG_SFTP_NEEDS_AUTH, "The SFTP subsystem needs an authenticated session"
+ IDS_ERRMSG_NO_SFTP_SUBSYSTEM, "The server does not provide the SFTP subsystem"
+ IDS_ERRMSG_BROKEN_TIMEOUT, "The connection is no longer usable after a timeout; disconnect and reconnect"
+ IDS_ERRMSG_BROKEN_CANCEL, "The connection is no longer usable after a cancel; disconnect and reconnect"
+ IDS_ERRMSG_BROKEN_ERROR, "The connection is no longer usable after a connection error; disconnect and reconnect"
+ IDS_ERRMSG_AUTH_CANCELLED, "Authentication was cancelled"
+ IDS_ERRMSG_AUTH_NEEDS_CONNECTION, "Authentication needs an open connection with an accepted host key"
+ IDS_ERRMSG_PASSWORD_EXPIRED, "The server requires a password change; change the password outside Sally first"
+ // arguments: %1 user name, %2 authentication methods the server offers (- = none), %3 methods tried
+ IDS_ERRMSG_AUTH_FAILED, "Authentication failed for user '%1'. The server offers: %2. Tried: %3"
+ // arguments: %1 user name, %2 authentication methods the server offers (- = none)
+ IDS_ERRMSG_AUTH_FAILED_NO_CREDENTIALS, "Authentication failed for user '%1'. The server offers: %2. Tried: nothing (no matching credentials in the site settings)"
+ // arguments: %1 key file path, %2 reason (still English text for .ppk problems)
+ IDS_ERRMSG_KEYFILE_UNUSABLE, "The key file '%1' could not be used: %2"
+ // arguments: %1 key file path
+ IDS_ERRMSG_KEYFILE_WRONG_PASSPHRASE, "The key file '%1' could not be used: wrong or missing passphrase, or an unsupported key format"
+ // arguments: %1 key file path
+ IDS_ERRMSG_KEYFILE_PATH_INVALID, "The key file path is empty or not valid text: %1"
+ // arguments: %1 key file path, %2 Windows error number
+ IDS_ERRMSG_KEYFILE_OPEN_FAILED, "Cannot open the key file '%1' (Windows error %2)"
+ // arguments: %1 key file path
+ IDS_ERRMSG_KEYFILE_BAD_SIZE, "The key file '%1' is empty or too large"
+ // arguments: %1 key file path, %2 Windows error number
+ IDS_ERRMSG_KEYFILE_READ_FAILED, "Cannot read the key file '%1' (Windows error %2)"
 }

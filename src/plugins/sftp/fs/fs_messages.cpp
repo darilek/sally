@@ -22,6 +22,56 @@ int StringIdOfMsg(SshMsg msg)
         return IDS_ERRMSG_CONNECT_TIMEOUT;
     case SshMsg::SessionNotOpen:
         return IDS_ERRMSG_SESSION_NOT_OPEN;
+    case SshMsg::ConnectFailed:
+        return IDS_ERRMSG_CONNECT_FAILED;
+    case SshMsg::NoHostGiven:
+        return IDS_ERRMSG_NO_HOST_GIVEN;
+    case SshMsg::NoHostKey:
+        return IDS_ERRMSG_NO_HOST_KEY;
+    case SshMsg::KnownHostsUnchecked:
+        return IDS_ERRMSG_KNOWN_HOSTS_UNCHECKED;
+    case SshMsg::HostKeyChanged:
+        return IDS_ERRMSG_HOSTKEY_CHANGED;
+    case SshMsg::HostKeyRejected:
+        return IDS_ERRMSG_HOSTKEY_REJECTED;
+    case SshMsg::NoKnownHostsFile:
+        return IDS_ERRMSG_NO_KNOWN_HOSTS_FILE;
+    case SshMsg::KnownHostsWriteFailed:
+        return IDS_ERRMSG_KNOWN_HOSTS_WRITE_FAILED;
+    case SshMsg::KnownHostsReplaceFailed:
+        return IDS_ERRMSG_KNOWN_HOSTS_REPLACE_FAILED;
+    case SshMsg::SftpNeedsAuth:
+        return IDS_ERRMSG_SFTP_NEEDS_AUTH;
+    case SshMsg::NoSftpSubsystem:
+        return IDS_ERRMSG_NO_SFTP_SUBSYSTEM;
+    case SshMsg::BrokenAfterTimeout:
+        return IDS_ERRMSG_BROKEN_TIMEOUT;
+    case SshMsg::BrokenAfterCancel:
+        return IDS_ERRMSG_BROKEN_CANCEL;
+    case SshMsg::BrokenAfterError:
+        return IDS_ERRMSG_BROKEN_ERROR;
+    case SshMsg::AuthCancelled:
+        return IDS_ERRMSG_AUTH_CANCELLED;
+    case SshMsg::AuthNeedsConnection:
+        return IDS_ERRMSG_AUTH_NEEDS_CONNECTION;
+    case SshMsg::PasswordExpired:
+        return IDS_ERRMSG_PASSWORD_EXPIRED;
+    case SshMsg::AuthFailed:
+        return IDS_ERRMSG_AUTH_FAILED;
+    case SshMsg::AuthFailedNoCredentials:
+        return IDS_ERRMSG_AUTH_FAILED_NO_CREDENTIALS;
+    case SshMsg::KeyFileUnusable:
+        return IDS_ERRMSG_KEYFILE_UNUSABLE;
+    case SshMsg::KeyFileWrongPassphrase:
+        return IDS_ERRMSG_KEYFILE_WRONG_PASSPHRASE;
+    case SshMsg::KeyFilePathInvalid:
+        return IDS_ERRMSG_KEYFILE_PATH_INVALID;
+    case SshMsg::KeyFileOpenFailed:
+        return IDS_ERRMSG_KEYFILE_OPEN_FAILED;
+    case SshMsg::KeyFileBadSize:
+        return IDS_ERRMSG_KEYFILE_BAD_SIZE;
+    case SshMsg::KeyFileReadFailed:
+        return IDS_ERRMSG_KEYFILE_READ_FAILED;
     default:
         return 0;
     }

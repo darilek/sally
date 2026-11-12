@@ -160,7 +160,12 @@ void CSshSession::MarkBroken(const char* reason)
 bool CSshSession::FailBroken()
 {
     const std::string reason = brokenReason_.empty() ? std::string("timeout") : brokenReason_;
-    return Fail(brokenReason_ == "timeout" ? SshErrorKind::Timeout : SshErrorKind::ConnectFailed,
+    SshMsg msgId = SshMsg::BrokenAfterError;
+    if (reason == "timeout")
+        msgId = SshMsg::BrokenAfterTimeout;
+    else if (reason == "cancel")
+        msgId = SshMsg::BrokenAfterCancel;
+    return Fail(brokenReason_ == "timeout" ? SshErrorKind::Timeout : SshErrorKind::ConnectFailed, msgId, {},
                 "The connection is no longer usable after a " + reason + "; disconnect and reconnect");
 }
 
@@ -420,8 +425,9 @@ bool CSshSession::ConnectSocket(const CSshSite& site)
         return Fail(SshErrorKind::Timeout, SshMsg::ConnectTimeout, {hostPort, Msec(timeoutMs)},
                     "Connecting to " + hostPort + " timed out after " + Msec(timeoutMs));
     }
-    return Fail(SshErrorKind::ConnectFailed,
-                "Cannot connect to " + site.host + ":" + std::to_string(site.port) + " (" + why + ")");
+    const std::string hostPort = site.host + ":" + std::to_string(site.port);
+    return Fail(SshErrorKind::ConnectFailed, SshMsg::ConnectFailed, {hostPort, why},
+                "Cannot connect to " + hostPort + " (" + why + ")");
 }
 
 bool CSshSession::CreateSession(const CSshSite& site)
@@ -476,7 +482,7 @@ bool CSshSession::VerifyHostKey(const CSshSite& site)
     int type = 0;
     const char* key = libssh2_session_hostkey(session_, &len, &type);
     if (key == nullptr || len == 0)
-        return Fail(SshErrorKind::Protocol, "The server sent no host key");
+        return Fail(SshErrorKind::Protocol, SshMsg::NoHostKey, {}, "The server sent no host key");
 
     hostKeyType_ = HostKeyTypeName(type);
     fingerprint_ = Sha256Fingerprint(key, len);
@@ -487,7 +493,7 @@ bool CSshSession::VerifyHostKey(const CSshSite& site)
     if (check == HostKeyCheck::Match)
         return true;
     if (check == HostKeyCheck::Failure)
-        return Fail(SshErrorKind::Other,
+        return Fail(SshErrorKind::Other, SshMsg::KnownHostsUnchecked, {host},
                     "The known_hosts data could not be checked; the host key of " + host + " was not verified");
 
     const bool changed = check == HostKeyCheck::Mismatch;
@@ -499,14 +505,20 @@ bool CSshSession::VerifyHostKey(const CSshSite& site)
         return Fail(SshErrorKind::Cancelled, std::string());
     if (decision == HostKeyDecision::Reject)
         return Fail(changed ? SshErrorKind::HostKeyChanged : SshErrorKind::HostKeyRejected,
+                    changed ? SshMsg::HostKeyChanged : SshMsg::HostKeyRejected, {host, fingerprint_},
                     changed ? "The host key of " + host + " has changed (" + fingerprint_ + ") and was not accepted"
                             : "The host key of " + host + " (" + fingerprint_ + ") was not accepted");
     if (decision == HostKeyDecision::AcceptAndSave)
     {
         CSshError saveError;
-        if (hosts_ == nullptr || !hosts_->AddOrReplace(session_, host, site.port, key, len, type, &saveError))
-            return Fail(SshErrorKind::Io, hosts_ == nullptr ? "No known_hosts file is configured" : saveError.message,
-                        saveError.libssh2Code);
+        if (hosts_ == nullptr)
+            return Fail(SshErrorKind::Io, SshMsg::NoKnownHostsFile, {}, "No known_hosts file is configured");
+        if (!hosts_->AddOrReplace(session_, host, site.port, key, len, type, &saveError))
+        {
+            Fail(SshErrorKind::Io, saveError.msgId, saveError.args, saveError.message);
+            error_.libssh2Code = saveError.libssh2Code;
+            return false;
+        }
     }
     return true;
 }
@@ -525,7 +537,7 @@ bool CSshSession::OpenTransport(const CSshSite& site)
     if (session_ != nullptr || socket_ != INVALID_SOCKET)
         return Fail(SshErrorKind::Other, "The session is already open");
     if (site.host.empty())
-        return Fail(SshErrorKind::Other, "No host name given");
+        return Fail(SshErrorKind::Other, SshMsg::NoHostGiven, {}, "No host name given");
 
     bool ok = ConnectSocket(site) && CreateSession(site) && Handshake() && VerifyHostKey(site);
     if (!ok)
@@ -544,7 +556,7 @@ bool CSshSession::OpenSftp()
     if (broken_)
         return FailBroken();
     if (!authenticated_ || session_ == nullptr)
-        return Fail(SshErrorKind::Other, "The SFTP subsystem needs an authenticated session");
+        return Fail(SshErrorKind::Other, SshMsg::SftpNeedsAuth, {}, "The SFTP subsystem needs an authenticated session");
     if (sftp_ != nullptr)
         return true;
     int code = 0;
@@ -559,7 +571,11 @@ bool CSshSession::OpenSftp()
     case LIBSSH2_ERROR_CHANNEL_CLOSED:
     case LIBSSH2_ERROR_CHANNEL_EOF_SENT:
     case LIBSSH2_ERROR_SFTP_PROTOCOL:
-        return Fail(SshErrorKind::NoSftp, "The server does not provide the SFTP subsystem", code);
+    {
+        Fail(SshErrorKind::NoSftp, SshMsg::NoSftpSubsystem, {}, "The server does not provide the SFTP subsystem");
+        error_.libssh2Code = code;
+        return false;
+    }
     default:
         return FailFromSession("Cannot start the SFTP subsystem", code);
     }

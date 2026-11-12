@@ -40,7 +40,32 @@ enum class SshMsg
     ResolveFailed,  // %1 host, %2 system error text
     ResolveTimeout, // %1 host, %2 timeout (e.g. "30 s")
     ConnectTimeout, // %1 host:port, %2 timeout (e.g. "30 s")
-    SessionNotOpen  // no arguments
+    SessionNotOpen, // no arguments
+    ConnectFailed,  // %1 host:port, %2 system error text
+    NoHostGiven,    // no arguments
+    NoHostKey,      // no arguments
+    KnownHostsUnchecked, // %1 host
+    HostKeyChanged,  // %1 host, %2 fingerprint
+    HostKeyRejected, // %1 host, %2 fingerprint
+    NoKnownHostsFile,       // no arguments
+    KnownHostsWriteFailed,  // %1 file path
+    KnownHostsReplaceFailed, // %1 file path
+    SftpNeedsAuth,   // no arguments
+    NoSftpSubsystem, // no arguments
+    BrokenAfterTimeout, // no arguments
+    BrokenAfterCancel,  // no arguments
+    BrokenAfterError,   // no arguments
+    AuthCancelled,      // no arguments
+    AuthNeedsConnection, // no arguments
+    PasswordExpired,    // no arguments
+    AuthFailed,         // %1 user, %2 methods the server offers, %3 methods tried
+    AuthFailedNoCredentials, // %1 user, %2 methods the server offers
+    KeyFileUnusable,    // %1 key file, %2 reason (English until the .ppk texts are converted)
+    KeyFileWrongPassphrase, // %1 key file
+    KeyFilePathInvalid, // %1 key file path
+    KeyFileOpenFailed,  // %1 key file, %2 Windows error number
+    KeyFileBadSize,     // %1 key file
+    KeyFileReadFailed   // %1 key file, %2 Windows error number
 };
 
 struct CSshError

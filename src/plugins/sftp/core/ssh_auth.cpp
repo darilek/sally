@@ -109,6 +109,8 @@ struct CSshSession::CAuthState
     std::vector<std::string> tried;
     SshErrorKind keyKind = SshErrorKind::None; // problem with the key file itself
     std::string keyMessage;
+    SshMsg keyMsgId = SshMsg::None;
+    std::vector<std::string> keyArgs;
     int lostCode = 0;      // connection-level failure (timeout, disconnect, cancel)
     bool declined = false; // the user cancelled a prompt
     bool passwordExpired = false;
@@ -150,6 +152,8 @@ bool CSshSession::AuthPuttyKey(const CSecret& file, const CSshSite& site, CAuthS
     {
         state.keyKind = err.kind;
         state.keyMessage = "The key file '" + site.keyFile + "' could not be used: " + err.message;
+        state.keyMsgId = SshMsg::KeyFileUnusable;
+        state.keyArgs = {site.keyFile, err.message};
         return false;
     }
     state.tried.push_back("publickey");
@@ -164,11 +168,13 @@ bool CSshSession::AuthPuttyKey(const CSecret& file, const CSshSite& site, CAuthS
 bool CSshSession::AuthKeyFile(const CSshSite& site, CAuthState& state)
 {
     CSecret key; // wiped by the destructor on every path
-    std::string why;
-    if (!ReadKeyFile(site.keyFile, key, why))
+    CSshError readError;
+    if (!ReadKeyFile(site.keyFile, key, readError))
     {
-        state.keyKind = SshErrorKind::KeyFileError;
-        state.keyMessage = why;
+        state.keyKind = readError.kind;
+        state.keyMessage = readError.message;
+        state.keyMsgId = readError.msgId;
+        state.keyArgs = readError.args;
         return false;
     }
     if (IsPuttyKey(key))
@@ -199,6 +205,8 @@ bool CSshSession::AuthKeyFile(const CSshSite& site, CAuthState& state)
             state.keyKind = SshErrorKind::KeyFileError;
             state.keyMessage = "The key file '" + site.keyFile +
                                "' could not be used: wrong or missing passphrase, or an unsupported key format";
+            state.keyMsgId = SshMsg::KeyFileWrongPassphrase;
+            state.keyArgs = {site.keyFile};
             return false;
         }
     }
@@ -284,18 +292,24 @@ bool CSshSession::FailAuth(const CSshSite& site, const std::string& offered, con
     if (state.lostCode != 0)
         return FailFromSession("Authentication interrupted", state.lostCode);
     if (state.declined)
-        return Fail(SshErrorKind::AuthFailed, "Authentication was cancelled");
+        return Fail(SshErrorKind::AuthFailed, SshMsg::AuthCancelled, {}, "Authentication was cancelled");
     if (state.passwordExpired)
-        return Fail(SshErrorKind::AuthFailed,
-                    "The server requires a password change; change the password outside Sally first",
-                    LIBSSH2_ERROR_PASSWORD_EXPIRED);
+    {
+        Fail(SshErrorKind::AuthFailed, SshMsg::PasswordExpired, {},
+             "The server requires a password change; change the password outside Sally first");
+        error_.libssh2Code = LIBSSH2_ERROR_PASSWORD_EXPIRED;
+        return false;
+    }
     if (state.keyKind != SshErrorKind::None)
-        return Fail(state.keyKind, state.keyMessage);
+        return Fail(state.keyKind, state.keyMsgId, state.keyArgs, state.keyMessage);
 
     std::string tried;
     for (const std::string& t : state.tried)
         tried += (tried.empty() ? "" : ", ") + t;
-    return Fail(SshErrorKind::AuthFailed,
+    const std::string offeredText = offered.empty() ? std::string("-") : offered; // shown when the server offers nothing
+    return Fail(SshErrorKind::AuthFailed, tried.empty() ? SshMsg::AuthFailedNoCredentials : SshMsg::AuthFailed,
+                tried.empty() ? std::vector<std::string>{site.user, offeredText}
+                              : std::vector<std::string>{site.user, offeredText, tried},
                 "Authentication failed for user '" + site.user + "'. The server offers: " +
                     (offered.empty() ? std::string("(nothing)") : offered) + ". Tried: " +
                     (tried.empty() ? std::string("nothing (no matching credentials in the site settings)") : tried));
@@ -307,7 +321,8 @@ bool CSshSession::Authenticate(const CSshSite& site)
     if (broken_)
         return FailBroken();
     if (!connected_ || session_ == nullptr)
-        return Fail(SshErrorKind::Other, "Authentication needs an open connection with an accepted host key");
+        return Fail(SshErrorKind::Other, SshMsg::AuthNeedsConnection, {},
+                    "Authentication needs an open connection with an accepted host key");
     if (authenticated_)
         return true;
 

@@ -76,7 +76,9 @@ bool CPluginFSInterface::DeleteOneOnSession(HWND parent, const CSelectedItem& it
     if (!gone)
         ShowMessage(parent, SPLFormatStringOwned(LangStr(IDS_ERR_DELETE_ITEM).c_str(), codec_.Decode(item.rawName).c_str(),
                                                  DescribeError(request->Error()).c_str()));
-    NotifyFolderChanged(); // also after a failure: the listing may have changed
+    // Also after a failure: the listing may have changed. A link to a directory was shown as a folder: a panel that
+    // is inside it (through the link) must refresh too, so the subfolders are included.
+    NotifyFolderChanged(item.isDir);
     return gone;
 }
 

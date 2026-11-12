@@ -181,6 +181,38 @@ TEST_F(OperationFlowTest, PauseStopsTheTransferAndResumeContinuesItsOwnPartialFi
     EXPECT_TRUE(ReadAll(local_ / "big.bin") == "Z" + content.substr(1)); // not restarted, not asked
 }
 
+// Review 12: the user solved a parked item with "Overwrite"; the answer is kept on the item, but it must only restart the
+// file once. A pause after that continues the operation's own half-written file instead of starting again.
+TEST_F(OperationFlowTest, PauseAfterASolveOverwriteContinuesTheOwnPartialFile)
+{
+    const std::string content = PutBigRemoteFile(14);
+    WriteAll(local_ / "big.bin", "OLD"); // policy Ask: the item is parked first
+    sftptest::CStallProxy proxy(sftptest::kPort);
+    proxy.StallAfter(8 << 20);
+    port_ = proxy.Port();
+
+    auto op = MakeBigDownload();
+    CTestObserver observer;
+    op->SetObserver(&observer);
+    ASSERT_TRUE(op->Start());
+    ASSERT_TRUE(WaitUntil([&] { return StateOfFirstItem(*op) == ItemState::UserInputNeeded; }, 30000));
+    const std::vector<CQueueItem> parked = op->Queue().Items(false);
+    ASSERT_EQ(parked.size(), 1u);
+    EXPECT_EQ(op->Solve(parked[0].uid, SolveAction::Overwrite), 1);
+    ASSERT_TRUE(WaitUntil([&] { return proxy.IsStalled(); }, 60000));
+    Sleep(300);
+
+    op->Pause();
+    ASSERT_TRUE(WaitUntil([&] { return StateOfFirstItem(*op) == ItemState::Waiting; }, 20000));
+    CorruptFirstByte(local_ / "big.bin");
+    proxy.StallAfter(0);
+    proxy.Stall(false);
+    op->Resume();
+    ASSERT_TRUE(op->WaitFinished(60000));
+    EXPECT_EQ(op->State(), OperationState::Finished) << Describe(*op);
+    EXPECT_TRUE(ReadAll(local_ / "big.bin") == "Z" + content.substr(1)); // continued, not downloaded again
+}
+
 TEST_F(OperationFlowTest, PausedUploadContinuesItsOwnFilepartWhateverThePolicy)
 {
     const std::string source = PatternBytes(24 << 20, 13);

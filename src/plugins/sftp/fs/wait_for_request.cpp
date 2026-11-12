@@ -167,9 +167,20 @@ bool CancelRequested(CSafeWaitWindow& waitWindow, bool escArmed)
     return pressed;
 }
 
-WaitResult WaitImpl(HWND parent, CPanelSession& session, const std::shared_ptr<CPanelRequest>& request,
-                    const std::wstring& text, const std::function<std::wstring()>& textNow)
+// Every wait can be cancelled with ESC: the hint is added to the end of the first line of the text.
+std::wstring WithEscHint(const std::wstring& text)
 {
+    const std::wstring hint = L" " + LangStr(IDS_WAIT_ESC_HINT);
+    const size_t lineEnd = text.find(L'\n');
+    if (lineEnd == std::wstring::npos)
+        return text + hint;
+    return text.substr(0, lineEnd) + hint + text.substr(lineEnd);
+}
+
+WaitResult WaitImpl(HWND parent, CPanelSession& session, const std::shared_ptr<CPanelRequest>& request,
+                    const std::wstring& plainText, const std::function<std::wstring()>& textNow)
+{
+    const std::wstring text = WithEscHint(plainText);
     CParentDisabler disabler(parent);
     CWaitCursor cursor;
     CSafeWaitWindow waitWindow(text, parent);
@@ -211,7 +222,7 @@ WaitResult WaitImpl(HWND parent, CPanelSession& session, const std::shared_ptr<C
         cursor.Refresh();
         if (textNow && !cancelled)
         {
-            const std::wstring now = textNow();
+            const std::wstring now = WithEscHint(textNow());
             if (now != shownText)
             {
                 shownText = now;

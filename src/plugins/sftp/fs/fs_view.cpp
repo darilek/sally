@@ -153,10 +153,9 @@ bool CPluginFSInterface::DownloadCopy(HWND parent, const std::string& remotePath
     // The wait window is sized from its FIRST text and left-aligns every line, so the first text already contains an
     // empty bar line: the window is as wide as the bar and the bar fills it.
     const int BarCells = 36;
-    const std::wstring escHint = LangStr(IDS_WAIT_ESC_HINT); // localized, comes from the string table
     const std::wstring startText = SPLFormatStringOwned(LangStr(IDS_WAIT_VIEWING).c_str(), displayName.c_str()) +
-                                   L" " + escHint + L"\n" + FormatTextBar(0, 1, BarCells);
-    // runs on this thread about ten times a second: "Downloading x ... 1.5 MB of 12 MB Press ESC to cancel." once the
+                                   L"\n" + FormatTextBar(0, 1, BarCells);
+    // runs on this thread about ten times a second: "Downloading x ... 1.5 MB of 12 MB" once the
     // size is known, then a thin text bar under it (Sally's wait window can only show text)
     const auto textNow = [&]() -> std::wstring {
         const uint64_t total = request->BytesTotal();
@@ -164,7 +163,7 @@ bool CPluginFSInterface::DownloadCopy(HWND parent, const std::string& remotePath
             return startText;
         return SPLFormatStringOwned(LangStr(IDS_WAIT_VIEWING_PROGRESS).c_str(), displayName.c_str(),
                                     FormatBytes(request->BytesDone()).c_str(), FormatBytes(total).c_str()) +
-               L" " + escHint + L"\n" + FormatTextBar(request->BytesDone(), total, BarCells);
+               L"\n" + FormatTextBar(request->BytesDone(), total, BarCells);
     };
     const WaitResult waited = WaitForRequest(parent, *session_, request, startText, textNow);
     if (waited != WaitResult::Done || request->Cancelled() || !request->IsDone() || closeRequested_)

@@ -102,7 +102,7 @@ BOOL CPluginFSInterface::DoExecuteCommandLine(HWND parent, CSalamanderStringBuff
     }
 
     std::shared_ptr<CPanelRequest> request = session_->Exec(BuildRemoteCommand(curRaw_, raw));
-    const std::wstring waitText = LangStr(IDS_WAIT_EXEC) + L" " + LangStr(IDS_WAIT_ESC_HINT);
+    const std::wstring waitText = LangStr(IDS_WAIT_EXEC);
     const WaitResult waited = WaitForRequest(parent, *session_, request, waitText);
     if (closeRequested_)
         return FALSE;

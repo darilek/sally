@@ -1156,6 +1156,9 @@ CWorker::CItemResult CWorker::Download(const CQueueItem& item)
         return Failure(ProblemFromWin32(error, Problem::LocalIoError), WindowsErrorText(error));
     CHandleGuard guard(file);
     queue.SetOwnsPartial(item.uid);
+    // The user's answer (Overwrite, Resume) is used up now: the file is ours, so a retry after a pause or a lost
+    // connection continues it (Decide) instead of starting again.
+    queue.Retarget(item.uid, target, std::string());
 
     BeginTransfer(item.uid, offset);
     uint64_t transferred = 0;

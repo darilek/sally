@@ -360,4 +360,18 @@ STRINGTABLE
  IDS_ERRMSG_KEYFILE_BAD_SIZE, "The key file '%1' is empty or too large"
  // arguments: %1 key file path, %2 Windows error number
  IDS_ERRMSG_KEYFILE_READ_FAILED, "Cannot read the key file '%1' (Windows error %2)"
+ // arguments: %1 key file path
+ IDS_ERRMSG_PPK_DECRYPT_FAILED, "The key file '%1' could not be used: the private key part could not be decrypted"
+ // arguments: %1 key file path, %2 encryption name
+ IDS_ERRMSG_PPK_UNSUPPORTED_ENCRYPTION, "The key file '%1' could not be used: unsupported key encryption '%2'"
+ // arguments: %1 key file path, %2 key derivation name
+ IDS_ERRMSG_PPK_UNSUPPORTED_KDF, "The key file '%1' could not be used: unsupported key derivation '%2'"
+ // arguments: %1 key file path, %2 key type name
+ IDS_ERRMSG_PPK_UNSUPPORTED_KEY_TYPE, "The key file '%1' could not be used: unsupported key type '%2'"
+ // arguments: %1 key file path
+ IDS_ERRMSG_PPK_UNSUPPORTED_OLD_FORMAT, "The key file '%1' could not be used: unsupported old PuTTY key file format (without a MAC); save it again with a current PuTTYgen"
+ // arguments: %1 key file path
+ IDS_ERRMSG_PPK_NOT_PUTTY_FILE, "The key file '%1' is not a PuTTY private key file"
+ // arguments: %1 key file path
+ IDS_ERRMSG_PPK_DAMAGED, "The key file '%1' could not be used: the PuTTY key file is damaged or incomplete"
 }

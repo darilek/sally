@@ -152,8 +152,18 @@ bool CSshSession::AuthPuttyKey(const CSecret& file, const CSshSite& site, CAuthS
     {
         state.keyKind = err.kind;
         state.keyMessage = "The key file '" + site.keyFile + "' could not be used: " + err.message;
-        state.keyMsgId = SshMsg::KeyFileUnusable;
-        state.keyArgs = {site.keyFile, err.message};
+        if (err.msgId != SshMsg::None)
+        {
+            // the .ppk error has its own text; the key file is its first argument
+            state.keyMsgId = err.msgId;
+            state.keyArgs = {site.keyFile};
+            state.keyArgs.insert(state.keyArgs.end(), err.args.begin(), err.args.end());
+        }
+        else
+        {
+            state.keyMsgId = SshMsg::KeyFileUnusable;
+            state.keyArgs = {site.keyFile, err.message};
+        }
         return false;
     }
     state.tried.push_back("publickey");

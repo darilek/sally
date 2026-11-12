@@ -599,3 +599,84 @@ TEST_F(PpkTest, DamagedKeyReportedWhenNothingElseWorks)
     EXPECT_NE(session.LastError().message.find("damaged"), std::string::npos) << session.LastError().message;
     std::filesystem::remove(tmp);
 }
+
+// ---- translatable error ids (SshMsg); the English message stays as it was ----
+
+TEST_F(PpkTest, MsgIdNotAPuttyFile)
+{
+    CSshError err;
+    CSecret pem;
+    EXPECT_FALSE(ConvertPpk(CSecret(std::string("just some text\n")), CSecret(), pem, nullptr, err));
+    EXPECT_EQ(err.msgId, SshMsg::PpkNotPuttyFile);
+    EXPECT_FALSE(ConvertPpk(CSecret(std::string("PuTTY-User-Key-File-x: ssh-rsa\n")), CSecret(), pem, nullptr, err));
+    EXPECT_EQ(err.msgId, SshMsg::PpkNotPuttyFile);
+}
+
+TEST_F(PpkTest, MsgIdDamagedForTruncatedAndBrokenFiles)
+{
+    CSshError err;
+    CSecret pem;
+    EXPECT_FALSE(ConvertPpk(CSecret(std::string("PuTTY-User-Key-File-3: ssh-ed25519\n")), CSecret(), pem, nullptr, err));
+    EXPECT_EQ(err.msgId, SshMsg::PpkDamaged);
+    EXPECT_TRUE(err.args.empty());
+    EXPECT_NE(err.message.find("incomplete"), std::string::npos);
+
+    // an unencrypted key whose MAC does not match
+    std::string pub;
+    PutString(pub, "ssh-ed25519");
+    std::string text = MakePlainPpk("ssh-ed25519", pub, pub);
+    const size_t macAt = text.rfind("Private-MAC: ") + 13;
+    text[macAt] = text[macAt] == '0' ? '1' : '0';
+    EXPECT_FALSE(ConvertPpk(CSecret(text), CSecret(), pem, nullptr, err));
+    EXPECT_EQ(err.msgId, SshMsg::PpkDamaged);
+}
+
+TEST_F(PpkTest, MsgIdUnsupportedKeyTypeCarriesTheName)
+{
+    CSshError err;
+    CSecret pem;
+    std::string pub;
+    PutString(pub, "ssh-dss");
+    EXPECT_FALSE(ConvertPpk(CSecret(MakePlainPpk("ssh-dss", pub, pub)), CSecret(), pem, nullptr, err));
+    EXPECT_EQ(err.msgId, SshMsg::PpkUnsupportedKeyType);
+    ASSERT_EQ(err.args.size(), 1u);
+    EXPECT_EQ(err.args[0], "ssh-dss");
+}
+
+TEST_F(PpkTest, MsgIdOldFormatWithoutMac)
+{
+    std::string pub;
+    PutString(pub, "ssh-ed25519");
+    const std::string text = Replace(MakePlainPpk("ssh-ed25519", pub, pub), "Private-MAC:", "Private-Hash:");
+    CSshError err;
+    CSecret pem;
+    EXPECT_FALSE(ConvertPpk(CSecret(text), CSecret(), pem, nullptr, err));
+    EXPECT_EQ(err.kind, SshErrorKind::Unsupported);
+    EXPECT_EQ(err.msgId, SshMsg::PpkUnsupportedOldFormat);
+}
+
+TEST_F(PpkTest, MsgIdUnsupportedEncryptionAndKdfCarryTheName)
+{
+    LOAD_OR_SKIP(file, "ed25519_pass_v3.ppk");
+    CSshError err;
+    CSecret pem;
+    EXPECT_FALSE(ConvertPpk(CSecret(Replace(file.ToStdString(), "aes256-cbc", "chacha")), CSecret(Passphrase()), pem,
+                            nullptr, err));
+    EXPECT_EQ(err.msgId, SshMsg::PpkUnsupportedEncryption);
+    ASSERT_EQ(err.args.size(), 1u);
+    EXPECT_EQ(err.args[0], "chacha");
+    EXPECT_FALSE(ConvertPpk(CSecret(Replace(file.ToStdString(), "Key-Derivation: Argon2id", "Key-Derivation: scrypt")),
+                            CSecret(Passphrase()), pem, nullptr, err));
+    EXPECT_EQ(err.msgId, SshMsg::PpkUnsupportedKdf);
+    ASSERT_EQ(err.args.size(), 1u);
+    EXPECT_EQ(err.args[0], "scrypt");
+}
+
+TEST_F(PpkTest, MsgIdWrongPassphraseReusesTheKeyFileText)
+{
+    LOAD_OR_SKIP(file, "ed25519_pass_v2.ppk");
+    CSshError err;
+    CSecret pem;
+    EXPECT_FALSE(ConvertPpk(file, CSecret("wrong"), pem, nullptr, err));
+    EXPECT_EQ(err.msgId, SshMsg::KeyFileWrongPassphrase);
+}

@@ -72,6 +72,20 @@ int StringIdOfMsg(SshMsg msg)
         return IDS_ERRMSG_KEYFILE_BAD_SIZE;
     case SshMsg::KeyFileReadFailed:
         return IDS_ERRMSG_KEYFILE_READ_FAILED;
+    case SshMsg::PpkDecryptFailed:
+        return IDS_ERRMSG_PPK_DECRYPT_FAILED;
+    case SshMsg::PpkUnsupportedEncryption:
+        return IDS_ERRMSG_PPK_UNSUPPORTED_ENCRYPTION;
+    case SshMsg::PpkUnsupportedKdf:
+        return IDS_ERRMSG_PPK_UNSUPPORTED_KDF;
+    case SshMsg::PpkUnsupportedKeyType:
+        return IDS_ERRMSG_PPK_UNSUPPORTED_KEY_TYPE;
+    case SshMsg::PpkUnsupportedOldFormat:
+        return IDS_ERRMSG_PPK_UNSUPPORTED_OLD_FORMAT;
+    case SshMsg::PpkNotPuttyFile:
+        return IDS_ERRMSG_PPK_NOT_PUTTY_FILE;
+    case SshMsg::PpkDamaged:
+        return IDS_ERRMSG_PPK_DAMAGED;
     default:
         return 0;
     }

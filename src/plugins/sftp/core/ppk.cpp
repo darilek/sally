@@ -21,12 +21,26 @@ constexpr uint64_t kMaxArgon2MemoryKiB = 1048576; // 1 GiB; a hostile file must 
 constexpr uint64_t kMaxArgon2Passes = 4096;
 constexpr uint64_t kMaxArgon2Lanes = 64;
 
-bool Fail(CSshError& err, SshErrorKind kind, const std::string& message)
+bool Fail(CSshError& err, SshErrorKind kind, SshMsg msgId, std::vector<std::string> args, const std::string& message)
 {
     err = CSshError();
     err.kind = kind;
     err.message = message;
+    err.msgId = msgId;
+    err.args = std::move(args);
     return false;
+}
+
+// Errors without a translated text (the English message is shown).
+bool Fail(CSshError& err, SshErrorKind kind, const std::string& message)
+{
+    return Fail(err, kind, SshMsg::None, {}, message);
+}
+
+// All "invalid / truncated / incomplete" cases share one user text; the precise reason stays in the message.
+bool FailDamaged(CSshError& err, const std::string& message)
+{
+    return Fail(err, SshErrorKind::KeyFileError, SshMsg::PpkDamaged, {}, message);
 }
 
 // ---- byte helpers -------------------------------------------------------------------------------------------
@@ -272,14 +286,14 @@ bool ReadBase64Block(CLines& lines, std::string_view countText, std::string& out
 {
     uint64_t count = 0;
     if (!ParseUInt(countText, kMaxLines, count) || count == 0)
-        return Fail(err, SshErrorKind::KeyFileError, "The PuTTY key file has an invalid line count");
+        return FailDamaged(err, "The PuTTY key file has an invalid line count");
     std::vector<std::string_view> parts;
     size_t total = 0;
     for (uint64_t i = 0; i < count; ++i)
     {
         std::string_view line;
         if (!lines.Next(line))
-            return Fail(err, SshErrorKind::KeyFileError, "The PuTTY key file is truncated");
+            return FailDamaged(err, "The PuTTY key file is truncated");
         parts.push_back(line);
         total += line.size();
     }
@@ -290,7 +304,7 @@ bool ReadBase64Block(CLines& lines, std::string_view countText, std::string& out
     const bool decoded = Base64Decode(text, out);
     Wipe(text);
     if (!decoded || out.empty())
-        return Fail(err, SshErrorKind::KeyFileError, "The PuTTY key file contains invalid base64 data");
+        return FailDamaged(err, "The PuTTY key file contains invalid base64 data");
     return true;
 }
 
@@ -300,11 +314,11 @@ bool ParseFile(const CSecret& bytes, CPpkFile& file, CSshError& err)
     std::string_view line;
     static const std::string_view kMagic = "PuTTY-User-Key-File-";
     if (!lines.Next(line) || line.substr(0, kMagic.size()) != kMagic)
-        return Fail(err, SshErrorKind::KeyFileError, "Not a PuTTY key file (unknown header)");
+        return Fail(err, SshErrorKind::KeyFileError, SshMsg::PpkNotPuttyFile, {}, "Not a PuTTY key file (unknown header)");
     const size_t colon = line.find(':');
     uint64_t version = 0;
     if (colon == std::string_view::npos || !ParseUInt(line.substr(kMagic.size(), colon - kMagic.size()), 1000000, version))
-        return Fail(err, SshErrorKind::KeyFileError, "Not a PuTTY key file (invalid header)");
+        return Fail(err, SshErrorKind::KeyFileError, SshMsg::PpkNotPuttyFile, {}, "Not a PuTTY key file (invalid header)");
     if (version != 2 && version != 3)
         return Fail(err, SshErrorKind::Unsupported,
                     "Unsupported PuTTY key file format version " + std::to_string(version) +
@@ -322,7 +336,7 @@ bool ParseFile(const CSecret& bytes, CPpkFile& file, CSshError& err)
             continue;
         const size_t sep = line.find(": ");
         if (sep == std::string_view::npos)
-            return Fail(err, SshErrorKind::KeyFileError, "The PuTTY key file has an invalid header line");
+            return FailDamaged(err, "The PuTTY key file has an invalid header line");
         const std::string_view name = line.substr(0, sep);
         std::string_view value = line.substr(sep + 2);
         while (!value.empty() && value.front() == ' ')
@@ -350,7 +364,7 @@ bool ParseFile(const CSecret& bytes, CPpkFile& file, CSshError& err)
         else if (name == "Private-MAC")
         {
             if (!HexDecode(value, file.mac))
-                return Fail(err, SshErrorKind::KeyFileError, "The PuTTY key file has an invalid MAC field");
+                return FailDamaged(err, "The PuTTY key file has an invalid MAC field");
             haveMac = true;
         }
         else if (name == "Key-Derivation")
@@ -358,35 +372,37 @@ bool ParseFile(const CSecret& bytes, CPpkFile& file, CSshError& err)
         else if (name == "Argon2-Memory")
         {
             if (!ParseUInt(value, UINT32_MAX, file.memoryKiB))
-                return Fail(err, SshErrorKind::KeyFileError, "The PuTTY key file has an invalid Argon2 parameter");
+                return FailDamaged(err, "The PuTTY key file has an invalid Argon2 parameter");
         }
         else if (name == "Argon2-Passes")
         {
             if (!ParseUInt(value, UINT32_MAX, file.passes))
-                return Fail(err, SshErrorKind::KeyFileError, "The PuTTY key file has an invalid Argon2 parameter");
+                return FailDamaged(err, "The PuTTY key file has an invalid Argon2 parameter");
         }
         else if (name == "Argon2-Parallelism")
         {
             if (!ParseUInt(value, UINT32_MAX, file.lanes))
-                return Fail(err, SshErrorKind::KeyFileError, "The PuTTY key file has an invalid Argon2 parameter");
+                return FailDamaged(err, "The PuTTY key file has an invalid Argon2 parameter");
         }
         else if (name == "Argon2-Salt")
         {
             if (!HexDecode(value, file.salt))
-                return Fail(err, SshErrorKind::KeyFileError, "The PuTTY key file has an invalid Argon2 salt");
+                return FailDamaged(err, "The PuTTY key file has an invalid Argon2 salt");
         }
         else if (name == "Private-Hash")
-            return Fail(err, SshErrorKind::Unsupported, "Unsupported PuTTY key file (old format without a MAC)");
+            return Fail(err, SshErrorKind::Unsupported, SshMsg::PpkUnsupportedOldFormat, {},
+                        "Unsupported PuTTY key file (old format without a MAC)");
         // other fields are ignored
     }
     if (!haveEncryption || !havePublic || !havePrivate || !haveMac)
-        return Fail(err, SshErrorKind::KeyFileError, "The PuTTY key file is incomplete or damaged");
+        return FailDamaged(err, "The PuTTY key file is incomplete or damaged");
     if (file.encryption != "none" && file.encryption != "aes256-cbc")
-        return Fail(err, SshErrorKind::Unsupported, "Unsupported PuTTY key encryption '" + file.encryption + "'");
+        return Fail(err, SshErrorKind::Unsupported, SshMsg::PpkUnsupportedEncryption, {file.encryption},
+                    "Unsupported PuTTY key encryption '" + file.encryption + "'");
     if (file.mac.size() != (file.version == 2 ? 20u : 32u))
-        return Fail(err, SshErrorKind::KeyFileError, "The PuTTY key file has an invalid MAC length");
+        return FailDamaged(err, "The PuTTY key file has an invalid MAC length");
     if (file.Encrypted() && file.privateBlob.size() % 16 != 0)
-        return Fail(err, SshErrorKind::KeyFileError, "The PuTTY key file is damaged (bad private data length)");
+        return FailDamaged(err, "The PuTTY key file is damaged (bad private data length)");
     return true;
 }
 
@@ -460,11 +476,12 @@ bool Argon2(const CPpkFile& file, const CSecret& passphrase, CSecret& okm, CSshE
     else if (file.kdf == "Argon2id")
         name = "ARGON2ID";
     else
-        return Fail(err, SshErrorKind::Unsupported, "Unsupported PuTTY key derivation '" + file.kdf + "'");
+        return Fail(err, SshErrorKind::Unsupported, SshMsg::PpkUnsupportedKdf, {file.kdf},
+                    "Unsupported PuTTY key derivation '" + file.kdf + "'");
     if (file.memoryKiB == 0 || file.memoryKiB > kMaxArgon2MemoryKiB || file.passes == 0 ||
         file.passes > kMaxArgon2Passes || file.lanes == 0 || file.lanes > kMaxArgon2Lanes || file.salt.size() < 8 ||
         file.memoryKiB < 8 * file.lanes)
-        return Fail(err, SshErrorKind::KeyFileError, "The PuTTY key file has invalid Argon2 parameters");
+        return FailDamaged(err, "The PuTTY key file has invalid Argon2 parameters");
 
     EVP_KDF* kdf = EVP_KDF_fetch(nullptr, name, nullptr);
     EVP_KDF_CTX* ctx = kdf != nullptr ? EVP_KDF_CTX_new(kdf) : nullptr;
@@ -541,7 +558,7 @@ bool VerifyMac(const CPpkFile& file, const CSecret& macKey, const CSecret& plain
 
 bool Damaged(CSshError& err)
 {
-    return Fail(err, SshErrorKind::KeyFileError, "The PuTTY key file is damaged (unexpected key data)");
+    return FailDamaged(err, "The PuTTY key file is damaged (unexpected key data)");
 }
 
 // Appends the key-specific fields of the OpenSSH private section.
@@ -670,7 +687,8 @@ bool ConvertPpk(const CSecret& fileBytes, const CSecret& passphrase, CSecret& op
     if (!ParseFile(fileBytes, file, err))
         return false;
     if (!IsSupportedType(file.keyType))
-        return Fail(err, SshErrorKind::Unsupported, "Unsupported PuTTY key type '" + file.keyType + "'");
+        return Fail(err, SshErrorKind::Unsupported, SshMsg::PpkUnsupportedKeyType, {file.keyType},
+                    "Unsupported PuTTY key type '" + file.keyType + "'");
 
     CSecret cipherKey, iv, macKey, plain;
     if (!DeriveKeys(file, passphrase, cipherKey, iv, macKey, err))
@@ -678,7 +696,7 @@ bool ConvertPpk(const CSecret& fileBytes, const CSecret& passphrase, CSecret& op
     if (file.Encrypted())
     {
         if (!AesCbcDecrypt(cipherKey, iv, file.privateBlob, plain))
-            return Fail(err, SshErrorKind::KeyFileError, "The PuTTY key file could not be decrypted");
+            return Fail(err, SshErrorKind::KeyFileError, SshMsg::PpkDecryptFailed, {}, "The PuTTY key file could not be decrypted");
     }
     else
     {
@@ -686,8 +704,12 @@ bool ConvertPpk(const CSecret& fileBytes, const CSecret& passphrase, CSecret& op
     }
     // the MAC is checked before the decrypted data is looked at
     if (!VerifyMac(file, macKey, plain))
-        return Fail(err, SshErrorKind::KeyFileError,
-                    file.Encrypted() ? "Wrong passphrase or damaged key file" : "The key file is damaged");
+    {
+        if (file.Encrypted())
+            return Fail(err, SshErrorKind::KeyFileError, SshMsg::KeyFileWrongPassphrase, {},
+                        "Wrong passphrase or damaged key file");
+        return FailDamaged(err, "The key file is damaged");
+    }
 
     CSecret pem;
     if (!BuildOpenSsh(file, plain, pem, err))

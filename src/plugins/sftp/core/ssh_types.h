@@ -60,12 +60,20 @@ enum class SshMsg
     PasswordExpired,    // no arguments
     AuthFailed,         // %1 user, %2 methods the server offers, %3 methods tried
     AuthFailedNoCredentials, // %1 user, %2 methods the server offers
-    KeyFileUnusable,    // %1 key file, %2 reason (English until the .ppk texts are converted)
+    KeyFileUnusable,    // %1 key file, %2 reason (English; used only when a .ppk error has no text of its own)
     KeyFileWrongPassphrase, // %1 key file
     KeyFilePathInvalid, // %1 key file path
     KeyFileOpenFailed,  // %1 key file, %2 Windows error number
     KeyFileBadSize,     // %1 key file
-    KeyFileReadFailed   // %1 key file, %2 Windows error number
+    KeyFileReadFailed,  // %1 key file, %2 Windows error number
+    // .ppk problems; %1 is the key file (added by the authentication code), further arguments as listed
+    PpkDecryptFailed,          // %1 key file
+    PpkUnsupportedEncryption,  // %1 key file, %2 encryption name
+    PpkUnsupportedKdf,         // %1 key file, %2 key derivation name
+    PpkUnsupportedKeyType,     // %1 key file, %2 key type name
+    PpkUnsupportedOldFormat,   // %1 key file
+    PpkNotPuttyFile,           // %1 key file
+    PpkDamaged                 // %1 key file (all other "invalid / truncated / incomplete" cases)
 };
 
 struct CSshError

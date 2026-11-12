@@ -38,9 +38,40 @@ bool EnsureDirectory(const std::wstring& path)
     return GetLastError() == ERROR_ALREADY_EXISTS;
 }
 
+std::wstring FormatErrorMessage(const std::wstring& pattern, const std::vector<std::string>& args)
+{
+    const CNameCodec utf8 = CNameCodec::Utf8();
+    std::wstring out;
+    for (size_t i = 0; i < pattern.size(); ++i)
+    {
+        const wchar_t ch = pattern[i];
+        const wchar_t next = i + 1 < pattern.size() ? pattern[i + 1] : L'\0';
+        if (ch == L'%' && next == L'%')
+        {
+            out += L'%';
+            ++i;
+        }
+        else if (ch == L'%' && next >= L'1' && next <= L'9')
+        {
+            const size_t index = static_cast<size_t>(next - L'1');
+            if (index < args.size()) // a missing argument becomes empty text
+                out += utf8.Decode(args[index]);
+            ++i;
+        }
+        else
+            out += ch; // includes a lone '%'
+    }
+    return out;
+}
+
 std::wstring DescribeSshError(const CSshError& error, const CSshErrorLabels& labels)
 {
-    std::wstring text = CNameCodec::Utf8().Decode(error.message);
+    return DescribeSshError(error, labels, std::wstring());
+}
+
+std::wstring DescribeSshError(const CSshError& error, const CSshErrorLabels& labels, const std::wstring& translatedText)
+{
+    std::wstring text = translatedText.empty() ? CNameCodec::Utf8().Decode(error.message) : translatedText;
     if (text.empty())
         text = labels.unknown;
     if (error.libssh2Code != 0)

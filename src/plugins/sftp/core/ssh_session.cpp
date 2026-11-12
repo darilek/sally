@@ -112,6 +112,19 @@ bool CSshSession::Fail(SshErrorKind kind, const std::string& message, int libssh
     error_.libssh2Code = libssh2Code;
     error_.sftpStatus = 0;
     error_.message = IsCancelled() ? "The operation was cancelled" : message;
+    error_.msgId = SshMsg::None;
+    error_.args.clear();
+    return false;
+}
+
+bool CSshSession::Fail(SshErrorKind kind, SshMsg msgId, std::vector<std::string> args, const std::string& message)
+{
+    Fail(kind, message);
+    if (!IsCancelled()) // a cancel replaces the error; the id would no longer match the message
+    {
+        error_.msgId = msgId;
+        error_.args = std::move(args);
+    }
     return false;
 }
 
@@ -366,13 +379,16 @@ bool CSshSession::ResolveHost(const CSshSite& site, int timeoutMs, ADDRINFOEXW*&
             FreeAddrInfoExW(result); // it completed before the cancel took effect; we do not use it
         if (cancelled)
             return Fail(SshErrorKind::Cancelled, std::string());
-        return Fail(SshErrorKind::Timeout, "Resolving host '" + site.host + "' timed out after " + Msec(timeoutMs));
+        return Fail(SshErrorKind::Timeout, SshMsg::ResolveTimeout, {site.host, Msec(timeoutMs)},
+                    "Resolving host '" + site.host + "' timed out after " + Msec(timeoutMs));
     }
     if (rc != 0 || result == nullptr)
     {
         if (result != nullptr)
             FreeAddrInfoExW(result);
-        return Fail(SshErrorKind::ConnectFailed, "Cannot resolve host '" + site.host + "' (" + WsaMessage(rc) + ")");
+        const std::string system = WsaMessage(rc);
+        return Fail(SshErrorKind::ConnectFailed, SshMsg::ResolveFailed, {site.host, system},
+                    "Cannot resolve host '" + site.host + "' (" + system + ")");
     }
     list = result;
     return true;
@@ -399,8 +415,11 @@ bool CSshSession::ConnectSocket(const CSshSite& site)
         return true;
 
     if (timedOut)
-        return Fail(SshErrorKind::Timeout, "Connecting to " + site.host + ":" + std::to_string(site.port) +
-                                               " timed out after " + Msec(timeoutMs));
+    {
+        const std::string hostPort = site.host + ":" + std::to_string(site.port);
+        return Fail(SshErrorKind::Timeout, SshMsg::ConnectTimeout, {hostPort, Msec(timeoutMs)},
+                    "Connecting to " + hostPort + " timed out after " + Msec(timeoutMs));
+    }
     return Fail(SshErrorKind::ConnectFailed,
                 "Cannot connect to " + site.host + ":" + std::to_string(site.port) + " (" + why + ")");
 }

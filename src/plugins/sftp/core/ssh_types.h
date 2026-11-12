@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "encoding.h"
 #include "secret.h"
@@ -29,12 +30,27 @@ enum class SshErrorKind
     Other             // anything else; see message
 };
 
+// Identifies an error text so the UI layer can show it in the user's language. core/ only knows the ids; the texts
+// (patterns with %1, %2, ...) live in the plugin's string table and are looked up in fs/. The English text stays in
+// CSshError::message as the log text and as the fallback for ids without a table entry.
+// Each id lists its arguments (CSshError::args, UTF-8).
+enum class SshMsg
+{
+    None,           // no id: only the English message is available
+    ResolveFailed,  // %1 host, %2 system error text
+    ResolveTimeout, // %1 host, %2 timeout (e.g. "30 s")
+    ConnectTimeout, // %1 host:port, %2 timeout (e.g. "30 s")
+    SessionNotOpen  // no arguments
+};
+
 struct CSshError
 {
     SshErrorKind kind = SshErrorKind::None;
     int libssh2Code = 0;          // LIBSSH2_ERROR_* (0 = none)
     unsigned long sftpStatus = 0; // LIBSSH2_FX_* when libssh2Code is LIBSSH2_ERROR_SFTP_PROTOCOL
-    std::string message;          // UTF-8, for display and logs
+    std::string message;          // UTF-8, English: for logs and as the fallback for display
+    SshMsg msgId = SshMsg::None;  // translatable text of this error, None = use message
+    std::vector<std::string> args; // UTF-8 values for %1, %2, ... of the translated text
 
     bool IsError() const { return kind != SshErrorKind::None; }
 };

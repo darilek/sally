@@ -3,6 +3,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "ssh_types.h"
 
@@ -23,6 +24,14 @@ struct CSshErrorLabels
 // "message (code N, SFTP status M)" as wide text for a message box or log; never empty (unless the labels are).
 // Invalid UTF-8 in the message becomes U+FFFD.
 std::wstring DescribeSshError(const CSshError& error, const CSshErrorLabels& labels);
+// Same, but 'translatedText' (when not empty) replaces error.message as the main text. fs/ passes the string-table
+// text of error.msgId, already formatted with FormatErrorMessage.
+std::wstring DescribeSshError(const CSshError& error, const CSshErrorLabels& labels, const std::wstring& translatedText);
+
+// Fills a string-table pattern: %1..%9 become the UTF-8 arguments (decoded; invalid bytes become U+FFFD), "%%" is a
+// literal '%'. A translation may use the arguments in another order. A %N without an argument becomes empty text;
+// any other '%' stays as written. Never throws for bad input.
+std::wstring FormatErrorMessage(const std::wstring& pattern, const std::vector<std::string>& args);
 
 // Sally's own known_hosts file: AppDataSallyDir() + "\known_hosts"; empty when AppDataSallyDir() is empty.
 std::wstring KnownHostsOwnPath();

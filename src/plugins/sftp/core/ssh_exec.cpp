@@ -77,7 +77,7 @@ bool CSshSession::Exec(const std::string& command, const CExecOptions& options, 
     if (broken_)
         return FailBroken();
     if (session_ == nullptr || !authenticated_)
-        return Fail(SshErrorKind::Other, "The SSH session is not open");
+        return Fail(SshErrorKind::Other, SshMsg::SessionNotOpen, {}, "The SSH session is not open");
 
     int code = 0;
     LIBSSH2_CHANNEL* channel =

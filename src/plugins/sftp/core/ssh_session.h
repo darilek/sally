@@ -156,6 +156,8 @@ public:
 
 private:
     bool Fail(SshErrorKind kind, const std::string& message, int libssh2Code = 0);
+    // Same, plus the id and arguments of the translatable text; 'message' is its English form (logs, fallback).
+    bool Fail(SshErrorKind kind, SshMsg msgId, std::vector<std::string> args, const std::string& message);
     bool FailFromSession(const std::string& what, int code);
     bool IsCancelled() const { return cancelled_.load(); }
 

@@ -313,4 +313,12 @@ STRINGTABLE
  IDS_CTX_SERVER_INFO, "&Server Information..."
  IDS_OP_PROBLEM_PERMS_UNKNOWN, "The server does not report the current permissions, so only a complete setting can be applied"
  IDS_ERR_CHMOD_UNKNOWN, "The attributes of ""%ls"" were not changed: the server does not report the current permissions. Set all permission bits explicitly (for example by typing the octal value)."
+ // texts of core errors: %1, %2 are filled in by FormatErrorMessage and may be reordered; %% is a literal percent sign
+ // arguments: %1 host name, %2 system error text
+ IDS_ERRMSG_RESOLVE_FAILED, "Cannot resolve host '%1' (%2)"
+ // arguments: %1 host name, %2 time limit (e.g. 30 s)
+ IDS_ERRMSG_RESOLVE_TIMEOUT, "Resolving host '%1' timed out after %2"
+ // arguments: %1 host and port (host:port), %2 time limit (e.g. 30 s)
+ IDS_ERRMSG_CONNECT_TIMEOUT, "Connecting to %1 timed out after %2"
+ IDS_ERRMSG_SESSION_NOT_OPEN, "The SSH session is not open"
 }

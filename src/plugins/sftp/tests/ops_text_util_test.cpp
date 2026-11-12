@@ -106,3 +106,46 @@ TEST(TextUtil, ClassifyTargetMask)
     EXPECT_EQ(ClassifyTargetMask(L"a?c", name), TargetMaskKind::Wildcard);
     EXPECT_EQ(ClassifyTargetMask(L"data*", name), TargetMaskKind::Wildcard);
 }
+
+TEST(FormatErrorMessage, FillsArguments)
+{
+    EXPECT_EQ(FormatErrorMessage(L"Cannot resolve host '%1' (%2)", {"example.com", "Winsock error 11001"}),
+              L"Cannot resolve host 'example.com' (Winsock error 11001)");
+    EXPECT_EQ(FormatErrorMessage(L"no arguments", {}), L"no arguments");
+    EXPECT_EQ(FormatErrorMessage(L"", {"x"}), L"");
+    EXPECT_EQ(FormatErrorMessage(L"%1", {"caf\xC3\xA9"}), std::wstring(L"caf") + wchar_t(0xE9)); // arguments are UTF-8
+}
+
+TEST(FormatErrorMessage, TranslationMayReorderAndRepeat)
+{
+    EXPECT_EQ(FormatErrorMessage(L"%2 / %1 / %2", {"a", "b"}), L"b / a / b");
+}
+
+TEST(FormatErrorMessage, MissingArgumentBecomesEmpty)
+{
+    EXPECT_EQ(FormatErrorMessage(L"[%1][%2][%9]", {"a"}), L"[a][][]");
+    EXPECT_EQ(FormatErrorMessage(L"[%1]", {}), L"[]");
+}
+
+TEST(FormatErrorMessage, PercentSigns)
+{
+    EXPECT_EQ(FormatErrorMessage(L"100%% of %1", {"x"}), L"100% of x");
+    EXPECT_EQ(FormatErrorMessage(L"%%1", {"x"}), L"%1"); // an escaped percent is not an argument
+    EXPECT_EQ(FormatErrorMessage(L"50% done", {}), L"50% done"); // lone '%' stays
+    EXPECT_EQ(FormatErrorMessage(L"%0 %a end%", {"x"}), L"%0 %a end%");
+}
+
+TEST(FormatErrorMessage, InvalidUtf8ArgumentBecomesReplacementCharacter)
+{
+    EXPECT_EQ(FormatErrorMessage(L"<%1>", {"a\xff" "b"}), std::wstring(L"<a") + wchar_t(0xFFFD) + L"b>");
+}
+
+TEST(TextUtil, DescribeSshErrorUsesTranslatedTextWhenGiven)
+{
+    const CSshErrorLabels labels = {L"Unknown error", L"code", L"SFTP status"};
+    CSshError error;
+    error.message = "English text";
+    error.libssh2Code = -5;
+    EXPECT_EQ(DescribeSshError(error, labels, L"Prelozeny text"), L"Prelozeny text (code -5)");
+    EXPECT_EQ(DescribeSshError(error, labels, L""), L"English text (code -5)"); // empty = fall back to message
+}

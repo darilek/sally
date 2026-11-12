@@ -267,4 +267,10 @@
 #define IDS_OP_PROBLEM_PERMS_UNKNOWN       341
 #define IDS_ERR_CHMOD_UNKNOWN              342
 
+// Translatable texts of core errors (SshMsg in core/ssh_types.h, mapped in fs/fs_messages.cpp); patterns with %1, %2
+#define IDS_ERRMSG_RESOLVE_FAILED          343
+#define IDS_ERRMSG_RESOLVE_TIMEOUT         344
+#define IDS_ERRMSG_CONNECT_TIMEOUT         345
+#define IDS_ERRMSG_SESSION_NOT_OPEN        346
+
 #endif // __SFTP_RH2
